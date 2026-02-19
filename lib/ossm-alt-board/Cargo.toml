@@ -1,0 +1,7 @@
+[package]
+name = "ossm-alt-board"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+sossm = { path = "../sossm" }

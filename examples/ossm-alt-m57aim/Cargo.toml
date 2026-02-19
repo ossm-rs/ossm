@@ -1,0 +1,9 @@
+[package]
+name = "ossm-alt-m57aim"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+sossm = { path = "../../lib/sossm" }
+m57aim-motor = { path = "../../lib/m57aim-motor" }
+ossm-alt-board = { path = "../../lib/ossm-alt-board" }

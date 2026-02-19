@@ -3,5 +3,28 @@
 version = 4
 
 [[package]]
+name = "m57aim-motor"
+version = "0.1.0"
+dependencies = [
+ "sossm",
+]
+
+[[package]]
+name = "ossm-alt-board"
+version = "0.1.0"
+dependencies = [
+ "sossm",
+]
+
+[[package]]
+name = "ossm-alt-m57aim"
+version = "0.1.0"
+dependencies = [
+ "m57aim-motor",
+ "ossm-alt-board",
+ "sossm",
+]
+
+[[package]]
 name = "sossm"
 version = "0.1.0"
