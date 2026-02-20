@@ -4,8 +4,11 @@ use embassy_time::{Duration, Timer};
 // Embassy tasks have static ownership of peripherals; motors are owned by a single task and
 // their futures never cross core boundaries, so Send bounds on async trait methods are unnecessary.
 #[allow(async_fn_in_trait)]
-pub trait Motor {
+pub trait Motor: From<Self::Transport> {
     type Error: Debug;
+    type Transport;
+
+    const STEPS_PER_REV: u32;
 
     fn min_consecutive_write_delay() -> Duration;
 

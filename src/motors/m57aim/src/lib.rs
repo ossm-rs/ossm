@@ -96,6 +96,12 @@ pub struct M57AIMMotor<UART> {
     uart: UART,
 }
 
+impl<UART: Read + Write> From<UART> for M57AIMMotor<UART> {
+    fn from(uart: UART) -> Self {
+        Self::new(uart)
+    }
+}
+
 impl<UART> M57AIMMotor<UART>
 where
     UART: Read + Write,
@@ -226,6 +232,9 @@ where
     <UART as ErrorType>::Error: core::fmt::Debug,
 {
     type Error = MotorError<<UART as ErrorType>::Error>;
+    type Transport = UART;
+
+    const STEPS_PER_REV: u32 = 32768;
 
     fn min_consecutive_write_delay() -> Duration {
         MOTOR_CONSECUTIVE_READ_DELAY

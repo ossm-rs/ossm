@@ -2,18 +2,18 @@
 
 mod motor;
 mod board;
+mod mechanical;
 
 pub use motor::Motor;
 pub use board::Board;
+pub use mechanical::MechanicalConfig;
 
-pub struct Sossm {}
+pub struct Sossm<B: Board> {
+    board: B
+}
 
-impl Sossm {
-    pub fn new() -> Self {
-        Self {}
-    }
-
-    pub fn run(&self) {
-        // Run the Sossm system
+impl<B: Board> Sossm<B> {
+    pub fn new(board: B) -> Self {
+        Self { board }
     }
 }

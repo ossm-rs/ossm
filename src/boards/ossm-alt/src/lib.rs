@@ -6,22 +6,22 @@ use esp_hal::{
     timer::timg::TimerGroup,
     uart::{Config, Uart},
 };
-use sossm::Board;
+use sossm::{Board, MechanicalConfig, Motor};
 
 const MOTOR_BAUD_RATE: u32 = 115_200;
 
-pub struct OssmAltBoard {
-    pub uart: Uart<'static, Async>,
+pub struct OssmAltBoard<M: Motor> {
+    motor: M,
+    config: MechanicalConfig,
 }
 
-impl OssmAltBoard {
-    pub fn new(p: Peripherals) -> Self {
-        // Initialize the embassy time driver using TIMG0.
+impl<M: Motor<Transport = Uart<'static, Async>>> OssmAltBoard<M> {
+    pub fn new(p: Peripherals, config: MechanicalConfig) -> Self {
         let timg0 = TimerGroup::new(p.TIMG0);
         esp_rtos::start(timg0.timer0);
 
-        let config = Config::default().with_baudrate(MOTOR_BAUD_RATE);
-        let uart = Uart::new(p.UART1, config)
+        let uart_config = Config::default().with_baudrate(MOTOR_BAUD_RATE);
+        let uart = Uart::new(p.UART1, uart_config)
             .expect("Failed to initialize UART")
             .with_tx(p.GPIO10)
             .with_rx(p.GPIO12)
@@ -34,8 +34,22 @@ impl OssmAltBoard {
         regs.rs485_conf()
             .modify(|_, w| w.rs485_en().set_bit().dl1_en().set_bit());
 
-        Self { uart }
+        Self {
+            motor: M::from(uart),
+            config,
+        }
     }
 }
 
-impl Board for OssmAltBoard {}
+impl<M: Motor> Board for OssmAltBoard<M> {
+    type Error = M::Error;
+    type M = M;
+
+    fn motor(&mut self) -> &mut M {
+        &mut self.motor
+    }
+
+    fn steps_per_mm(&self) -> f32 {
+        self.config.steps_per_mm(M::STEPS_PER_REV)
+    }
+}
