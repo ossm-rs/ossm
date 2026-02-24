@@ -5,9 +5,9 @@ edition = "2024"
 rust-version = "1.88"
 
 [dependencies]
-sossm = { path = "../../src/lib/sossm" }
-m57aim-motor = { path = "../../src/motors/m57aim" }
-ossm-alt-board = { path = "../../src/boards/ossm-alt" }
+sossm = { path = "../../sossm" }
+m57aim-motor = { path = "../../drivers/m57aim" }
+ossm-alt-board = { path = "../../boards/ossm-alt" }
 
 esp-hal = { version = "~1.0", features = ["log-04", "esp32s3", "unstable"] }
 
