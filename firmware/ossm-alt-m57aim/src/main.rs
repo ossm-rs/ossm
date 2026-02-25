@@ -26,7 +26,7 @@ use esp_hal::{
 };
 use m57aim_motor::M57AIMMotor;
 use ossm_alt_board::{OssmAltBoard, Rs485};
-use sossm::{Board, MechanicalConfig, MotionLimits, Sossm};
+use sossm::{Board, CommandChannel, MechanicalConfig, MotionController, MotionLimits, Sossm};
 
 use {esp_backtrace as _, esp_println as _};
 
@@ -38,9 +38,11 @@ const UPDATE_INTERVAL_MS: u64 = 10;
 
 type ConcreteMotor = M57AIMMotor<Rs485<Uart<'static, Blocking>, Output<'static>>, Delay>;
 
+static COMMANDS: CommandChannel = CommandChannel::new();
 static UPDATE_TIMER: Mutex<RefCell<Option<PeriodicTimer<'static, Blocking>>>> =
     Mutex::new(RefCell::new(None));
-static SOSSM: Mutex<RefCell<Option<Sossm<ConcreteMotor>>>> = Mutex::new(RefCell::new(None));
+static MOTION: Mutex<RefCell<Option<MotionController<'static, ConcreteMotor>>>> =
+    Mutex::new(RefCell::new(None));
 
 #[handler(priority = Priority::Priority2)]
 fn motion_update_interrupt() {
@@ -51,8 +53,8 @@ fn motion_update_interrupt() {
             .unwrap()
             .clear_interrupt();
 
-        if let Some(sossm) = SOSSM.borrow_ref_mut(cs).as_mut() {
-            let _ = sossm.update();
+        if let Some(controller) = MOTION.borrow_ref_mut(cs).as_mut() {
+            let _ = controller.update();
         }
     });
 }
@@ -79,20 +81,21 @@ async fn main(_spawner: Spawner) {
     );
     let config = board.mechanical_config().clone();
 
-    let mut sossm = Sossm::new(
+    let (sossm, mut controller) = Sossm::new(
         board.into_motor(),
         &config,
         MotionLimits::default(),
         UPDATE_INTERVAL_MS as f64 / 1000.0,
+        &COMMANDS,
     );
 
-    // Blocking setup while Sossm is still a local — before the interrupt owns it
-    sossm.enable().expect("enable failed");
-    sossm.home().expect("homing failed");
+    // Blocking setup while controller is still a local — before the interrupt owns it
+    controller.enable().expect("enable failed");
+    controller.home().expect("homing failed");
 
-    // Move Sossm into the static for interrupt access
+    // Move controller into the static for interrupt access
     critical_section::with(|cs| {
-        SOSSM.borrow_ref_mut(cs).replace(sossm);
+        MOTION.borrow_ref_mut(cs).replace(controller);
     });
 
     // Set up the periodic timer on TIMG1 for the motion control interrupt
@@ -114,13 +117,9 @@ async fn main(_spawner: Spawner) {
         UPDATE_INTERVAL_MS
     );
 
-    // Send initial commands via critical section
-    critical_section::with(|cs| {
-        if let Some(sossm) = SOSSM.borrow_ref_mut(cs).as_mut() {
-            sossm.set_speed(150.0);
-            sossm.move_to(100.0);
-        }
-    });
+    // Send initial commands — no critical section needed, sossm is a local
+    sossm.set_speed(150.0);
+    sossm.move_to(100.0);
 
     // Main async loop — free for BLE, telemetry, patterns, etc.
     loop {

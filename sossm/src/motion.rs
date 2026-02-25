@@ -1,5 +1,6 @@
 use rsruckig::prelude::*;
 
+use crate::command::{Command, CommandChannel};
 use crate::{MechanicalConfig, MotionLimits, Motor};
 
 // Motor settings restored after homing. These configure the motor's internal
@@ -12,8 +13,9 @@ const OPERATING_MAX_OUTPUT: u16 = 600;
 // Floor applied to velocity requests to prevent degenerate Ruckig inputs.
 const MIN_VELOCITY: f64 = 0.001;
 
-pub struct MotionController<M: Motor> {
+pub struct MotionController<'a, M: Motor> {
     motor: M,
+    commands: &'a CommandChannel,
     steps_per_mm: f64,
     min_position_mm: f64,
     max_position_mm: f64,
@@ -24,7 +26,7 @@ pub struct MotionController<M: Motor> {
     move_in_progress: bool,
 }
 
-impl<M: Motor> MotionController<M> {
+impl<'a, M: Motor> MotionController<'a, M> {
     /// Create a new `MotionController`.
     ///
     /// `update_interval_secs` must match how often `update()` will be called.
@@ -34,6 +36,7 @@ impl<M: Motor> MotionController<M> {
         config: &MechanicalConfig,
         limits: MotionLimits,
         update_interval_secs: f64,
+        commands: &'a CommandChannel,
     ) -> Self {
         let steps_per_mm = config.steps_per_mm(M::STEPS_PER_REV) as f64;
 
@@ -48,6 +51,7 @@ impl<M: Motor> MotionController<M> {
 
         Self {
             motor,
+            commands,
             steps_per_mm,
             min_position_mm: config.min_position_mm,
             max_position_mm: config.max_position_mm,
@@ -107,8 +111,19 @@ impl<M: Motor> MotionController<M> {
     /// Advance the motion control loop by one step.
     ///
     /// Must be called at the same interval as `update_interval_secs` passed to `new()`.
-    /// Computes the next Ruckig trajectory step and writes the target position to the motor.
+    /// Drains pending commands from the channel, then computes the next Ruckig
+    /// trajectory step and writes the target position to the motor.
     pub fn update(&mut self) -> Result<(), M::Error> {
+        // Process all pending commands from the channel
+        while let Ok(cmd) = self.commands.try_receive() {
+            match cmd {
+                Command::Enable => self.motor.enable()?,
+                Command::Disable => self.motor.disable()?,
+                Command::MoveTo(mm) => self.move_to(mm),
+                Command::SetSpeed(mm_s) => self.set_speed(mm_s),
+            }
+        }
+
         if !self.move_in_progress {
             return Ok(());
         }

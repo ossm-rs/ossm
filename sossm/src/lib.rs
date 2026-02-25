@@ -2,54 +2,63 @@
 extern crate alloc;
 
 mod board;
+mod command;
 mod limits;
 mod mechanical;
 mod motion;
 mod motor;
 
 pub use board::Board;
+pub use command::{Command, CommandChannel};
 pub use limits::MotionLimits;
 pub use mechanical::MechanicalConfig;
 pub use motion::MotionController;
 pub use motor::{Motor, MotorTelemetry};
 
-pub struct Sossm<M: Motor> {
-    motion: MotionController<M>,
+/// Lightweight command handle for application code.
+///
+/// `Sossm` sends commands to a [`MotionController`] via a shared channel.
+/// All methods take `&self` and are safe to call from any context — no mutex
+/// or critical section needed.
+///
+/// Create both halves with [`Sossm::new()`], then hand the
+/// [`MotionController`] to an interrupt or timer task.
+pub struct Sossm<'a> {
+    commands: &'a CommandChannel,
 }
 
-impl<M: Motor> Sossm<M> {
-    pub fn new(
+impl<'a> Sossm<'a> {
+    /// Create a `Sossm` command handle and a [`MotionController`] engine,
+    /// both connected to the given `commands` channel.
+    ///
+    /// The returned `MotionController` should be placed in a timer interrupt
+    /// or periodic task that calls [`MotionController::update()`].
+    pub fn new<M: Motor>(
         motor: M,
         config: &MechanicalConfig,
         limits: MotionLimits,
         update_interval_secs: f64,
-    ) -> Self {
-        Self {
-            motion: MotionController::new(motor, config, limits, update_interval_secs),
-        }
+        commands: &'a CommandChannel,
+    ) -> (Self, MotionController<'a, M>) {
+        let controller =
+            MotionController::new(motor, config, limits, update_interval_secs, commands);
+        let handle = Self { commands };
+        (handle, controller)
     }
 
-    pub fn enable(&mut self) -> Result<(), M::Error> {
-        self.motion.enable()
+    pub fn enable(&self) {
+        let _ = self.commands.try_send(Command::Enable);
     }
 
-    pub fn disable(&mut self) -> Result<(), M::Error> {
-        self.motion.disable()
+    pub fn disable(&self) {
+        let _ = self.commands.try_send(Command::Disable);
     }
 
-    pub fn home(&mut self) -> Result<(), M::Error> {
-        self.motion.home()
+    pub fn move_to(&self, mm: f64) {
+        let _ = self.commands.try_send(Command::MoveTo(mm));
     }
 
-    pub fn move_to(&mut self, mm: f64) {
-        self.motion.move_to(mm)
-    }
-
-    pub fn set_speed(&mut self, mm_s: f64) {
-        self.motion.set_speed(mm_s)
-    }
-
-    pub fn update(&mut self) -> Result<(), M::Error> {
-        self.motion.update()
+    pub fn set_speed(&self, mm_s: f64) {
+        let _ = self.commands.try_send(Command::SetSpeed(mm_s));
     }
 }
