@@ -26,7 +26,7 @@ use esp_hal::{
 };
 use m57aim_motor::M57AIMMotor;
 use ossm_alt_board::{OssmAltBoard, Rs485};
-use sossm::{Board, CommandChannel, MechanicalConfig, MotionController, MotionLimits, Sossm};
+use sossm::{CommandChannel, MechanicalConfig, MotionController, MotionLimits, Sossm};
 
 use {esp_backtrace as _, esp_println as _};
 

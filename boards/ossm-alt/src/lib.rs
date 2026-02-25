@@ -11,7 +11,7 @@ use esp_hal::{
     peripherals::{GPIO10, GPIO11, GPIO12, UART1},
     uart::{Config, Uart},
 };
-use sossm::{Board, MechanicalConfig, Motor};
+use sossm::{MechanicalConfig, Motor};
 
 const MOTOR_BAUD_RATE: u32 = 115_200;
 
@@ -51,14 +51,12 @@ where
     }
 }
 
-impl<M: Motor> Board for OssmAltBoard<M> {
-    type Motor = M;
-
-    fn mechanical_config(&self) -> &MechanicalConfig {
+impl<M: Motor> OssmAltBoard<M> {
+    pub fn mechanical_config(&self) -> &MechanicalConfig {
         &self.config
     }
 
-    fn into_motor(self) -> M {
+    pub fn into_motor(self) -> M {
         self.motor
     }
 }

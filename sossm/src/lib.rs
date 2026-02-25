@@ -1,14 +1,12 @@
 #![no_std]
 extern crate alloc;
 
-mod board;
 mod command;
 mod limits;
 mod mechanical;
 mod motion;
 mod motor;
 
-pub use board::Board;
 pub use command::{Command, CommandChannel};
 pub use limits::MotionLimits;
 pub use mechanical::MechanicalConfig;
