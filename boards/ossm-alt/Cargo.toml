@@ -6,6 +6,5 @@ edition = "2024"
 [dependencies]
 sossm = { path = "../../sossm" }
 esp-hal = { version = "1.0", features = ["unstable", "esp32s3"] }
-esp-rtos = { version = "0.2.0" }
 embedded-io = "0.6.1"
 embedded-hal = "1.0"
