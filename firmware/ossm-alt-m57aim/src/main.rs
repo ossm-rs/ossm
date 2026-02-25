@@ -34,7 +34,7 @@ extern crate alloc;
 
 esp_bootloader_esp_idf::esp_app_desc!();
 
-const UPDATE_INTERVAL_MS: u64 = 10;
+const UPDATE_INTERVAL_SECS: f64 = 0.01;
 
 type ConcreteMotor = M57AIMMotor<Rs485<Uart<'static, Blocking>, Output<'static>>, Delay>;
 
@@ -85,7 +85,7 @@ async fn main(_spawner: Spawner) {
         board.into_motor(),
         &config,
         MotionLimits::default(),
-        UPDATE_INTERVAL_MS as f64 / 1000.0,
+        UPDATE_INTERVAL_SECS,
         &COMMANDS,
     );
 
@@ -104,8 +104,11 @@ async fn main(_spawner: Spawner) {
 
     update_timer.set_interrupt_handler(motion_update_interrupt);
     update_timer.listen();
+
+    let interval_us = (sossm.update_interval_secs() * 1_000_000.0) as u64;
+
     update_timer
-        .start(HalDuration::from_millis(UPDATE_INTERVAL_MS))
+        .start(HalDuration::from_micros(interval_us))
         .expect("failed to start motion timer");
 
     critical_section::with(|cs| {
@@ -114,7 +117,7 @@ async fn main(_spawner: Spawner) {
 
     info!(
         "Motion interrupt started at {}ms interval",
-        UPDATE_INTERVAL_MS
+        sossm.update_interval_secs() * 1000.0
     );
 
     // Send initial commands — no critical section needed, sossm is a local

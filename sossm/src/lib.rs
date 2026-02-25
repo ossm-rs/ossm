@@ -23,6 +23,7 @@ pub use motor::{Motor, MotorTelemetry};
 /// [`MotionController`] to an interrupt or timer task.
 pub struct Sossm<'a> {
     commands: &'a CommandChannel,
+    update_interval_secs: f64,
 }
 
 impl<'a> Sossm<'a> {
@@ -40,8 +41,15 @@ impl<'a> Sossm<'a> {
     ) -> (Self, MotionController<'a, M>) {
         let controller =
             MotionController::new(motor, config, limits, update_interval_secs, commands);
-        let handle = Self { commands };
+        let handle = Self {
+            commands,
+            update_interval_secs,
+        };
         (handle, controller)
+    }
+
+    pub fn update_interval_secs(&self) -> f64 {
+        self.update_interval_secs
     }
 
     pub fn enable(&self) {
