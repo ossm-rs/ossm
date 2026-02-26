@@ -10,14 +10,17 @@
 use log::info;
 
 use embassy_executor::Spawner;
+use embassy_time::Delay;
 use embassy_time::{Duration, Ticker, Timer};
-use esp_hal::{Blocking, delay::Delay, gpio::Output, interrupt::Priority, uart::Uart};
 use esp_hal::interrupt::software::SoftwareInterruptControl;
 use esp_hal::timer::timg::TimerGroup;
+use esp_hal::{Blocking, gpio::Output, interrupt::Priority, uart::Uart};
 use esp_rtos::embassy::InterruptExecutor;
 use m57aim_motor::M57AIMMotor;
 use ossm_alt_board::{OssmAltBoard, Rs485};
-use sossm::{CommandChannel, HomingSignal, MechanicalConfig, MotionController, MotionLimits, Sleep, Sossm};
+use sossm::{
+    CommandChannel, HomingSignal, MechanicalConfig, MotionController, MotionLimits, Sossm,
+};
 use static_cell::StaticCell;
 
 use {esp_backtrace as _, esp_println as _};
@@ -30,19 +33,12 @@ const UPDATE_INTERVAL_SECS: f64 = 0.01;
 
 type ConcreteMotor = M57AIMMotor<Rs485<Uart<'static, Blocking>, Output<'static>>, Delay>;
 
-struct EmbassyTimer;
-impl Sleep for EmbassyTimer {
-    async fn sleep_ms(&self, ms: u32) {
-        Timer::after(Duration::from_millis(ms as u64)).await;
-    }
-}
-
 static COMMANDS: CommandChannel = CommandChannel::new();
 static HOMING_DONE: HomingSignal = HomingSignal::new();
 static EXECUTOR_HIGH: StaticCell<InterruptExecutor<1>> = StaticCell::new();
 
 #[embassy_executor::task]
-async fn motion_task(mut controller: MotionController<'static, ConcreteMotor, EmbassyTimer>) {
+async fn motion_task(mut controller: MotionController<'static, ConcreteMotor>) {
     let interval_us = (UPDATE_INTERVAL_SECS * 1_000_000.0) as u64;
     let mut ticker = Ticker::every(Duration::from_micros(interval_us));
 
@@ -76,7 +72,6 @@ async fn main(_spawner: Spawner) {
 
     let (sossm, controller) = Sossm::new(
         board.into_motor(),
-        EmbassyTimer,
         &config,
         MotionLimits::default(),
         UPDATE_INTERVAL_SECS,
@@ -95,15 +90,13 @@ async fn main(_spawner: Spawner) {
         sossm.update_interval_secs() * 1000.0
     );
 
-    // Enable and home through the channel — non-blocking, system stays responsive
     sossm.enable();
     sossm.home().await;
 
-    // Send initial commands
+    // Hello world
     sossm.set_speed(150.0);
     sossm.move_to(100.0);
 
-    // Main async loop — free for BLE, telemetry, patterns, etc.
     loop {
         Timer::after(Duration::from_secs(5)).await;
         info!("main loop heartbeat");

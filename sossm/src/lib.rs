@@ -11,7 +11,7 @@ pub use command::{Command, CommandChannel, HomingSignal};
 pub use limits::MotionLimits;
 pub use mechanical::MechanicalConfig;
 pub use motion::MotionController;
-pub use motor::{Motor, MotorTelemetry, Sleep};
+pub use motor::{Motor, MotorTelemetry};
 
 /// Lightweight command handle for application code.
 ///
@@ -33,18 +33,16 @@ impl<'a> Sossm<'a> {
     ///
     /// The returned `MotionController` should be spawned on an
     /// `InterruptExecutor` via [`MotionController::update()`].
-    pub fn new<M: Motor, S: Sleep>(
+    pub fn new<M: Motor>(
         motor: M,
-        sleep: S,
         config: &MechanicalConfig,
         limits: MotionLimits,
         update_interval_secs: f64,
         commands: &'a CommandChannel,
         homing_done: &'a HomingSignal,
-    ) -> (Self, MotionController<'a, M, S>) {
+    ) -> (Self, MotionController<'a, M>) {
         let controller = MotionController::new(
             motor,
-            sleep,
             config,
             limits,
             update_interval_secs,

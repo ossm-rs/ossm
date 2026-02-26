@@ -4,9 +4,9 @@ mod rs485;
 
 pub use rs485::Rs485;
 
+use embassy_time::Delay;
 use esp_hal::{
     Blocking,
-    delay::Delay,
     gpio::{Level, Output, OutputConfig},
     peripherals::{GPIO10, GPIO11, GPIO12, UART1},
     uart::{Config, Uart},
@@ -42,7 +42,7 @@ where
         let de = Output::new(de_pin, Level::Low, OutputConfig::default());
         let rs485 = Rs485::new(uart, de);
 
-        let delay = Delay::new();
+        let delay = Delay;
 
         Self {
             motor: M::from((rs485, delay)),

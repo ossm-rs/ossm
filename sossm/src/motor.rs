@@ -1,28 +1,23 @@
 use core::fmt::Debug;
 
 #[allow(async_fn_in_trait)]
-pub trait Sleep {
-    async fn sleep_ms(&self, ms: u32);
-}
-
 pub trait Motor {
     type Error: Debug;
 
     const STEPS_PER_REV: u32;
 
-    fn enable(&mut self) -> Result<(), Self::Error>;
-    fn disable(&mut self) -> Result<(), Self::Error>;
+    async fn enable(&mut self) -> Result<(), Self::Error>;
+    async fn disable(&mut self) -> Result<(), Self::Error>;
 
-    /// Begin the homing sequence. Returns immediately.
-    fn start_home(&mut self) -> Result<(), Self::Error>;
-    /// Returns `true` once the homing move has finished.
-    fn is_home_complete(&mut self) -> Result<bool, Self::Error>;
+    /// Run the full homing sequence: trigger, poll until complete, settle,
+    /// and restore operating parameters. Returns when the motor is ready.
+    async fn home(&mut self) -> Result<(), Self::Error>;
 
-    fn set_absolute_position(&mut self, steps: i32) -> Result<(), Self::Error>;
+    async fn set_absolute_position(&mut self, steps: i32) -> Result<(), Self::Error>;
 
-    fn set_speed(&mut self, rpm: u16) -> Result<(), Self::Error>;
-    fn set_acceleration(&mut self, value: u16) -> Result<(), Self::Error>;
-    fn set_max_output(&mut self, output: u16) -> Result<(), Self::Error>;
+    async fn set_speed(&mut self, rpm: u16) -> Result<(), Self::Error>;
+    async fn set_acceleration(&mut self, value: u16) -> Result<(), Self::Error>;
+    async fn set_max_output(&mut self, output: u16) -> Result<(), Self::Error>;
 }
 
 #[allow(async_fn_in_trait)]
