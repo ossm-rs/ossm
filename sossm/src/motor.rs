@@ -1,5 +1,10 @@
 use core::fmt::Debug;
 
+#[allow(async_fn_in_trait)]
+pub trait Sleep {
+    async fn sleep_ms(&self, ms: u32);
+}
+
 pub trait Motor {
     type Error: Debug;
 
@@ -7,8 +12,11 @@ pub trait Motor {
 
     fn enable(&mut self) -> Result<(), Self::Error>;
     fn disable(&mut self) -> Result<(), Self::Error>;
-    /// Home the motor. Blocks until homing is complete.
-    fn home(&mut self) -> Result<(), Self::Error>;
+
+    /// Begin the homing sequence. Returns immediately.
+    fn start_home(&mut self) -> Result<(), Self::Error>;
+    /// Returns `true` once the homing move has finished.
+    fn is_home_complete(&mut self) -> Result<bool, Self::Error>;
 
     fn set_absolute_position(&mut self, steps: i32) -> Result<(), Self::Error>;
 

@@ -6,6 +6,8 @@ use heapless::Vec;
 use rmodbus::{ModbusProto, client::ModbusRequest, guess_response_frame_len};
 use sossm::{Motor, MotorTelemetry};
 
+use log::info;
+
 const PROTO: ModbusProto = ModbusProto::Rtu;
 const MIN_REG_READ_REQUIRED: usize = 3;
 const MAX_REG_READ_AT_ONCE: usize = 8;
@@ -244,35 +246,25 @@ where
     const STEPS_PER_REV: u32 = 32768;
 
     fn enable(&mut self) -> Result<(), Self::Error> {
-        self.write_register(&ReadWriteMotorRegisters::ModbusEnable, 1)?;
-        self.write_register(&ReadWriteMotorRegisters::DriverOutputEnable, 1)
+        self.write_register(&ReadWriteMotorRegisters::ModbusEnable, 1)
     }
 
     fn disable(&mut self) -> Result<(), Self::Error> {
-        self.write_register(&ReadWriteMotorRegisters::DriverOutputEnable, 0)?;
         self.write_register(&ReadWriteMotorRegisters::ModbusEnable, 0)
     }
 
-    fn home(&mut self) -> Result<(), Self::Error> {
+    fn start_home(&mut self) -> Result<(), Self::Error> {
         self.write_register(&ReadWriteMotorRegisters::MotorTargetSpeed, HOME_SPEED_RPM)?;
         self.write_register(
             &ReadWriteMotorRegisters::StandstillMaxOutput,
             HOME_MAX_OUTPUT,
         )?;
-        self.write_register(&ReadWriteMotorRegisters::SpecificFunction, 1)?;
+        self.write_register(&ReadWriteMotorRegisters::SpecificFunction, 1)
+    }
 
-        loop {
-            let remaining = self.get_remaining_steps_blocking()?;
-            if remaining.abs() < HOME_STEP_THRESHOLD {
-                break;
-            }
-            self.delay.delay_us(INTER_COMMAND_DELAY_US * 2);
-        }
-
-        // Re-enable modbus - homing resets it to defaults
-        self.write_register(&ReadWriteMotorRegisters::ModbusEnable, 1)?;
-
-        Ok(())
+    fn is_home_complete(&mut self) -> Result<bool, Self::Error> {
+        let remaining = self.get_remaining_steps_blocking()?;
+        Ok(remaining.abs() < HOME_STEP_THRESHOLD)
     }
 
     fn set_absolute_position(&mut self, steps: i32) -> Result<(), Self::Error> {

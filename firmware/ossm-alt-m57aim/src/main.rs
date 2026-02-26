@@ -7,26 +7,18 @@
 )]
 #![deny(clippy::large_stack_frames)]
 
-use core::cell::RefCell;
-
-use critical_section::Mutex;
 use log::info;
 
 use embassy_executor::Spawner;
-use embassy_time::{Duration, Timer};
-use esp_hal::{
-    Blocking,
-    delay::Delay,
-    gpio::Output,
-    handler,
-    interrupt::Priority,
-    time::Duration as HalDuration,
-    timer::{PeriodicTimer, timg::TimerGroup},
-    uart::Uart,
-};
+use embassy_time::{Duration, Ticker, Timer};
+use esp_hal::{Blocking, delay::Delay, gpio::Output, interrupt::Priority, uart::Uart};
+use esp_hal::interrupt::software::SoftwareInterruptControl;
+use esp_hal::timer::timg::TimerGroup;
+use esp_rtos::embassy::InterruptExecutor;
 use m57aim_motor::M57AIMMotor;
 use ossm_alt_board::{OssmAltBoard, Rs485};
-use sossm::{CommandChannel, MechanicalConfig, MotionController, MotionLimits, Sossm};
+use sossm::{CommandChannel, HomingSignal, MechanicalConfig, MotionController, MotionLimits, Sleep, Sossm};
+use static_cell::StaticCell;
 
 use {esp_backtrace as _, esp_println as _};
 
@@ -38,25 +30,26 @@ const UPDATE_INTERVAL_SECS: f64 = 0.01;
 
 type ConcreteMotor = M57AIMMotor<Rs485<Uart<'static, Blocking>, Output<'static>>, Delay>;
 
+struct EmbassyTimer;
+impl Sleep for EmbassyTimer {
+    async fn sleep_ms(&self, ms: u32) {
+        Timer::after(Duration::from_millis(ms as u64)).await;
+    }
+}
+
 static COMMANDS: CommandChannel = CommandChannel::new();
-static UPDATE_TIMER: Mutex<RefCell<Option<PeriodicTimer<'static, Blocking>>>> =
-    Mutex::new(RefCell::new(None));
-static MOTION: Mutex<RefCell<Option<MotionController<'static, ConcreteMotor>>>> =
-    Mutex::new(RefCell::new(None));
+static HOMING_DONE: HomingSignal = HomingSignal::new();
+static EXECUTOR_HIGH: StaticCell<InterruptExecutor<1>> = StaticCell::new();
 
-#[handler(priority = Priority::Priority2)]
-fn motion_update_interrupt() {
-    critical_section::with(|cs| {
-        UPDATE_TIMER
-            .borrow_ref_mut(cs)
-            .as_mut()
-            .unwrap()
-            .clear_interrupt();
+#[embassy_executor::task]
+async fn motion_task(mut controller: MotionController<'static, ConcreteMotor, EmbassyTimer>) {
+    let interval_us = (UPDATE_INTERVAL_SECS * 1_000_000.0) as u64;
+    let mut ticker = Ticker::every(Duration::from_micros(interval_us));
 
-        if let Some(controller) = MOTION.borrow_ref_mut(cs).as_mut() {
-            let _ = controller.update();
-        }
-    });
+    loop {
+        controller.update().await;
+        ticker.next().await;
+    }
 }
 
 #[esp_rtos::main]
@@ -67,7 +60,7 @@ async fn main(_spawner: Spawner) {
 
     esp_alloc::heap_allocator!(#[esp_hal::ram(reclaimed)] size: 73744);
 
-    // Start Embassy runtime (moved from board)
+    // Start Embassy runtime
     let timg0 = TimerGroup::new(p.TIMG0);
     esp_rtos::start(timg0.timer0);
 
@@ -81,46 +74,32 @@ async fn main(_spawner: Spawner) {
     );
     let config = board.mechanical_config().clone();
 
-    let (sossm, mut controller) = Sossm::new(
+    let (sossm, controller) = Sossm::new(
         board.into_motor(),
+        EmbassyTimer,
         &config,
         MotionLimits::default(),
         UPDATE_INTERVAL_SECS,
         &COMMANDS,
+        &HOMING_DONE,
     );
 
-    // Blocking setup while controller is still a local — before the interrupt owns it
-    controller.enable().expect("enable failed");
-    controller.home().expect("homing failed");
-
-    // Move controller into the static for interrupt access
-    critical_section::with(|cs| {
-        MOTION.borrow_ref_mut(cs).replace(controller);
-    });
-
-    // Set up the periodic timer on TIMG1 for the motion control interrupt
-    let timg1 = TimerGroup::new(p.TIMG1);
-    let mut update_timer = PeriodicTimer::new(timg1.timer0);
-
-    update_timer.set_interrupt_handler(motion_update_interrupt);
-    update_timer.listen();
-
-    let interval_us = (sossm.update_interval_secs() * 1_000_000.0) as u64;
-
-    update_timer
-        .start(HalDuration::from_micros(interval_us))
-        .expect("failed to start motion timer");
-
-    critical_section::with(|cs| {
-        UPDATE_TIMER.borrow_ref_mut(cs).replace(update_timer);
-    });
+    // Spawn the motion controller on a high-priority interrupt executor
+    let sw_ints = SoftwareInterruptControl::new(p.SW_INTERRUPT);
+    let executor = EXECUTOR_HIGH.init(InterruptExecutor::new(sw_ints.software_interrupt1));
+    let high_spawner = executor.start(Priority::Priority2);
+    high_spawner.spawn(motion_task(controller)).unwrap();
 
     info!(
-        "Motion interrupt started at {}ms interval",
+        "Motion task started at {}ms interval",
         sossm.update_interval_secs() * 1000.0
     );
 
-    // Send initial commands — no critical section needed, sossm is a local
+    // Enable and home through the channel — non-blocking, system stays responsive
+    sossm.enable();
+    sossm.home().await;
+
+    // Send initial commands
     sossm.set_speed(150.0);
     sossm.move_to(100.0);
 

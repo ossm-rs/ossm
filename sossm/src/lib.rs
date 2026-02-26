@@ -7,11 +7,11 @@ mod mechanical;
 mod motion;
 mod motor;
 
-pub use command::{Command, CommandChannel};
+pub use command::{Command, CommandChannel, HomingSignal};
 pub use limits::MotionLimits;
 pub use mechanical::MechanicalConfig;
 pub use motion::MotionController;
-pub use motor::{Motor, MotorTelemetry};
+pub use motor::{Motor, MotorTelemetry, Sleep};
 
 /// Lightweight command handle for application code.
 ///
@@ -23,6 +23,7 @@ pub use motor::{Motor, MotorTelemetry};
 /// [`MotionController`] to an interrupt or timer task.
 pub struct Sossm<'a> {
     commands: &'a CommandChannel,
+    homing_done: &'a HomingSignal,
     update_interval_secs: f64,
 }
 
@@ -30,19 +31,29 @@ impl<'a> Sossm<'a> {
     /// Create a `Sossm` command handle and a [`MotionController`] engine,
     /// both connected to the given `commands` channel.
     ///
-    /// The returned `MotionController` should be placed in a timer interrupt
-    /// or periodic task that calls [`MotionController::update()`].
-    pub fn new<M: Motor>(
+    /// The returned `MotionController` should be spawned on an
+    /// `InterruptExecutor` via [`MotionController::update()`].
+    pub fn new<M: Motor, S: Sleep>(
         motor: M,
+        sleep: S,
         config: &MechanicalConfig,
         limits: MotionLimits,
         update_interval_secs: f64,
         commands: &'a CommandChannel,
-    ) -> (Self, MotionController<'a, M>) {
-        let controller =
-            MotionController::new(motor, config, limits, update_interval_secs, commands);
+        homing_done: &'a HomingSignal,
+    ) -> (Self, MotionController<'a, M, S>) {
+        let controller = MotionController::new(
+            motor,
+            sleep,
+            config,
+            limits,
+            update_interval_secs,
+            commands,
+            homing_done,
+        );
         let handle = Self {
             commands,
+            homing_done,
             update_interval_secs,
         };
         (handle, controller)
@@ -58,6 +69,13 @@ impl<'a> Sossm<'a> {
 
     pub fn disable(&self) {
         let _ = self.commands.try_send(Command::Disable);
+    }
+
+    /// Send a Home command and wait for homing to complete.
+    pub async fn home(&self) {
+        self.homing_done.reset();
+        let _ = self.commands.try_send(Command::Home);
+        self.homing_done.wait().await;
     }
 
     pub fn move_to(&self, mm: f64) {
