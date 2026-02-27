@@ -143,15 +143,16 @@ impl<'a, M: Motor> MotionController<'a, M> {
     async fn tick(&mut self) {
         if self.state == MotionState::Moving {
             match self.ruckig.update(&self.input, &mut self.output) {
-                Ok(RuckigResult::Working) => {
+                Ok(result @ RuckigResult::Working) | Ok(result @ RuckigResult::Finished) => {
                     let mm = self.output.new_position[0]
                         .clamp(self.min_position_mm, self.max_position_mm);
                     let steps = (mm * self.steps_per_mm) as i32;
                     let _ = self.motor.set_absolute_position(steps).await;
                     self.output.pass_to_input(&mut self.input);
-                }
-                Ok(RuckigResult::Finished) => {
-                    self.state = MotionState::Ready;
+
+                    if result == RuckigResult::Finished {
+                        self.state = MotionState::Ready;
+                    }
                 }
                 _ => {}
             }
