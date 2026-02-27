@@ -4,8 +4,13 @@ use embedded_hal_async::delay::DelayNs;
 use embedded_io::{ErrorType, Read, Write};
 use heapless::Vec;
 use rmodbus::{ModbusProto, client::ModbusRequest, guess_response_frame_len};
+use crc::{Crc, CRC_16_MODBUS};
 use sossm::{Motor, MotorTelemetry};
 
+const MODBUS_CRC: Crc<u16> = Crc::<u16>::new(&CRC_16_MODBUS);
+
+const DEVICE_ADDR: u8 = 0x01;
+const SET_ABSOLUTE_POSITION_FUNC: u8 = 0x7b;
 const PROTO: ModbusProto = ModbusProto::Rtu;
 const MIN_REG_READ_REQUIRED: usize = 3;
 const MAX_REG_READ_AT_ONCE: usize = 8;
@@ -92,23 +97,6 @@ impl ReadableMotorRegister for ReadOnlyMotorRegisters {
 pub enum MotorError<E> {
     UartError(E),
     Timeout,
-}
-
-// Taken from the rmodbus crate
-fn calc_crc16(frame: &[u8], data_length: u8) -> u16 {
-    let mut crc: u16 = 0xffff;
-    for i in frame.iter().take(data_length as usize) {
-        crc ^= u16::from(*i);
-        for _ in (0..8).rev() {
-            if (crc & 0x0001) == 0 {
-                crc >>= 1;
-            } else {
-                crc >>= 1;
-                crc ^= 0xA001;
-            }
-        }
-    }
-    crc
 }
 
 pub struct M57AIMMotor<UART, DELAY> {
@@ -319,12 +307,10 @@ where
 
     async fn set_absolute_position(&mut self, steps: i32) -> Result<(), Self::Error> {
         let mut request = [0u8; 8];
-        let bytes = steps.to_be_bytes();
-
-        request[0] = 0x1;
-        request[1] = 0x7b;
-        request[2..6].copy_from_slice(&bytes);
-        let crc = calc_crc16(&request[0..6], 6).to_le_bytes();
+        request[0] = DEVICE_ADDR;
+        request[1] = SET_ABSOLUTE_POSITION_FUNC;
+        request[2..6].copy_from_slice(&steps.to_be_bytes());
+        let crc = MODBUS_CRC.checksum(&request[..6]).to_le_bytes();
         request[6..8].copy_from_slice(&crc);
 
         self.uart
@@ -334,6 +320,8 @@ where
 
         let mut response = [0u8; 8];
         self.read_exact(&mut response).await?;
+
+        self.delay.delay_us(INTER_COMMAND_DELAY_US).await;
 
         Ok(())
     }

@@ -13,3 +13,4 @@ rmodbus = { version = "0.12.2", default-features = false, features = [
     "heapless",
 ] }
 log = "0.4"
+crc = { version = "3", default-features = false }
