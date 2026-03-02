@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { Suspense, useEffect, useRef, useState, useCallback } from "react";
 import init, { Simulator } from "sim-wasm";
 import wasmUrl from "sim-wasm/sim_wasm_bg.wasm?url";
+import Scene from "./Scene";
 
 export default function App() {
   const simRef = useRef<Simulator | null>(null);
   const [ready, setReady] = useState(false);
-  const [position, setPosition] = useState(0);
   const [depth, setDepth] = useState(1.0);
   const [stroke, setStroke] = useState(1.0);
   const [velocity, setVelocity] = useState(0.5);
@@ -15,25 +15,19 @@ export default function App() {
     let cancelled = false;
     init(wasmUrl).then(() => {
       if (cancelled) return;
-      simRef.current = new Simulator(10.0);
+      const sim = new Simulator(10.0);
+      sim.set_depth(depth);
+      sim.set_stroke(stroke);
+      sim.set_velocity(velocity);
+      sim.set_sensation(sensation);
+      simRef.current = sim;
       setReady(true);
     });
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    if (!ready) return;
-    let raf: number;
-    function animate() {
-      const sim = simRef.current;
-      if (sim) setPosition(sim.get_position());
-      raf = requestAnimationFrame(animate);
-    }
-    raf = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(raf);
-  }, [ready]);
 
   const updateDepth = useCallback((v: number) => {
     setDepth(v);
@@ -59,74 +53,56 @@ export default function App() {
 
   return (
     <div
-      style={{ fontFamily: "system-ui", maxWidth: 480, margin: "2rem auto" }}
+      style={{
+        fontFamily: "system-ui",
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
+        maxWidth: 800,
+        margin: "0 auto",
+      }}
     >
-      <h1 style={{ fontSize: "1.25rem" }}>OSSM Simulator</h1>
-
-      <div
-        style={{
-          height: 32,
-          background: "#eee",
-          borderRadius: 4,
-          marginBottom: "1.5rem",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            width: `${position * 100}%`,
-            height: "100%",
-            background: "#3b82f6",
-            transition: "width 16ms linear",
-          }}
-        />
-        <span
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            fontSize: "0.875rem",
-            fontWeight: 600,
-          }}
-        >
-          {position.toFixed(3)}
-        </span>
+      <div style={{ height: 600, flexShrink: 0 }}>
+        <Suspense fallback={<p style={{ padding: "1rem" }}>Loading model…</p>}>
+          <Scene simulator={simRef.current!} />
+        </Suspense>
       </div>
 
-      <Slider
-        label="Depth"
-        value={depth}
-        min={0}
-        max={1}
-        step={0.01}
-        onChange={updateDepth}
-      />
-      <Slider
-        label="Stroke"
-        value={stroke}
-        min={0}
-        max={1}
-        step={0.01}
-        onChange={updateStroke}
-      />
-      <Slider
-        label="Velocity"
-        value={velocity}
-        min={0}
-        max={1}
-        step={0.01}
-        onChange={updateVelocity}
-      />
-      <Slider
-        label="Sensation"
-        value={sensation}
-        min={-100}
-        max={100}
-        step={1}
-        onChange={updateSensation}
-      />
+      <div style={{ flex: 1, padding: "1rem", overflowY: "auto" }}>
+        <h1 style={{ fontSize: "1.25rem", marginTop: 0 }}>OSSM Simulator</h1>
+        <Slider
+          label="Depth"
+          value={depth}
+          min={0}
+          max={1}
+          step={0.01}
+          onChange={updateDepth}
+        />
+        <Slider
+          label="Stroke"
+          value={stroke}
+          min={0}
+          max={1}
+          step={0.01}
+          onChange={updateStroke}
+        />
+        <Slider
+          label="Velocity"
+          value={velocity}
+          min={0}
+          max={1}
+          step={0.01}
+          onChange={updateVelocity}
+        />
+        <Slider
+          label="Sensation"
+          value={sensation}
+          min={-100}
+          max={100}
+          step={1}
+          onChange={updateSensation}
+        />
+      </div>
     </div>
   );
 }

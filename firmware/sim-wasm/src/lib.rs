@@ -2,6 +2,7 @@ use core::cell::Cell;
 use core::sync::atomic::{AtomicI32, Ordering};
 
 use embassy_time::{Delay, Duration, Ticker};
+use pattern_engine::patterns::Deeper;
 use pattern_engine::{patterns::Simple, Pattern, PatternCtx, PatternInput, SharedPatternInput};
 use sim_motor::SimMotor;
 use sossm::{
@@ -20,7 +21,7 @@ const CONFIG: MechanicalConfig = MechanicalConfig {
     pulley_teeth: 20,
     belt_pitch_mm: 2.0,
     min_position_mm: 10.0,
-    max_position_mm: 190.0,
+    max_position_mm: 250.0,
 };
 
 #[wasm_bindgen]
@@ -67,7 +68,7 @@ impl Simulator {
             sossm.home().await;
 
             let mut ctx = PatternCtx::new(&COMMANDS, &MOVE_COMPLETE, &PATTERN_INPUT, Delay);
-            let mut pattern = Simple;
+            let mut pattern = Deeper;
             pattern.run(&mut ctx).await;
         });
 
