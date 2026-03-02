@@ -12,7 +12,11 @@ const MODEL_URL = "/models/ossm-alt.gltf";
 const TRAVEL_M = 0.25;
 
 const purpleMaterial = new MeshStandardMaterial({ color: 0x6a1b9a });
-const railMaterial = new MeshStandardMaterial({ color: 0x888888, metalness: 0.8, roughness: 0.2 });
+const railMaterial = new MeshStandardMaterial({
+  color: 0x888888,
+  metalness: 0.8,
+  roughness: 0.2,
+});
 
 function collectGeometries(root: Object3D): BufferGeometry | null {
   const geometries: BufferGeometry[] = [];
@@ -62,9 +66,14 @@ function Model({ simulator }: { simulator: Simulator }) {
 export default function Scene({ simulator }: { simulator: Simulator }) {
   return (
     <Canvas
-      camera={{ position: [-0.373, 0.2624, 0.458], fov: 45, near: 0.001, far: 10 }}
-      style={{ height: "100%" }}
+      camera={{
+        position: [-0.373, 0.2624, 0.458],
+        fov: 45,
+        near: 0.001,
+        far: 10,
+      }}
       gl={{ toneMapping: ACESFilmicToneMapping, toneMappingExposure: 1.2 }}
+      style={{ width: "100%", height: "100%" }}
     >
       <color attach="background" args={["#ffffff"]} />
       <ambientLight intensity={0.8} />
