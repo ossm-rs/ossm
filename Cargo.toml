@@ -1,3 +1,24 @@
 [workspace]
 resolver = "3"
 members = ["ossm", "drivers/*", "boards/*", "features/*", "firmware/*"]
+
+[profile.dev]
+opt-level = "s"
+
+[profile.release]
+incremental = false
+lto = 'fat'
+
+[profile.release.package.ossm-alt-m57aim]
+codegen-units = 1
+debug = 2
+debug-assertions = false
+opt-level = 's'
+overflow-checks = false
+
+[profile.release.package.sim-m5cores3]
+codegen-units = 1
+debug = 2
+debug-assertions = false
+opt-level = 's'
+overflow-checks = false

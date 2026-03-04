@@ -37,15 +37,3 @@ esp-println = { version = "0.16.1", features = ["esp32s3", "log-04"] }
 embassy-sync = "0.7.2"
 static_cell = "2"
 critical-section = "1.2.0"
-
-[profile.dev]
-opt-level = "s"
-
-[profile.release]
-codegen-units = 1
-debug = 2
-debug-assertions = false
-incremental = false
-lto = 'fat'
-opt-level = 's'
-overflow-checks = false
