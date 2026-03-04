@@ -1,0 +1,19 @@
+[package]
+name = "sim-m5cores3-board"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+esp-hal = { version = "1.0", features = ["unstable", "esp32s3"] }
+embedded-hal = "1.0"
+embedded-hal-bus = "0.3.0"
+embedded-graphics = "0.8"
+ratatui = { version = "0.30", default-features = false }
+mipidsi = "0.10.0"
+embassy-time = "0.5.0"
+libm = "0.2"
+log = "0.4"
+static_cell = "2.1.1"
+mousefood = { version = "0.4.0", default-features = false, features = [
+    "fonts",
+] }
