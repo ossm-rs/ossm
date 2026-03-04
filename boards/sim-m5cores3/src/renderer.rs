@@ -194,7 +194,7 @@ fn build_bipolar_bar(value: f64, width: usize) -> AllocString {
         }
     } else if clamped > 0.0 && extent > 0 {
         // Positive: arrow grows rightward from centre [     |====> ]
-        let end = mid + extent;
+        let end = (mid + extent).min(inner - 1); // -1 to save space for the last ">"
         for i in 0..inner {
             if i < mid {
                 s.push(' ');
