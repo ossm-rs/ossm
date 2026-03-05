@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-esp:
+    name: Build ESP firmware
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: esp-rs/xtensa-toolchain@v1.5
+        with:
+          default: true
+          ldproxy: false
+          cache: true
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: extractions/setup-just@v2
+
+      - name: Build ossm-alt-m57aim
+        run: just build-ossm-alt
