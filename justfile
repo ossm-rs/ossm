@@ -22,5 +22,9 @@ flash-m5cores3: build-m5cores3
 build-wasm:
     wasm-pack build firmware/sim-wasm --target web
 
+# Dev server (watches Rust sources and hot-reloads WASM)
+dev-patterns: build-wasm
+    cd apps/simulator && pnpm dev
+
 # All
 build-all: build-ossm-alt build-wasm build-m5cores3
