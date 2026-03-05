@@ -1,7 +1,7 @@
 use embedded_hal_async::delay::DelayNs;
 
 use crate::pattern::{Pattern, PatternCtx};
-use crate::patterns::{Deeper, HalfHalf, Simple, StopNGo, TeasingPounding, Torque};
+use crate::patterns::{Deeper, HalfHalf, NonePattern, Simple, StopNGo, TeasingPounding, Torque};
 
 /// Enum dispatch wrapper for all built-in patterns.
 ///
@@ -15,11 +15,23 @@ pub enum AnyPattern {
     StopNGo(StopNGo),
     TeasingPounding(TeasingPounding),
     Torque(Torque),
+    None(NonePattern),
 }
 
 impl AnyPattern {
+    /// Names of the built-in patterns, matching the order of [`Self::all_builtin`].
+    pub const BUILTIN_NAMES: [&'static str; 7] = [
+        "Simple Stroke",
+        "Deeper",
+        "Half'n'Half",
+        "Stop'n'Go",
+        "Teasing Pounding",
+        "Torque",
+        "None",
+    ];
+
     /// Returns an array of all built-in patterns in their default order.
-    pub fn all_builtin() -> [AnyPattern; 6] {
+    pub fn all_builtin() -> [AnyPattern; 7] {
         [
             AnyPattern::Simple(Simple),
             AnyPattern::Deeper(Deeper),
@@ -27,6 +39,7 @@ impl AnyPattern {
             AnyPattern::StopNGo(StopNGo),
             AnyPattern::TeasingPounding(TeasingPounding),
             AnyPattern::Torque(Torque),
+            AnyPattern::None(NonePattern),
         ]
     }
 }
@@ -40,6 +53,7 @@ impl Pattern for AnyPattern {
             Self::StopNGo(p) => p.name(),
             Self::TeasingPounding(p) => p.name(),
             Self::Torque(p) => p.name(),
+            Self::None(p) => p.name(),
         }
     }
 
@@ -51,6 +65,7 @@ impl Pattern for AnyPattern {
             Self::StopNGo(p) => p.description(),
             Self::TeasingPounding(p) => p.description(),
             Self::Torque(p) => p.description(),
+            Self::None(p) => p.description(),
         }
     }
 
@@ -62,6 +77,7 @@ impl Pattern for AnyPattern {
             Self::StopNGo(p) => p.run(ctx).await,
             Self::TeasingPounding(p) => p.run(ctx).await,
             Self::Torque(p) => p.run(ctx).await,
+            Self::None(p) => p.run(ctx).await,
         }
     }
 }
@@ -99,5 +115,11 @@ impl From<TeasingPounding> for AnyPattern {
 impl From<Torque> for AnyPattern {
     fn from(p: Torque) -> Self {
         Self::Torque(p)
+    }
+}
+
+impl From<NonePattern> for AnyPattern {
+    fn from(p: NonePattern) -> Self {
+        Self::None(p)
     }
 }

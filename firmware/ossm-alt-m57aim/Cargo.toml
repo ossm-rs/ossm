@@ -9,13 +9,23 @@ ossm = { path = "../../ossm" }
 pattern-engine = { path = "../../features/pattern-engine" }
 m57aim-motor = { path = "../../drivers/m57aim" }
 ossm-alt-board = { path = "../../boards/ossm-alt" }
+ossm-m5-remote = { path = "../../features/ossm-m5-remote", features = ["esp32s3"] }
 
 esp-hal = { version = "~1.0", features = ["log-04", "esp32s3", "unstable"] }
+
+esp-radio = { version = "0.17.0", default-features = false, features = [
+    "esp-now",
+    "esp32s3",
+    "log-04",
+    "unstable",
+    "wifi",
+] }
 
 esp-rtos = { version = "0.2.0", features = [
     "log-04",
     "embassy",
     "esp-alloc",
+    "esp-radio",
     "esp32s3",
 ] }
 
@@ -33,5 +43,9 @@ esp-backtrace = { version = "0.18.1", features = [
 ] }
 esp-println = { version = "0.16.1", features = ["esp32s3", "log-04"] }
 
+embassy-futures = "0.1"
+embassy-sync = "0.7"
+
 critical-section = "1.2.0"
+portable-atomic = { version = "1", default-features = false }
 static_cell = "2.1.1"

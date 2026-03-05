@@ -24,6 +24,7 @@ pub struct FrameState {
     pub velocity: f64,
     pub sensation: f64,
     pub fps: u32,
+    pub pattern: &'static str,
     pub state: &'static str,
 }
 
@@ -88,7 +89,10 @@ pub fn render_ui(frame: &mut ratatui::Frame, state: &FrameState) {
     );
 
     // Details
-    frame.render_widget(Paragraph::new("Pattern: Deeper"), rows[4]);
+    let mut pattern_line = AllocString::with_capacity(32);
+    pattern_line.push_str("Pattern: ");
+    pattern_line.push_str(state.pattern);
+    frame.render_widget(Paragraph::new(pattern_line), rows[4]);
 
     let mut state_line = AllocString::with_capacity(16);
     state_line.push_str("State:  ");

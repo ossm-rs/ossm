@@ -7,19 +7,24 @@
 )]
 #![deny(clippy::large_stack_frames)]
 
-use log::info;
-
 use core::cell::Cell;
+
 use embassy_executor::Spawner;
+use embassy_futures::join::join;
+use embassy_sync::blocking_mutex::raw::NoopRawMutex;
+use embassy_sync::mutex::Mutex;
 use embassy_time::Delay;
 use embassy_time::{Duration, Ticker};
 use esp_hal::interrupt::software::SoftwareInterruptControl;
 use esp_hal::timer::timg::TimerGroup;
 use esp_hal::{Blocking, gpio::Output, interrupt::Priority, uart::Uart};
+use esp_radio::esp_now::{EspNowManager, EspNowSender};
 use esp_rtos::embassy::InterruptExecutor;
+use log::info;
 use m57aim_motor::M57AIMMotor;
 use ossm::{MechanicalConfig, MotionController, MotionLimits, Ossm, OssmChannels};
 use ossm_alt_board::{OssmAltBoard, Rs485};
+use ossm_m5_remote::{RemoteConfig, RemoteEvent, RemoteEventChannel};
 use pattern_engine::{
     AnyPattern, EngineCommand, EngineCommandChannel, PatternEngine, PatternInput,
     SharedPatternInput,
@@ -34,12 +39,20 @@ esp_bootloader_esp_idf::esp_app_desc!();
 
 const UPDATE_INTERVAL_SECS: f64 = 0.01;
 
+macro_rules! mk_static {
+    ($t:ty, $val:expr) => {{
+        static STATIC_CELL: StaticCell<$t> = StaticCell::new();
+        STATIC_CELL.init($val)
+    }};
+}
+
 type ConcreteMotor = M57AIMMotor<Rs485<Uart<'static, Blocking>, Output<'static>>, Delay>;
 
 static CHANNELS: OssmChannels = OssmChannels::new();
 static ENGINE_COMMANDS: EngineCommandChannel = EngineCommandChannel::new();
 static PATTERN_INPUT: SharedPatternInput =
     SharedPatternInput::new(Cell::new(PatternInput::DEFAULT));
+static REMOTE_EVENTS: RemoteEventChannel = RemoteEventChannel::new();
 static EXECUTOR_HIGH: StaticCell<InterruptExecutor<1>> = StaticCell::new();
 
 #[embassy_executor::task]
@@ -54,7 +67,7 @@ async fn motion_task(mut controller: MotionController<'static, ConcreteMotor>) {
 }
 
 #[esp_rtos::main]
-async fn main(_spawner: Spawner) {
+async fn main(spawner: Spawner) {
     esp_println::logger::init_logger_from_env();
 
     let p = esp_hal::init(esp_hal::Config::default());
@@ -71,12 +84,13 @@ async fn main(_spawner: Spawner) {
         p.GPIO11,
         MechanicalConfig::default(),
     );
-    let config = board.mechanical_config().clone();
+    let mech_config = board.mechanical_config().clone();
+    let limits = MotionLimits::default();
 
     let (ossm, controller) = Ossm::new(
         board.into_motor(),
-        &config,
-        MotionLimits::default(),
+        &mech_config,
+        limits.clone(),
         UPDATE_INTERVAL_SECS,
         &CHANNELS,
     );
@@ -91,11 +105,102 @@ async fn main(_spawner: Spawner) {
         ossm.update_interval_secs() * 1000.0
     );
 
-    ossm.enable();
-    ossm.home().await;
+    let radio = &*mk_static!(
+        esp_radio::Controller<'static>,
+        esp_radio::init().expect("Failed to initialize radio controller")
+    );
+
+    let (mut wifi_controller, interfaces) =
+        esp_radio::wifi::new(radio, p.WIFI, Default::default()).unwrap();
+    wifi_controller
+        .set_mode(esp_radio::wifi::WifiMode::Sta)
+        .unwrap();
+    wifi_controller.start().unwrap();
+
+    let esp_now = interfaces.esp_now;
+    info!("ESP-NOW version {}", esp_now.version().unwrap());
+
+    let (manager, sender, receiver) = esp_now.split();
+    let manager = mk_static!(EspNowManager<'static>, manager);
+    let sender = mk_static!(
+        Mutex::<NoopRawMutex, EspNowSender<'static>>,
+        Mutex::<NoopRawMutex, _>::new(sender)
+    );
+
+    let remote_config = RemoteConfig {
+        max_velocity_mm_s: limits.max_velocity_mm_s,
+        max_travel_mm: mech_config.max_position_mm - mech_config.min_position_mm,
+    };
+
+    spawner
+        .spawn(ossm_m5_remote::receiver_task(
+            manager,
+            sender,
+            receiver,
+            &PATTERN_INPUT,
+            &REMOTE_EVENTS,
+            remote_config,
+        ))
+        .unwrap();
+    spawner
+        .spawn(ossm_m5_remote::heartbeat_send_task(
+            manager,
+            sender,
+            remote_config,
+        ))
+        .unwrap();
+    spawner
+        .spawn(ossm_m5_remote::heartbeat_check_task(&REMOTE_EVENTS))
+        .unwrap();
+
+    info!("ESP-NOW remote tasks started, waiting for connection...");
 
     let mut engine = PatternEngine::new(AnyPattern::all_builtin());
-    engine
-        .run(&ENGINE_COMMANDS, &CHANNELS, &PATTERN_INPUT, Delay)
-        .await;
+
+    join(
+        engine.run(&ENGINE_COMMANDS, &CHANNELS, &PATTERN_INPUT, Delay),
+        async {
+            let mut current_pattern: usize = 0;
+
+            loop {
+                // Wait for Enable from the remote
+                loop {
+                    match REMOTE_EVENTS.receive().await {
+                        RemoteEvent::Enable => break,
+                        _ => {} // Ignore other events while disabled
+                    }
+                }
+
+                ossm.enable();
+                ossm.home().await;
+                info!("Homing complete, running pattern {}", current_pattern);
+                ENGINE_COMMANDS
+                    .send(EngineCommand::Play(current_pattern))
+                    .await;
+
+                // Run patterns until disabled
+                loop {
+                    match REMOTE_EVENTS.receive().await {
+                        RemoteEvent::Disable => {
+                            ENGINE_COMMANDS.send(EngineCommand::Stop).await;
+                            ossm.disable();
+                            info!("Disabled, waiting for reconnect...");
+                            break;
+                        }
+                        RemoteEvent::SwitchPattern(idx) => {
+                            current_pattern = idx as usize;
+                            info!("Switching to pattern {}", current_pattern);
+                            ENGINE_COMMANDS
+                                .send(EngineCommand::Play(current_pattern))
+                                .await;
+                        }
+                        RemoteEvent::Enable => {
+                            // Already enabled, ignore
+                        }
+                    }
+                }
+            }
+        },
+    )
+    .await;
 }

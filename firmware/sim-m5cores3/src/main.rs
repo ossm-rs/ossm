@@ -11,8 +11,10 @@ use core::cell::Cell;
 use core::sync::atomic::{AtomicI32, Ordering};
 
 use embassy_executor::Spawner;
+use embassy_futures::join::join;
 use embassy_futures::yield_now;
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_sync::blocking_mutex::raw::{CriticalSectionRawMutex, NoopRawMutex};
+use embassy_sync::mutex::Mutex;
 use embassy_sync::signal::Signal;
 use embassy_time::{Delay, Duration, Instant, Ticker};
 use esp_hal::gpio::{Level, Output, OutputConfig};
@@ -24,9 +26,14 @@ use esp_hal::spi::master::{Config as SpiConfig, Spi};
 use esp_hal::system::Stack;
 use esp_hal::time::Rate;
 use esp_hal::timer::timg::TimerGroup;
+use esp_radio::esp_now::{EspNowManager, EspNowSender};
 use log::info;
 use ossm::{MechanicalConfig, MotionController, MotionLimits, Motor, Ossm, OssmChannels};
-use pattern_engine::{Pattern, PatternCtx, PatternInput, SharedPatternInput, patterns::Deeper};
+use ossm_m5_remote::{RemoteConfig, RemoteEvent, RemoteEventChannel};
+use pattern_engine::{
+    AnyPattern, EngineCommand, EngineCommandChannel, PatternEngine, PatternInput,
+    SharedPatternInput,
+};
 use sim_m5cores3_board::{Display, FrameState, create_terminal, render_ui};
 use sim_motor::SimMotor;
 use static_cell::StaticCell;
@@ -39,16 +46,25 @@ extern crate alloc;
 
 esp_bootloader_esp_idf::esp_app_desc!();
 
+macro_rules! mk_static {
+    ($t:ty, $val:expr) => {{
+        static STATIC_CELL: StaticCell<$t> = StaticCell::new();
+        STATIC_CELL.init($val)
+    }};
+}
+
 const UPDATE_INTERVAL_SECS: f64 = 1.0 / 30.0;
 
 static CHANNELS: OssmChannels = OssmChannels::new();
+static ENGINE_COMMANDS: EngineCommandChannel = EngineCommandChannel::new();
 static PATTERN_INPUT: SharedPatternInput = SharedPatternInput::new(Cell::new(PatternInput {
-    depth: 0.7,
-    stroke: 0.5,
-    velocity: 0.50,
-    sensation: -0.20,
+    depth: 0.0,
+    stroke: 0.0,
+    velocity: 0.0,
+    sensation: 0.0,
 }));
 static MOTOR_POSITION: AtomicI32 = AtomicI32::new(0);
+static REMOTE_EVENTS: RemoteEventChannel = RemoteEventChannel::new();
 
 static EXECUTOR_CORE_1: StaticCell<InterruptExecutor<2>> = StaticCell::new();
 static APP_CORE_STACK: StaticCell<Stack<16384>> = StaticCell::new();
@@ -90,6 +106,12 @@ async fn display_task(mut display: Display, steps_per_mm: f64, min_mm: f64, max_
 
         let input = PATTERN_INPUT.lock(|cell| cell.get());
 
+        let connected = ossm_m5_remote::is_connected();
+        let pattern_idx = ossm_m5_remote::current_pattern() as usize;
+        let pattern_name = AnyPattern::BUILTIN_NAMES
+            .get(pattern_idx)
+            .copied()
+            .unwrap_or("Unknown");
         let state = FrameState {
             position,
             depth: input.depth,
@@ -97,7 +119,8 @@ async fn display_task(mut display: Display, steps_per_mm: f64, min_mm: f64, max_
             velocity: input.velocity,
             sensation: input.sensation,
             fps,
-            state: "Running",
+            pattern: pattern_name,
+            state: if connected { "Connected" } else { "Waiting" },
         };
 
         let _ = terminal.draw(|frame| {
@@ -154,17 +177,18 @@ async fn main(spawner: Spawner) {
     info!("Board initialization complete");
 
     let motor = SimMotor::new(&MOTOR_POSITION);
-    let config = MechanicalConfig {
+    let mech_config = MechanicalConfig {
         max_position_mm: 250.0,
         ..MechanicalConfig::default()
     };
+    let limits = MotionLimits::default();
 
-    let steps_per_mm = config.steps_per_mm(SimMotor::STEPS_PER_REV) as f64;
+    let steps_per_mm = mech_config.steps_per_mm(SimMotor::STEPS_PER_REV) as f64;
 
     let (ossm, controller) = Ossm::new(
         motor,
-        &config,
-        MotionLimits::default(),
+        &mech_config,
+        limits.clone(),
         UPDATE_INTERVAL_SECS,
         &CHANNELS,
     );
@@ -194,19 +218,117 @@ async fn main(spawner: Spawner) {
 
     MOTION_READY.wait().await;
 
-    ossm.enable();
-    ossm.home().await;
-
     spawner
         .spawn(display_task(
             display,
             steps_per_mm,
-            config.min_position_mm,
-            config.max_position_mm,
+            mech_config.min_position_mm,
+            mech_config.max_position_mm,
         ))
         .unwrap();
 
-    let mut ctx = PatternCtx::new(&CHANNELS, &PATTERN_INPUT, Delay);
-    let mut pattern = Deeper;
-    pattern.run(&mut ctx).await;
+    // --- ESP-NOW initialization ---
+    let radio = &*mk_static!(
+        esp_radio::Controller<'static>,
+        esp_radio::init().expect("Failed to initialize radio controller")
+    );
+
+    let (mut wifi_controller, interfaces) =
+        esp_radio::wifi::new(radio, p.WIFI, Default::default()).unwrap();
+    wifi_controller
+        .set_mode(esp_radio::wifi::WifiMode::Sta)
+        .unwrap();
+    wifi_controller.start().unwrap();
+
+    let esp_now = interfaces.esp_now;
+    info!("ESP-NOW version {}", esp_now.version().unwrap());
+
+    let (manager, sender, receiver) = esp_now.split();
+    let manager = mk_static!(EspNowManager<'static>, manager);
+    let sender = mk_static!(
+        Mutex::<NoopRawMutex, EspNowSender<'static>>,
+        Mutex::<NoopRawMutex, _>::new(sender)
+    );
+
+    let remote_config = RemoteConfig {
+        max_velocity_mm_s: limits.max_velocity_mm_s,
+        max_travel_mm: mech_config.max_position_mm - mech_config.min_position_mm,
+    };
+
+    // Spawn remote tasks
+    spawner
+        .spawn(ossm_m5_remote::receiver_task(
+            manager,
+            sender,
+            receiver,
+            &PATTERN_INPUT,
+            &REMOTE_EVENTS,
+            remote_config,
+        ))
+        .unwrap();
+    spawner
+        .spawn(ossm_m5_remote::heartbeat_send_task(
+            manager,
+            sender,
+            remote_config,
+        ))
+        .unwrap();
+    spawner
+        .spawn(ossm_m5_remote::heartbeat_check_task(&REMOTE_EVENTS))
+        .unwrap();
+
+    info!("ESP-NOW remote tasks started, waiting for connection...");
+
+    // --- Run pattern engine and remote event handler concurrently ---
+    let mut engine = PatternEngine::new(AnyPattern::all_builtin());
+
+    join(
+        engine.run(&ENGINE_COMMANDS, &CHANNELS, &PATTERN_INPUT, Delay),
+        async {
+            let mut current_pattern: usize = 0;
+
+            loop {
+                // Wait for Enable from the remote
+                loop {
+                    match REMOTE_EVENTS.receive().await {
+                        RemoteEvent::Enable => break,
+                        RemoteEvent::SwitchPattern(idx) => {
+                            current_pattern = idx as usize;
+                        }
+                        _ => {}
+                    }
+                }
+
+                ossm.enable();
+                ossm.home().await;
+                info!("Homing complete, running pattern {}", current_pattern);
+                ENGINE_COMMANDS
+                    .send(EngineCommand::Play(current_pattern))
+                    .await;
+
+                // Run patterns until disabled
+                loop {
+                    match REMOTE_EVENTS.receive().await {
+                        RemoteEvent::Disable => {
+                            ENGINE_COMMANDS.send(EngineCommand::Stop).await;
+                            ossm.disable();
+                            info!("Disabled, waiting for reconnect...");
+                            break;
+                        }
+                        RemoteEvent::SwitchPattern(idx) => {
+                            current_pattern = idx as usize;
+                            info!("Switching to pattern {}", current_pattern);
+                            ENGINE_COMMANDS
+                                .send(EngineCommand::Play(current_pattern))
+                                .await;
+                        }
+                        RemoteEvent::Enable => {
+                            // Already enabled, ignore
+                        }
+                    }
+                }
+            }
+        },
+    )
+    .await;
 }
