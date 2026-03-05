@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-firmware:
+    name: Build and upload firmware
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: esp-rs/xtensa-toolchain@v1.5
+        with:
+          default: true
+          ldproxy: false
+          cache: true
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: extractions/setup-just@v2
+
+      - name: Build ossm-alt-m57aim
+        run: just build-ossm-alt
+
+      - name: Install espflash
+        run: cargo install espflash
+
+      - name: Create firmware binary
+        run: espflash save-image --chip esp32s3 target/xtensa-esp32s3-none-elf/release/ossm-alt-m57aim ossm-alt-m57aim.bin
+
+      - name: Upload firmware to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ossm-alt-m57aim.bin
