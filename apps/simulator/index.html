@@ -7,6 +7,12 @@
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
       html, body, #root { height: 100%; }
+
+      ::view-transition-old(root),
+      ::view-transition-new(root) {
+        animation-duration: 200ms;
+        animation-timing-function: ease-in-out;
+      }
     </style>
   </head>
   <body>
