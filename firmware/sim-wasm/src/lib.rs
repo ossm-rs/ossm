@@ -85,7 +85,7 @@ impl Simulator {
         let steps = MOTOR_POSITION.load(Ordering::Relaxed);
         let mm = steps as f64 / self.steps_per_mm;
         let range = self.max_position_mm - self.min_position_mm;
-        ((mm - self.min_position_mm) / range).clamp(0.0, 1.0)
+        (mm - self.min_position_mm) / range
     }
 
     /// Set the maximum depth as a fraction of the machine range (0.0–1.0).

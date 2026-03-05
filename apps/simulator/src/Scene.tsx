@@ -1,17 +1,22 @@
-import { useRef, useMemo, useImperativeHandle, forwardRef, memo } from "react";
+import { useRef, useMemo, useCallback, useImperativeHandle, forwardRef, memo } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Environment, OrbitControls, useGLTF } from "@react-three/drei";
+import { Environment, OrbitControls, OrthographicCamera, useGLTF } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import { ACESFilmicToneMapping, Vector3 } from "three";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { MeshStandardMaterial, Mesh as ThreeMesh, BufferGeometry } from "three";
-import type { Simulator } from "sim-wasm";
+import {
+  ACESFilmicToneMapping,
+  BufferGeometry,
+  MeshStandardMaterial,
+  Mesh as ThreeMesh,
+  Vector3,
+} from "three";
 import type { Object3D } from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import type { Simulator } from "sim-wasm";
 import { useAppearance } from "./hooks/useAppearance";
 
 const MODEL_URL = "/models/ossm-alt.gltf";
 
-const TRAVEL_M = 0.25;
+const RAIL_TRAVEL = 0.25;
 
 const purpleMaterial = new MeshStandardMaterial({ color: 0x6a1b9a });
 const railMaterial = new MeshStandardMaterial({
@@ -35,23 +40,38 @@ function collectGeometries(root: Object3D): BufferGeometry | null {
   return mergeGeometries(geometries);
 }
 
-function Model({ simulator }: { simulator: Simulator }) {
+function Model({
+  simulator,
+  onOrbitTarget,
+}: {
+  simulator: Simulator;
+  onOrbitTarget?: (center: Vector3) => void;
+}) {
   const { scene } = useGLTF(MODEL_URL);
   const railRef = useRef<ThreeMesh>(null);
 
   const { housingGeo, railGeo } = useMemo(() => {
     const housingNode = scene.getObjectByName("housing");
     const railNode = scene.getObjectByName("rail");
+    const hGeo = housingNode ? collectGeometries(housingNode) : null;
+
+    if (hGeo) {
+      hGeo.computeBoundingBox();
+      const center = new Vector3();
+      hGeo.boundingBox!.getCenter(center);
+      onOrbitTarget?.(center);
+    }
+
     return {
-      housingGeo: housingNode ? collectGeometries(housingNode) : null,
+      housingGeo: hGeo,
       railGeo: railNode ? collectGeometries(railNode) : null,
     };
-  }, [scene]);
+  }, [scene, onOrbitTarget]);
 
   useFrame(() => {
     if (railRef.current) {
       const pos = simulator.get_position();
-      railRef.current.position.z = -(1 - pos) * TRAVEL_M;
+      railRef.current.position.z = -(1 - pos) * RAIL_TRAVEL;
     }
   });
 
@@ -69,8 +89,9 @@ export interface SceneHandle {
   resetView: () => void;
 }
 
-const INITIAL_CAMERA: [number, number, number] = [-0.373, 0.2624, 0.458];
-const INITIAL_TARGET: [number, number, number] = [0, 0.03, 0.05];
+const INITIAL_CAMERA: [number, number, number] = [-0.4, 0.4, 0.4];
+const RESET_LERP_SPEED = 0.08;
+const RESET_SNAP_THRESHOLD = 0.0001;
 
 function SceneContent({
   simulator,
@@ -83,11 +104,18 @@ function SceneContent({
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const resettingRef = useRef(false);
   const camera = useThree((s) => s.camera);
+  const targetRef = useRef(new Vector3());
 
   const isDark = appearance === "dark";
 
   const goalPos = useMemo(() => new Vector3(...INITIAL_CAMERA), []);
-  const goalTarget = useMemo(() => new Vector3(...INITIAL_TARGET), []);
+  const goalTarget = targetRef.current;
+
+  const onOrbitTarget = useCallback((center: Vector3) => {
+    targetRef.current.copy(center);
+    controlsRef.current?.target.copy(center);
+    controlsRef.current?.update();
+  }, []);
 
   useImperativeHandle(handle, () => ({
     resetView: () => {
@@ -102,14 +130,13 @@ function SceneContent({
     const controls = controlsRef.current;
     if (!controls) return;
 
-    const alpha = 0.08;
-    camera.position.lerp(goalPos, alpha);
-    controls.target.lerp(goalTarget, alpha);
+    camera.position.lerp(goalPos, RESET_LERP_SPEED);
+    controls.target.lerp(goalTarget, RESET_LERP_SPEED);
     controls.update();
 
     if (
-      camera.position.distanceTo(goalPos) < 0.0001 &&
-      controls.target.distanceTo(goalTarget) < 0.0001
+      camera.position.distanceTo(goalPos) < RESET_SNAP_THRESHOLD &&
+      controls.target.distanceTo(goalTarget) < RESET_SNAP_THRESHOLD
     ) {
       camera.position.copy(goalPos);
       controls.target.copy(goalTarget);
@@ -134,8 +161,15 @@ function SceneContent({
         intensity={isDark ? 0.3 : 0.5}
       />
       <Environment preset="studio" environmentIntensity={isDark ? 0.4 : 1} />
-      <Model simulator={simulator} />
-      <OrbitControls ref={controlsRef} target={INITIAL_TARGET} />
+      <Model simulator={simulator} onOrbitTarget={onOrbitTarget} />
+      <OrthographicCamera
+        makeDefault
+        position={INITIAL_CAMERA}
+        zoom={1500}
+        near={0.001}
+        far={10}
+      />
+      <OrbitControls ref={controlsRef} />
     </>
   );
 }
@@ -146,12 +180,6 @@ const Scene = memo(forwardRef<
 >(function Scene({ simulator }, ref) {
   return (
     <Canvas
-      camera={{
-        position: INITIAL_CAMERA,
-        fov: 45,
-        near: 0.001,
-        far: 10,
-      }}
       gl={{ toneMapping: ACESFilmicToneMapping, toneMappingExposure: 1.2 }}
       style={{ width: "100%", height: "100%" }}
     >

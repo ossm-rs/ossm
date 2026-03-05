@@ -1,7 +1,8 @@
-import { Suspense, useRef, useState, useCallback, useMemo } from "react";
+import { Suspense, useRef, useState, useCallback, useEffect, useMemo } from "react";
 import { useSimulator } from "./hooks/useSimulator";
 import { useAppearance } from "./hooks/useAppearance";
 import { useIsMobile } from "./hooks/useIsMobile";
+import { usePersistedState } from "./hooks/usePersistedState";
 import {
   Theme,
   Box,
@@ -27,14 +28,27 @@ type PlaybackState = "stopped" | "playing" | "paused";
 export default function App() {
   const simulator = useSimulator();
   const sceneRef = useRef<SceneHandle>(null);
-  const [depth, setDepth] = useState(1.0);
-  const [stroke, setStroke] = useState(1.0);
-  const [velocity, setVelocity] = useState(0.5);
-  const [sensation, setSensation] = useState(0.0);
-  const [selectedPattern, setSelectedPattern] = useState(0);
+  const [depth, setDepth] = usePersistedState("ossm:depth", 0.5);
+  const [stroke, setStroke] = usePersistedState("ossm:stroke", 0.4);
+  const [velocity, setVelocity] = usePersistedState("ossm:velocity", 0.5);
+  const [sensation, setSensation] = usePersistedState("ossm:sensation", 0.0);
+  const [selectedPattern, setSelectedPattern] = usePersistedState("ossm:pattern", 0);
   const [playbackState, setPlaybackState] = useState<PlaybackState>("stopped");
   const [appearance, toggleAppearance] = useAppearance();
   const isMobile = useIsMobile();
+
+  useEffect(() => {
+    simulator.set_depth(depth);
+    simulator.set_stroke(stroke);
+    simulator.set_velocity(velocity);
+    simulator.set_sensation(sensation);
+    if (selectedPattern > 0) {
+      simulator.play(selectedPattern);
+      setPlaybackState("playing");
+    }
+    // Only sync on mount, not on every state change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [simulator]);
 
   const patterns = useMemo<
     { index: number; name: string; description: string }[]
@@ -52,7 +66,7 @@ export default function App() {
       setDepth(v);
       simulator.set_depth(v);
     },
-    [simulator],
+    [simulator, setDepth],
   );
 
   const updateStroke = useCallback(
@@ -60,7 +74,7 @@ export default function App() {
       setStroke(v);
       simulator.set_stroke(v);
     },
-    [simulator],
+    [simulator, setStroke],
   );
 
   const updateVelocity = useCallback(
@@ -68,7 +82,7 @@ export default function App() {
       setVelocity(v);
       simulator.set_velocity(v);
     },
-    [simulator],
+    [simulator, setVelocity],
   );
 
   const updateSensation = useCallback(
@@ -76,7 +90,7 @@ export default function App() {
       setSensation(v);
       simulator.set_sensation(v);
     },
-    [simulator],
+    [simulator, setSensation],
   );
 
   const handlePlay = useCallback(() => {
@@ -106,7 +120,7 @@ export default function App() {
       simulator.play(index);
       setPlaybackState("playing");
     },
-    [simulator],
+    [simulator, setSelectedPattern],
   );
 
   return (

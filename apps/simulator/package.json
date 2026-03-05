@@ -15,10 +15,11 @@
     "@react-three/fiber": "^9.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "sim-wasm": "file:../../firmware/sim-wasm/pkg",
+    "sim-wasm": "link:../../firmware/sim-wasm/pkg",
     "three": "^0.183.2"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.0.0",
     "@types/three": "^0.183.1",
