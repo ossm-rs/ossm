@@ -38,7 +38,7 @@ jobs:
         run: just build-ossm-alt
 
       - name: Install espflash
-        run: cargo install espflash
+        run: cargo install espflash@3.3.0
 
       - name: Create firmware binary
         run: espflash save-image --chip esp32s3 target/xtensa-esp32s3-none-elf/release/ossm-alt-m57aim ossm-alt-m57aim.bin
