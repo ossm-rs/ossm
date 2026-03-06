@@ -79,7 +79,13 @@ impl<D: DelayNs> PatternCtx<D> {
 
     /// Map the current sensation (-1.0..1.0) to an output range.
     pub fn scale_sensation(&self, out_min: f64, out_max: f64) -> f64 {
-        scale(self.sensation(), MIN_SENSATION, MAX_SENSATION, out_min, out_max)
+        scale(
+            self.sensation(),
+            MIN_SENSATION,
+            MAX_SENSATION,
+            out_min,
+            out_max,
+        )
     }
 }
 
@@ -107,11 +113,11 @@ impl<'a, D: DelayNs, P> MotionBuilder<'a, D, P> {
         self
     }
 
-    /// Set the torque limit as a percentage (0–100).
+    /// Set the torque limit as a factor (0.0–1.0).
     ///
     /// `None` (the default) uses the motor's default torque.
-    pub fn torque(mut self, pct: f64) -> Self {
-        self.torque = Some(pct);
+    pub fn torque(mut self, factor: f64) -> Self {
+        self.torque = Some(factor);
         self
     }
 }

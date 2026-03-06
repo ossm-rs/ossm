@@ -15,7 +15,7 @@ impl Pattern for Torque {
 
     async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) {
         loop {
-            let torque = ctx.scale_sensation(0.0, 100.0);
+            let torque = ctx.scale_sensation(0.0, 1.0);
             ctx.motion().position(1.0).torque(torque).send().await;
             ctx.motion().position(0.0).torque(torque).send().await;
         }

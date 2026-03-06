@@ -28,7 +28,7 @@ pub struct MotionCommand {
     pub position: f64,
     /// Velocity as a fraction of max velocity (0.0–1.0).
     pub speed: f64,
-    /// Torque limit as a percentage (0–100). `None` uses the motor default.
+    /// Torque limit as a factor (0.0–1.0). `None` uses the motor default.
     /// Ignored until `Motor` gains a `set_torque()` method.
     pub torque: Option<f64>,
 }
