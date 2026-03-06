@@ -1,12 +1,6 @@
-import {
-  Suspense,
-  useRef,
-  useCallback,
-  useEffect,
-  useMemo,
-  useSyncExternalStore,
-} from "react";
+import { Suspense, useRef, useCallback, useEffect, useMemo } from "react";
 import { useSimulator } from "./hooks/useSimulator";
+import { useEngineState } from "./hooks/useEngineState";
 import { useAppearance } from "./hooks/useAppearance";
 import { useIsMobile } from "./hooks/useIsMobile";
 import { usePersistedState } from "./hooks/usePersistedState";
@@ -37,39 +31,6 @@ import {
 } from "@radix-ui/react-icons";
 import Scene from "./Scene";
 import type { SceneHandle } from "./Scene";
-
-type PlaybackState = "stopped" | "homing" | "playing" | "paused";
-
-const ENGINE_STATE_MAP: Record<number, PlaybackState> = {
-  0: "stopped",
-  1: "homing",
-  2: "playing",
-  3: "paused",
-};
-
-function useEngineState(simulator: import("sim-wasm").Simulator): PlaybackState {
-  const stateRef = useRef<PlaybackState>("stopped");
-
-  const subscribe = useCallback(
-    (onStoreChange: () => void) => {
-      let raf: number;
-      const poll = () => {
-        const raw = simulator.get_engine_state();
-        const next = ENGINE_STATE_MAP[raw] ?? "stopped";
-        if (next !== stateRef.current) {
-          stateRef.current = next;
-          onStoreChange();
-        }
-        raf = requestAnimationFrame(poll);
-      };
-      raf = requestAnimationFrame(poll);
-      return () => cancelAnimationFrame(raf);
-    },
-    [simulator],
-  );
-
-  return useSyncExternalStore(subscribe, () => stateRef.current);
-}
 
 export default function App() {
   const simulator = useSimulator();

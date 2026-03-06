@@ -8,7 +8,7 @@ pub mod patterns;
 mod util;
 
 pub use any_pattern::AnyPattern;
-pub use engine::{engine_state, EngineCommand, EngineCommandChannel, PatternEngine, SharedEngineState};
+pub use engine::{PatternEngine, PatternEngineChannels, PatternEngineRunner, engine_state};
 pub use input::{PatternInput, SharedPatternInput};
 pub use pattern::{Pattern, PatternCtx};
 pub use util::scale;

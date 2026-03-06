@@ -31,8 +31,7 @@ use log::info;
 use ossm::{MechanicalConfig, MotionController, MotionLimits, Motor, Ossm, OssmChannels};
 use ossm_m5_remote::{RemoteConfig, RemoteEvent, RemoteEventChannel};
 use pattern_engine::{
-    AnyPattern, EngineCommand, EngineCommandChannel, PatternEngine, PatternInput,
-    SharedPatternInput,
+    AnyPattern, PatternEngine, PatternEngineChannels, PatternInput, SharedPatternInput,
 };
 use sim_m5cores3_board::{Display, FrameState, create_terminal, render_ui};
 use sim_motor::SimMotor;
@@ -56,7 +55,7 @@ macro_rules! mk_static {
 const UPDATE_INTERVAL_SECS: f64 = 1.0 / 30.0;
 
 static CHANNELS: OssmChannels = OssmChannels::new();
-static ENGINE_COMMANDS: EngineCommandChannel = EngineCommandChannel::new();
+static ENGINE_CHANNELS: PatternEngineChannels = PatternEngineChannels::new();
 static PATTERN_INPUT: SharedPatternInput = SharedPatternInput::new(Cell::new(PatternInput {
     depth: 0.0,
     stroke: 0.0,
@@ -184,7 +183,7 @@ async fn main(spawner: Spawner) {
 
     let steps_per_mm = mech_config.steps_per_mm(SimMotor::STEPS_PER_REV) as f64;
 
-    let (ossm, controller) = Ossm::new(
+    let (_ossm, controller) = Ossm::new(
         motor,
         &mech_config,
         limits.clone(),
@@ -276,49 +275,41 @@ async fn main(spawner: Spawner) {
 
     info!("ESP-NOW remote tasks started, waiting for connection...");
 
-    let mut engine = PatternEngine::new(AnyPattern::all_builtin());
+    let (patterns, mut pattern_runner) =
+        PatternEngine::new(AnyPattern::all_builtin(), &ENGINE_CHANNELS);
 
     join(
-        engine.run(&ENGINE_COMMANDS, &CHANNELS, &PATTERN_INPUT, Delay),
+        pattern_runner.run(&CHANNELS, &PATTERN_INPUT, Delay),
         async {
             let mut current_pattern: usize = 0;
 
             loop {
-                loop {
-                    match REMOTE_EVENTS.receive().await {
-                        RemoteEvent::Enable => break,
-                        RemoteEvent::SwitchPattern(idx) => {
-                            current_pattern = idx as usize;
-                        }
-                        _ => {}
-                    }
-                }
+                while !matches!(REMOTE_EVENTS.receive().await, RemoteEvent::Connected) {}
 
-                ossm.enable();
-                ossm.home().await;
-                info!("Homing complete, running pattern {}", current_pattern);
-                ENGINE_COMMANDS
-                    .send(EngineCommand::Play(current_pattern))
-                    .await;
+                info!("Remote connected, homing...");
+                patterns.home();
 
                 loop {
                     match REMOTE_EVENTS.receive().await {
-                        RemoteEvent::Disable => {
-                            ENGINE_COMMANDS.send(EngineCommand::Stop).await;
-                            ossm.disable();
-                            info!("Disabled, waiting for reconnect...");
+                        RemoteEvent::Disconnected => {
+                            patterns.stop();
+                            info!("Remote disconnected");
                             break;
+                        }
+                        RemoteEvent::Play => {
+                            info!("Playing pattern {}", current_pattern);
+                            patterns.play(current_pattern);
+                        }
+                        RemoteEvent::Pause => {
+                            patterns.pause();
+                            info!("Paused");
                         }
                         RemoteEvent::SwitchPattern(idx) => {
                             current_pattern = idx as usize;
                             info!("Switching to pattern {}", current_pattern);
-                            ENGINE_COMMANDS
-                                .send(EngineCommand::Play(current_pattern))
-                                .await;
+                            patterns.play(current_pattern);
                         }
-                        RemoteEvent::Enable => {
-                            // Already enabled, ignore
-                        }
+                        RemoteEvent::Connected => {}
                     }
                 }
             }

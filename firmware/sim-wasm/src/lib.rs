@@ -7,18 +7,16 @@ use alloc::string::String;
 
 use ossm::{MechanicalConfig, MotionLimits, Motor, Ossm, OssmChannels};
 use pattern_engine::{
-    AnyPattern, EngineCommand, EngineCommandChannel, Pattern, PatternEngine, PatternInput,
-    SharedEngineState, SharedPatternInput, engine_state,
+    AnyPattern, Pattern, PatternEngine, PatternEngineChannels, PatternInput, SharedPatternInput,
 };
 use sim_motor::SimMotor;
 use wasm_bindgen::prelude::*;
 
 static CHANNELS: OssmChannels = OssmChannels::new();
-static ENGINE_COMMANDS: EngineCommandChannel = EngineCommandChannel::new();
+static ENGINE_CHANNELS: PatternEngineChannels = PatternEngineChannels::new();
 static PATTERN_INPUT: SharedPatternInput =
     SharedPatternInput::new(Cell::new(PatternInput::DEFAULT));
 static MOTOR_POSITION: AtomicI32 = AtomicI32::new(0);
-static ENGINE_STATE: SharedEngineState = SharedEngineState::new(engine_state::IDLE);
 
 const CONFIG: MechanicalConfig = MechanicalConfig {
     pulley_teeth: 20,
@@ -63,16 +61,9 @@ impl Simulator {
         });
 
         wasm_bindgen_futures::spawn_local(async move {
-            let mut engine = PatternEngine::new(AnyPattern::all_builtin());
-            engine
-                .run(
-                    &ENGINE_COMMANDS,
-                    &CHANNELS,
-                    &PATTERN_INPUT,
-                    &ENGINE_STATE,
-                    Delay,
-                )
-                .await;
+            let (_engine, mut pattern_runner) =
+                PatternEngine::new(AnyPattern::all_builtin(), &ENGINE_CHANNELS);
+            pattern_runner.run(&CHANNELS, &PATTERN_INPUT, Delay).await;
         });
 
         let steps_per_mm = CONFIG.steps_per_mm(SimMotor::STEPS_PER_REV) as f64;
@@ -86,7 +77,9 @@ impl Simulator {
 
     /// Engine state: 0 = idle, 1 = homing, 2 = playing, 3 = paused.
     pub fn get_engine_state(&self) -> u8 {
-        ENGINE_STATE.load(Ordering::Relaxed)
+        // Read directly from the shared channels — the handle exposes this
+        // but we can't store it across wasm_bindgen boundaries.
+        ENGINE_CHANNELS.state()
     }
 
     /// Current position as a fraction of the machine range (0.0–1.0).
@@ -134,19 +127,19 @@ impl Simulator {
     }
 
     pub fn play(&self, index: usize) {
-        let _ = ENGINE_COMMANDS.try_send(EngineCommand::Play(index));
+        ENGINE_CHANNELS.play(index);
     }
 
     pub fn pause(&self) {
-        let _ = ENGINE_COMMANDS.try_send(EngineCommand::Pause);
+        ENGINE_CHANNELS.pause();
     }
 
     pub fn resume(&self) {
-        let _ = ENGINE_COMMANDS.try_send(EngineCommand::Resume);
+        ENGINE_CHANNELS.resume();
     }
 
     pub fn stop(&self) {
-        let _ = ENGINE_COMMANDS.try_send(EngineCommand::Stop);
+        ENGINE_CHANNELS.stop();
     }
 
     pub fn pattern_count(&self) -> usize {

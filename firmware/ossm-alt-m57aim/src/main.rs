@@ -26,8 +26,7 @@ use ossm::{MechanicalConfig, MotionController, MotionLimits, Ossm, OssmChannels}
 use ossm_alt_board::{OssmAltBoard, Rs485};
 use ossm_m5_remote::{RemoteConfig, RemoteEvent, RemoteEventChannel};
 use pattern_engine::{
-    AnyPattern, EngineCommand, EngineCommandChannel, PatternEngine, PatternInput,
-    SharedPatternInput,
+    AnyPattern, PatternEngine, PatternEngineChannels, PatternInput, SharedPatternInput,
 };
 use static_cell::StaticCell;
 
@@ -50,7 +49,7 @@ type ConcreteMotor = M57AIMMotor<Rs485<Uart<'static, Blocking>, Output<'static>>
 type ConcreteBoard = OssmAltBoard<ConcreteMotor>;
 
 static CHANNELS: OssmChannels = OssmChannels::new();
-static ENGINE_COMMANDS: EngineCommandChannel = EngineCommandChannel::new();
+static ENGINE_CHANNELS: PatternEngineChannels = PatternEngineChannels::new();
 static PATTERN_INPUT: SharedPatternInput =
     SharedPatternInput::new(Cell::new(PatternInput::DEFAULT));
 static REMOTE_EVENTS: RemoteEventChannel = RemoteEventChannel::new();
@@ -88,7 +87,7 @@ async fn main(spawner: Spawner) {
     let mech_config = board.mechanical_config().clone();
     let limits = MotionLimits::default();
 
-    let (ossm, controller) = Ossm::new(
+    let (_ossm, controller) = Ossm::new(
         board,
         &mech_config,
         limits.clone(),
@@ -103,7 +102,7 @@ async fn main(spawner: Spawner) {
 
     info!(
         "Motion task started at {}ms interval",
-        ossm.update_interval_secs() * 1000.0
+        UPDATE_INTERVAL_SECS * 1000.0
     );
 
     let radio = &*mk_static!(
@@ -156,50 +155,41 @@ async fn main(spawner: Spawner) {
 
     info!("ESP-NOW remote tasks started, waiting for connection...");
 
-    let mut engine = PatternEngine::new(AnyPattern::all_builtin());
+    let (_engine, mut pattern_runner) = PatternEngine::new(AnyPattern::all_builtin(), &ENGINE_CHANNELS);
 
-    join(
-        engine.run(&ENGINE_COMMANDS, &CHANNELS, &PATTERN_INPUT, Delay),
-        async {
-            let mut current_pattern: usize = 0;
+    join(pattern_runner.run(&CHANNELS, &PATTERN_INPUT, Delay), async {
+        let mut current_pattern: usize = 0;
+
+        loop {
+            while !matches!(REMOTE_EVENTS.receive().await, RemoteEvent::Connected) {}
+
+            info!("Remote connected, homing...");
+            ENGINE_CHANNELS.home();
 
             loop {
-                loop {
-                    match REMOTE_EVENTS.receive().await {
-                        RemoteEvent::Enable => break,
-                        _ => {} // Ignore other events while disabled
+                match REMOTE_EVENTS.receive().await {
+                    RemoteEvent::Disconnected => {
+                        ENGINE_CHANNELS.stop();
+                        info!("Remote disconnected");
+                        break;
                     }
-                }
-
-                ossm.enable();
-                ossm.home().await;
-                info!("Homing complete, running pattern {}", current_pattern);
-                ENGINE_COMMANDS
-                    .send(EngineCommand::Play(current_pattern))
-                    .await;
-
-                loop {
-                    match REMOTE_EVENTS.receive().await {
-                        RemoteEvent::Disable => {
-                            ENGINE_COMMANDS.send(EngineCommand::Stop).await;
-                            ossm.disable();
-                            info!("Disabled, waiting for reconnect...");
-                            break;
-                        }
-                        RemoteEvent::SwitchPattern(idx) => {
-                            current_pattern = idx as usize;
-                            info!("Switching to pattern {}", current_pattern);
-                            ENGINE_COMMANDS
-                                .send(EngineCommand::Play(current_pattern))
-                                .await;
-                        }
-                        RemoteEvent::Enable => {
-                            // Already enabled, ignore
-                        }
+                    RemoteEvent::Play => {
+                        info!("Playing pattern {}", current_pattern);
+                        ENGINE_CHANNELS.play(current_pattern);
                     }
+                    RemoteEvent::Pause => {
+                        ENGINE_CHANNELS.pause();
+                        info!("Paused");
+                    }
+                    RemoteEvent::SwitchPattern(idx) => {
+                        current_pattern = idx as usize;
+                        info!("Switching to pattern {}", current_pattern);
+                        ENGINE_CHANNELS.play(current_pattern);
+                    }
+                    RemoteEvent::Connected => {}
                 }
             }
-        },
-    )
+        }
+    })
     .await;
 }
