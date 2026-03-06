@@ -5,12 +5,12 @@ use embassy_time::{Delay, Duration, Ticker};
 extern crate alloc;
 use alloc::string::String;
 
+use ossm::{MechanicalConfig, MotionLimits, Motor, Ossm, OssmChannels};
 use pattern_engine::{
     AnyPattern, EngineCommand, EngineCommandChannel, Pattern, PatternEngine, PatternInput,
-    SharedPatternInput,
+    SharedEngineState, SharedPatternInput, engine_state,
 };
 use sim_motor::SimMotor;
-use ossm::{MechanicalConfig, Motor, MotionLimits, Ossm, OssmChannels};
 use wasm_bindgen::prelude::*;
 
 static CHANNELS: OssmChannels = OssmChannels::new();
@@ -18,6 +18,7 @@ static ENGINE_COMMANDS: EngineCommandChannel = EngineCommandChannel::new();
 static PATTERN_INPUT: SharedPatternInput =
     SharedPatternInput::new(Cell::new(PatternInput::DEFAULT));
 static MOTOR_POSITION: AtomicI32 = AtomicI32::new(0);
+static ENGINE_STATE: SharedEngineState = SharedEngineState::new(engine_state::IDLE);
 
 const CONFIG: MechanicalConfig = MechanicalConfig {
     pulley_teeth: 20,
@@ -43,7 +44,7 @@ impl Simulator {
         let update_interval_secs = update_interval_ms / 1000.0;
         let motor = SimMotor::new(&MOTOR_POSITION);
 
-        let (ossm, mut controller) = Ossm::new(
+        let (_ossm, mut controller) = Ossm::new(
             motor,
             &CONFIG,
             MotionLimits::default(),
@@ -62,12 +63,15 @@ impl Simulator {
         });
 
         wasm_bindgen_futures::spawn_local(async move {
-            ossm.enable();
-            ossm.home().await;
-
             let mut engine = PatternEngine::new(AnyPattern::all_builtin());
             engine
-                .run(&ENGINE_COMMANDS, &CHANNELS, &PATTERN_INPUT, Delay)
+                .run(
+                    &ENGINE_COMMANDS,
+                    &CHANNELS,
+                    &PATTERN_INPUT,
+                    &ENGINE_STATE,
+                    Delay,
+                )
                 .await;
         });
 
@@ -78,6 +82,11 @@ impl Simulator {
             min_position_mm: CONFIG.min_position_mm,
             max_position_mm: CONFIG.max_position_mm,
         }
+    }
+
+    /// Engine state: 0 = idle, 1 = homing, 2 = playing, 3 = paused.
+    pub fn get_engine_state(&self) -> u8 {
+        ENGINE_STATE.load(Ordering::Relaxed)
     }
 
     /// Current position as a fraction of the machine range (0.0–1.0).

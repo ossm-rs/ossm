@@ -67,6 +67,14 @@ impl<'a> Ossm<'a> {
         let _ = self.channels.commands.try_send(Command::SetSpeed(speed));
     }
 
+    pub fn pause(&self) {
+        let _ = self.channels.commands.try_send(Command::Pause);
+    }
+
+    pub fn resume(&self) {
+        let _ = self.channels.commands.try_send(Command::Resume);
+    }
+
     pub fn push_motion(&self, cmd: MotionCommand) {
         let _ = self.channels.commands.try_send(Command::Motion(cmd));
     }

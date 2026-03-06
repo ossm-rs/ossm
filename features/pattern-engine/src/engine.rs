@@ -1,8 +1,10 @@
+use core::sync::atomic::{AtomicU8, Ordering};
+
 use embassy_futures::select::{self, Either};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
 use embedded_hal_async::delay::DelayNs;
-use ossm::OssmChannels;
+use ossm::{Command, OssmChannels};
 
 use crate::any_pattern::AnyPattern;
 use crate::input::SharedPatternInput;
@@ -22,11 +24,34 @@ pub enum EngineCommand {
 /// and senders are typically a single UI/BLE task.
 pub type EngineCommandChannel = Channel<CriticalSectionRawMutex, EngineCommand, 4>;
 
+/// Shared atomic for observing the engine's current state from outside.
+pub type SharedEngineState = AtomicU8;
+
+/// Observable engine state values written to [`SharedEngineState`].
+pub mod engine_state {
+    pub const IDLE: u8 = 0;
+    pub const HOMING: u8 = 1;
+    pub const PLAYING: u8 = 2;
+    pub const PAUSED: u8 = 3;
+}
+
 #[derive(Debug, Clone, Copy)]
 enum EngineState {
     Idle,
+    Homing(usize),
     Playing(usize),
     Paused(usize),
+}
+
+impl EngineState {
+    fn as_u8(self) -> u8 {
+        match self {
+            Self::Idle => engine_state::IDLE,
+            Self::Homing(_) => engine_state::HOMING,
+            Self::Playing(_) => engine_state::PLAYING,
+            Self::Paused(_) => engine_state::PAUSED,
+        }
+    }
 }
 
 pub struct PatternEngine<const N: usize> {
@@ -73,13 +98,34 @@ impl<const N: usize> PatternEngine<N> {
         engine_commands: &EngineCommandChannel,
         channels: &'static OssmChannels,
         input: &'static SharedPatternInput,
+        shared_state: &SharedEngineState,
         delay: D,
     ) -> ! {
         loop {
             match self.state {
                 EngineState::Idle | EngineState::Paused(_) => {
                     let cmd = engine_commands.receive().await;
-                    self.handle_command(cmd);
+                    self.handle_command(cmd, channels, shared_state);
+                }
+                EngineState::Homing(idx) => {
+                    channels.homing_done.reset();
+                    let _ = channels.commands.try_send(Command::Enable);
+                    let _ = channels.commands.try_send(Command::Home);
+
+                    let result = select::select(
+                        channels.homing_done.wait(),
+                        engine_commands.receive(),
+                    )
+                    .await;
+
+                    match result {
+                        Either::First(()) => {
+                            self.set_state(EngineState::Playing(idx), shared_state);
+                        }
+                        Either::Second(cmd) => {
+                            self.handle_command(cmd, channels, shared_state);
+                        }
+                    }
                 }
                 EngineState::Playing(idx) => {
                     let mut ctx = PatternCtx::new(channels, input, delay.clone());
@@ -93,10 +139,10 @@ impl<const N: usize> PatternEngine<N> {
                     match result {
                         Either::First(()) => {
                             // Pattern returned (unusual — they normally loop forever).
-                            self.state = EngineState::Idle;
+                            self.set_state(EngineState::Idle, shared_state);
                         }
                         Either::Second(cmd) => {
-                            self.handle_command(cmd);
+                            self.handle_command(cmd, channels, shared_state);
                         }
                     }
                 }
@@ -104,25 +150,41 @@ impl<const N: usize> PatternEngine<N> {
         }
     }
 
-    fn handle_command(&mut self, cmd: EngineCommand) {
+    fn set_state(&mut self, state: EngineState, shared: &SharedEngineState) {
+        self.state = state;
+        shared.store(state.as_u8(), Ordering::Relaxed);
+    }
+
+    fn handle_command(
+        &mut self,
+        cmd: EngineCommand,
+        channels: &OssmChannels,
+        shared_state: &SharedEngineState,
+    ) {
         match cmd {
             EngineCommand::Play(idx) => {
                 if idx < N {
-                    self.state = EngineState::Playing(idx);
+                    let next = match self.state {
+                        EngineState::Idle => EngineState::Homing(idx),
+                        _ => EngineState::Playing(idx),
+                    };
+                    self.set_state(next, shared_state);
                 }
             }
             EngineCommand::Pause => {
                 if let EngineState::Playing(idx) = self.state {
-                    self.state = EngineState::Paused(idx);
+                    let _ = channels.commands.try_send(Command::Pause);
+                    self.set_state(EngineState::Paused(idx), shared_state);
                 }
             }
             EngineCommand::Resume => {
                 if let EngineState::Paused(idx) = self.state {
-                    self.state = EngineState::Playing(idx);
+                    let _ = channels.commands.try_send(Command::Resume);
+                    self.set_state(EngineState::Playing(idx), shared_state);
                 }
             }
             EngineCommand::Stop => {
-                self.state = EngineState::Idle;
+                self.set_state(EngineState::Idle, shared_state);
             }
         }
     }
