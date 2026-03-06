@@ -11,7 +11,7 @@ use esp_hal::{
     peripherals::{GPIO10, GPIO11, GPIO12, UART1},
     uart::{Config, Uart},
 };
-use ossm::{MechanicalConfig, Motor};
+use ossm::{Board, MechanicalConfig, Motor};
 
 const MOTOR_BAUD_RATE: u32 = 115_200;
 
@@ -55,8 +55,38 @@ impl<M: Motor> OssmAltBoard<M> {
     pub fn mechanical_config(&self) -> &MechanicalConfig {
         &self.config
     }
+}
 
-    pub fn into_motor(self) -> M {
-        self.motor
+impl<M: Motor> Board for OssmAltBoard<M> {
+    type Error = M::Error;
+
+    const STEPS_PER_REV: u32 = M::STEPS_PER_REV;
+
+    async fn enable(&mut self) -> Result<(), Self::Error> {
+        self.motor.enable().await
+    }
+
+    async fn disable(&mut self) -> Result<(), Self::Error> {
+        self.motor.disable().await
+    }
+
+    async fn home(&mut self) -> Result<(), Self::Error> {
+        self.motor.home().await
+    }
+
+    async fn set_absolute_position(&mut self, steps: i32) -> Result<(), Self::Error> {
+        self.motor.set_absolute_position(steps).await
+    }
+
+    async fn set_speed(&mut self, rpm: u16) -> Result<(), Self::Error> {
+        self.motor.set_speed(rpm).await
+    }
+
+    async fn set_acceleration(&mut self, value: u16) -> Result<(), Self::Error> {
+        self.motor.set_acceleration(value).await
+    }
+
+    async fn set_max_output(&mut self, output: u16) -> Result<(), Self::Error> {
+        self.motor.set_max_output(output).await
     }
 }

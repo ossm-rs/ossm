@@ -1,6 +1,7 @@
 #![no_std]
 extern crate alloc;
 
+mod board;
 mod command;
 mod limits;
 mod mechanical;
@@ -10,6 +11,7 @@ mod motor;
 pub use command::{
     Command, CommandChannel, HomingSignal, MotionCommand, MoveCompleteSignal, OssmChannels,
 };
+pub use board::Board;
 pub use limits::MotionLimits;
 pub use mechanical::MechanicalConfig;
 pub use motion::MotionController;
@@ -21,15 +23,15 @@ pub struct Ossm<'a> {
 }
 
 impl<'a> Ossm<'a> {
-    pub fn new<M: Motor>(
-        motor: M,
+    pub fn new<B: Board>(
+        board: B,
         config: &MechanicalConfig,
         limits: MotionLimits,
         update_interval_secs: f64,
         channels: &'a OssmChannels,
-    ) -> (Self, MotionController<'a, M>) {
+    ) -> (Self, MotionController<'a, B>) {
         let controller =
-            MotionController::new(motor, config, limits, update_interval_secs, channels);
+            MotionController::new(board, config, limits, update_interval_secs, channels);
         let handle = Self {
             channels,
             update_interval_secs,

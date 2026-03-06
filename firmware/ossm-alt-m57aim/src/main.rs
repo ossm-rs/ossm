@@ -47,6 +47,7 @@ macro_rules! mk_static {
 }
 
 type ConcreteMotor = M57AIMMotor<Rs485<Uart<'static, Blocking>, Output<'static>>, Delay>;
+type ConcreteBoard = OssmAltBoard<ConcreteMotor>;
 
 static CHANNELS: OssmChannels = OssmChannels::new();
 static ENGINE_COMMANDS: EngineCommandChannel = EngineCommandChannel::new();
@@ -56,7 +57,7 @@ static REMOTE_EVENTS: RemoteEventChannel = RemoteEventChannel::new();
 static EXECUTOR_HIGH: StaticCell<InterruptExecutor<1>> = StaticCell::new();
 
 #[embassy_executor::task]
-async fn motion_task(mut controller: MotionController<'static, ConcreteMotor>) {
+async fn motion_task(mut controller: MotionController<'static, ConcreteBoard>) {
     let interval_us = (UPDATE_INTERVAL_SECS * 1_000_000.0) as u64;
     let mut ticker = Ticker::every(Duration::from_micros(interval_us));
 
@@ -88,7 +89,7 @@ async fn main(spawner: Spawner) {
     let limits = MotionLimits::default();
 
     let (ossm, controller) = Ossm::new(
-        board.into_motor(),
+        board,
         &mech_config,
         limits.clone(),
         UPDATE_INTERVAL_SECS,

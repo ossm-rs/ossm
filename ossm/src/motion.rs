@@ -1,7 +1,7 @@
 use rsruckig::prelude::*;
 
 use crate::command::{Command, OssmChannels};
-use crate::{MechanicalConfig, MotionLimits, Motor};
+use crate::{Board, MechanicalConfig, MotionLimits};
 
 // Floor applied to velocity requests to prevent degenerate Ruckig inputs.
 const MIN_VELOCITY: f64 = 0.001;
@@ -14,8 +14,8 @@ enum MotionState {
     Moving,
 }
 
-pub struct MotionController<'a, M: Motor> {
-    motor: M,
+pub struct MotionController<'a, B: Board> {
+    board: B,
     channels: &'a OssmChannels,
     state: MotionState,
     steps_per_mm: f64,
@@ -27,19 +27,19 @@ pub struct MotionController<'a, M: Motor> {
     output: OutputParameter<1>,
 }
 
-impl<'a, M: Motor> MotionController<'a, M> {
+impl<'a, B: Board> MotionController<'a, B> {
     /// Create a new `MotionController` in the `Disabled` state.
     ///
     /// `update_interval_secs` must match the ticker period the caller uses.
     /// Ruckig uses this as its fixed time step, so timing accuracy matters.
     pub fn new(
-        motor: M,
+        board: B,
         config: &MechanicalConfig,
         limits: MotionLimits,
         update_interval_secs: f64,
         channels: &'a OssmChannels,
     ) -> Self {
-        let steps_per_mm = config.steps_per_mm(M::STEPS_PER_REV) as f64;
+        let steps_per_mm = config.steps_per_mm(B::STEPS_PER_REV) as f64;
 
         let mut input = InputParameter::new(None);
         input.current_position[0] = config.min_position_mm;
@@ -51,7 +51,7 @@ impl<'a, M: Motor> MotionController<'a, M> {
         input.duration_discretization = DurationDiscretization::Discrete;
 
         Self {
-            motor,
+            board,
             channels,
             state: MotionState::Disabled,
             steps_per_mm,
@@ -80,7 +80,7 @@ impl<'a, M: Motor> MotionController<'a, M> {
     async fn process_command(&mut self, cmd: Command) {
         match (&self.state, cmd) {
             (MotionState::Disabled, Command::Enable) => {
-                let _ = self.motor.enable().await;
+                let _ = self.board.enable().await;
                 self.state = MotionState::Enabled;
             }
 
@@ -88,7 +88,7 @@ impl<'a, M: Motor> MotionController<'a, M> {
                 self.home().await;
             }
             (MotionState::Enabled, Command::Disable) => {
-                let _ = self.motor.disable().await;
+                let _ = self.board.disable().await;
                 self.state = MotionState::Disabled;
             }
 
@@ -107,7 +107,7 @@ impl<'a, M: Motor> MotionController<'a, M> {
                 self.home().await;
             }
             (MotionState::Ready, Command::Disable) => {
-                let _ = self.motor.disable().await;
+                let _ = self.board.disable().await;
                 self.state = MotionState::Disabled;
             }
 
@@ -124,7 +124,7 @@ impl<'a, M: Motor> MotionController<'a, M> {
                 self.home().await;
             }
             (MotionState::Moving, Command::Disable) => {
-                let _ = self.motor.disable().await;
+                let _ = self.board.disable().await;
                 self.state = MotionState::Disabled;
             }
 
@@ -139,7 +139,7 @@ impl<'a, M: Motor> MotionController<'a, M> {
                     let mm = self.output.new_position[0]
                         .clamp(self.min_position_mm, self.max_position_mm);
                     let steps = (mm * self.steps_per_mm) as i32;
-                    let _ = self.motor.set_absolute_position(steps).await;
+                    let _ = self.board.set_absolute_position(steps).await;
                     self.output.pass_to_input(&mut self.input);
 
                     if result == RuckigResult::Finished {
@@ -154,10 +154,10 @@ impl<'a, M: Motor> MotionController<'a, M> {
 
     async fn home(&mut self) {
         self.state = MotionState::Disabled;
-        let _ = self.motor.home().await;
+        let _ = self.board.home().await;
 
         let steps = (self.min_position_mm * self.steps_per_mm) as i32;
-        let _ = self.motor.set_absolute_position(steps).await;
+        let _ = self.board.set_absolute_position(steps).await;
 
         self.input.current_position[0] = self.min_position_mm;
         self.input.target_position[0] = self.min_position_mm;
