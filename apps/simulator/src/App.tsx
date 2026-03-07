@@ -1,12 +1,6 @@
-import {
-  Suspense,
-  useRef,
-  useState,
-  useCallback,
-  useEffect,
-  useMemo,
-} from "react";
+import { Suspense, useRef, useCallback, useEffect, useMemo } from "react";
 import { useSimulator } from "./hooks/useSimulator";
+import { useEngineState } from "./hooks/useEngineState";
 import { useAppearance } from "./hooks/useAppearance";
 import { useIsMobile } from "./hooks/useIsMobile";
 import { usePersistedState } from "./hooks/usePersistedState";
@@ -31,11 +25,12 @@ import {
   MoonIcon,
   ResetIcon,
   GitHubLogoIcon,
+  PlayIcon,
+  PauseIcon,
+  StopIcon,
 } from "@radix-ui/react-icons";
 import Scene from "./Scene";
 import type { SceneHandle } from "./Scene";
-
-type PlaybackState = "stopped" | "playing" | "paused";
 
 export default function App() {
   const simulator = useSimulator();
@@ -48,7 +43,7 @@ export default function App() {
     "ossm:pattern",
     0,
   );
-  const [playbackState, setPlaybackState] = useState<PlaybackState>("stopped");
+  const playbackState = useEngineState(simulator);
   const [appearance, toggleAppearance] = useAppearance();
   const isMobile = useIsMobile();
 
@@ -59,7 +54,6 @@ export default function App() {
     simulator.set_sensation(sensation);
     if (selectedPattern > 0) {
       simulator.play(selectedPattern);
-      setPlaybackState("playing");
     }
     // Only sync on mount, not on every state change
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -110,22 +104,18 @@ export default function App() {
 
   const handlePlay = useCallback(() => {
     simulator.play(selectedPattern);
-    setPlaybackState("playing");
   }, [simulator, selectedPattern]);
 
   const handlePause = useCallback(() => {
     simulator.pause();
-    setPlaybackState("paused");
   }, [simulator]);
 
   const handleResume = useCallback(() => {
     simulator.resume();
-    setPlaybackState("playing");
   }, [simulator]);
 
   const handleStop = useCallback(() => {
     simulator.stop();
-    setPlaybackState("stopped");
   }, [simulator]);
 
   const handlePatternChange = useCallback(
@@ -133,7 +123,6 @@ export default function App() {
       const index = Number(value);
       setSelectedPattern(index);
       simulator.play(index);
-      setPlaybackState("playing");
     },
     [simulator, setSelectedPattern],
   );
@@ -244,28 +233,43 @@ export default function App() {
                   )}
                 </Box>
 
-                <Flex gap="2">
-                  {playbackState !== "playing" ? (
-                    <Button
-                      onClick={
-                        playbackState === "paused" ? handleResume : handlePlay
-                      }
-                      variant="solid"
-                    >
-                      {playbackState === "paused" ? "Resume" : "Play"}
-                    </Button>
-                  ) : (
-                    <Button onClick={handlePause} variant="soft">
-                      Pause
-                    </Button>
-                  )}
-                  <Button
+                <Flex gap="2" align="center">
+                  <IconButton
+                    onClick={
+                      playbackState === "playing" || playbackState === "homing"
+                        ? handlePause
+                        : playbackState === "paused"
+                          ? handleResume
+                          : handlePlay
+                    }
+                    variant="solid"
+                    size="3"
+                    aria-label={
+                      playbackState === "playing" || playbackState === "homing"
+                        ? "Pause"
+                        : playbackState === "paused"
+                          ? "Resume"
+                          : "Play"
+                    }
+                  >
+                    {playbackState === "playing" || playbackState === "homing" ? (
+                      <PauseIcon />
+                    ) : (
+                      <PlayIcon />
+                    )}
+                  </IconButton>
+                  <IconButton
                     onClick={handleStop}
                     variant="outline"
+                    size="3"
                     disabled={playbackState === "stopped"}
+                    aria-label="Stop"
                   >
-                    Stop
-                  </Button>
+                    <StopIcon />
+                  </IconButton>
+                  <Text size="2" color="gray" ml="1">
+                    {playbackState.charAt(0).toUpperCase() + playbackState.slice(1)}
+                  </Text>
                 </Flex>
 
                 <Separator size="4" />

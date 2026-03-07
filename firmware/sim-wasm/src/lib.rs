@@ -5,16 +5,15 @@ use embassy_time::{Delay, Duration, Ticker};
 extern crate alloc;
 use alloc::string::String;
 
+use ossm::{MechanicalConfig, MotionLimits, Motor, Ossm, OssmChannels};
 use pattern_engine::{
-    AnyPattern, EngineCommand, EngineCommandChannel, Pattern, PatternEngine, PatternInput,
-    SharedPatternInput,
+    AnyPattern, Pattern, PatternEngine, PatternEngineChannels, PatternInput, SharedPatternInput,
 };
 use sim_motor::SimMotor;
-use ossm::{MechanicalConfig, Motor, MotionLimits, Ossm, OssmChannels};
 use wasm_bindgen::prelude::*;
 
 static CHANNELS: OssmChannels = OssmChannels::new();
-static ENGINE_COMMANDS: EngineCommandChannel = EngineCommandChannel::new();
+static ENGINE_CHANNELS: PatternEngineChannels = PatternEngineChannels::new();
 static PATTERN_INPUT: SharedPatternInput =
     SharedPatternInput::new(Cell::new(PatternInput::DEFAULT));
 static MOTOR_POSITION: AtomicI32 = AtomicI32::new(0);
@@ -28,6 +27,7 @@ const CONFIG: MechanicalConfig = MechanicalConfig {
 
 #[wasm_bindgen]
 pub struct Simulator {
+    engine: PatternEngine,
     steps_per_mm: f64,
     min_position_mm: f64,
     max_position_mm: f64,
@@ -61,23 +61,26 @@ impl Simulator {
             }
         });
 
-        wasm_bindgen_futures::spawn_local(async move {
-            ossm.enable();
-            ossm.home().await;
+        let (engine, mut pattern_runner) =
+            PatternEngine::new(AnyPattern::all_builtin(), &ENGINE_CHANNELS, ossm);
 
-            let mut engine = PatternEngine::new(AnyPattern::all_builtin());
-            engine
-                .run(&ENGINE_COMMANDS, &CHANNELS, &PATTERN_INPUT, Delay)
-                .await;
+        wasm_bindgen_futures::spawn_local(async move {
+            pattern_runner.run(&CHANNELS, &PATTERN_INPUT, Delay).await;
         });
 
         let steps_per_mm = CONFIG.steps_per_mm(SimMotor::STEPS_PER_REV) as f64;
 
         Self {
+            engine,
             steps_per_mm,
             min_position_mm: CONFIG.min_position_mm,
             max_position_mm: CONFIG.max_position_mm,
         }
+    }
+
+    /// Engine state: 0 = idle, 1 = homing, 2 = playing, 3 = paused.
+    pub fn get_engine_state(&self) -> u8 {
+        self.engine.state().as_u8()
     }
 
     /// Current position as a fraction of the machine range (0.0–1.0).
@@ -125,19 +128,19 @@ impl Simulator {
     }
 
     pub fn play(&self, index: usize) {
-        let _ = ENGINE_COMMANDS.try_send(EngineCommand::Play(index));
+        self.engine.play(index);
     }
 
     pub fn pause(&self) {
-        let _ = ENGINE_COMMANDS.try_send(EngineCommand::Pause);
+        self.engine.pause();
     }
 
     pub fn resume(&self) {
-        let _ = ENGINE_COMMANDS.try_send(EngineCommand::Resume);
+        self.engine.resume();
     }
 
     pub fn stop(&self) {
-        let _ = ENGINE_COMMANDS.try_send(EngineCommand::Stop);
+        self.engine.stop();
     }
 
     pub fn pattern_count(&self) -> usize {

@@ -22,12 +22,8 @@ static LAST_HEARTBEAT: AtomicU64 = AtomicU64::new(0);
 static CONNECTED: AtomicBool = AtomicBool::new(false);
 static CURRENT_PATTERN_IDX: AtomicU32 = AtomicU32::new(0);
 
-// ---------------------------------------------------------------------------
-// Pattern index mapping (remote ↔ engine)
-//
 // The M5 remote has a hardcoded pattern list that differs in order (and
 // contents) from the pattern engine's `AnyPattern::all_builtin()`.
-// ---------------------------------------------------------------------------
 
 /// The pattern list as it appears on the M5 remote's UI roller.
 ///
@@ -108,8 +104,10 @@ pub struct RemoteConfig {
 
 #[derive(Debug, Clone)]
 pub enum RemoteEvent {
-    Enable,
-    Disable,
+    Play,
+    Pause,
+    Connected,
+    Disconnected,
     SwitchPattern(u32),
 }
 
@@ -244,7 +242,7 @@ pub async fn receiver_task(
                         error!("Could not send ON ack: {}", err);
                     }
                 }
-                remote_events.send(RemoteEvent::Enable).await;
+                remote_events.send(RemoteEvent::Play).await;
             }
             M5Command::Off => {
                 let ack = M5Packet {
@@ -258,7 +256,7 @@ pub async fn receiver_task(
                         error!("Could not send OFF ack: {}", err);
                     }
                 }
-                remote_events.send(RemoteEvent::Disable).await;
+                remote_events.send(RemoteEvent::Pause).await;
             }
             M5Command::Speed => {
                 let velocity = (packet.value as f64) / config.max_velocity_mm_s;
@@ -371,8 +369,11 @@ pub async fn heartbeat_check_task(remote_events: &'static RemoteEventChannel) {
         CONNECTED.store(is_connected, Ordering::Release);
 
         if was_connected && !is_connected {
-            info!("Remote heartbeat lost, disabling");
-            remote_events.send(RemoteEvent::Disable).await;
+            info!("Remote disconnected, heartbeat lost");
+            remote_events.send(RemoteEvent::Disconnected).await;
+        } else if !was_connected && is_connected {
+            info!("Remote connected");
+            remote_events.send(RemoteEvent::Connected).await;
         }
     }
 }
