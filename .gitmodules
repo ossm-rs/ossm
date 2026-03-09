@@ -7,3 +7,6 @@
 [submodule "reference/OSSM-M5-Remote"]
 	path = reference/OSSM-M5-Remote
 	url = https://github.com/ortlof/OSSM-M5-Remote
+[submodule "reference/OSSM-hardware"]
+	path = reference/OSSM-hardware
+	url = https://github.com/KinkyMakers/OSSM-hardware

@@ -1,5 +1,5 @@
 [package]
-name = "m57aim-motor"
+name = "ossm-stock-board"
 version = "0.1.0"
 edition = "2024"
 
@@ -7,4 +7,3 @@ edition = "2024"
 ossm = { path = "../../ossm" }
 embedded-hal = "1.0"
 embedded-hal-async = "1.0"
-heapless = "0.9.2"

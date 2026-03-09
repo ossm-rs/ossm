@@ -1349,14 +1349,10 @@ dependencies = [
 name = "m57aim-motor"
 version = "0.1.0"
 dependencies = [
- "crc",
  "embedded-hal 1.0.0",
  "embedded-hal-async",
- "embedded-io 0.7.1",
  "heapless 0.9.2",
- "log",
  "ossm",
- "rmodbus",
 ]
 
 [[package]]
@@ -1456,6 +1452,7 @@ name = "ossm"
 version = "0.1.0"
 dependencies = [
  "embassy-sync 0.7.2",
+ "embedded-hal 1.0.0",
  "rsruckig",
 ]
 
@@ -1463,11 +1460,14 @@ dependencies = [
 name = "ossm-alt-board"
 version = "0.1.0"
 dependencies = [
- "embassy-time",
+ "crc",
  "embedded-hal 1.0.0",
+ "embedded-hal-async",
  "embedded-io 0.7.1",
- "esp-hal",
+ "heapless 0.9.2",
+ "m57aim-motor",
  "ossm",
+ "rmodbus",
 ]
 
 [[package]]
@@ -1508,6 +1508,40 @@ dependencies = [
  "pattern-engine",
  "portable-atomic",
  "zerocopy",
+]
+
+[[package]]
+name = "ossm-stock"
+version = "0.1.0"
+dependencies = [
+ "critical-section",
+ "embassy-executor",
+ "embassy-futures",
+ "embassy-sync 0.7.2",
+ "embassy-time",
+ "embedded-hal 1.0.0",
+ "esp-alloc",
+ "esp-backtrace",
+ "esp-bootloader-esp-idf",
+ "esp-hal",
+ "esp-println",
+ "esp-rtos",
+ "log",
+ "nb 1.1.0",
+ "ossm",
+ "ossm-stock-board",
+ "pattern-engine",
+ "portable-atomic",
+ "static_cell",
+]
+
+[[package]]
+name = "ossm-stock-board"
+version = "0.1.0"
+dependencies = [
+ "embedded-hal 1.0.0",
+ "embedded-hal-async",
+ "ossm",
 ]
 
 [[package]]
@@ -1892,6 +1926,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "sim-board"
+version = "0.1.0"
+dependencies = [
+ "ossm",
+ "sim-motor",
+]
+
+[[package]]
 name = "sim-m5cores3"
 version = "0.1.0"
 dependencies = [
@@ -1931,15 +1973,13 @@ dependencies = [
  "mipidsi",
  "mousefood",
  "ratatui",
+ "sim-board",
  "static_cell",
 ]
 
 [[package]]
 name = "sim-motor"
 version = "0.1.0"
-dependencies = [
- "ossm",
-]
 
 [[package]]
 name = "sim-wasm"
@@ -1949,6 +1989,7 @@ dependencies = [
  "embassy-time",
  "ossm",
  "pattern-engine",
+ "sim-board",
  "sim-motor",
  "wasm-bindgen",
  "wasm-bindgen-futures",

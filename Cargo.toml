@@ -22,3 +22,10 @@ debug = 2
 debug-assertions = false
 opt-level = 's'
 overflow-checks = false
+
+[profile.release.package.ossm-stock]
+codegen-units = 1
+debug = 2
+debug-assertions = false
+opt-level = 's'
+overflow-checks = false

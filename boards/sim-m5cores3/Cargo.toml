@@ -3,8 +3,12 @@ name = "sim-m5cores3-board"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+esp32s3 = ["esp-hal/esp32s3"]
+
 [dependencies]
-esp-hal = { version = "1.0", features = ["unstable", "esp32s3"] }
+sim-board = { path = "../sim-board" }
+esp-hal = { version = "1.0", features = ["unstable"] }
 embedded-hal = "1.0"
 embedded-hal-bus = "0.3.0"
 embedded-graphics = "0.8"

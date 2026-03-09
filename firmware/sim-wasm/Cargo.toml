@@ -9,6 +9,7 @@ crate-type = ["cdylib"]
 [dependencies]
 ossm = { path = "../../ossm" }
 sim-motor = { path = "../../drivers/sim-motor" }
+sim-board = { path = "../../boards/sim-board" }
 pattern-engine = { path = "../../features/pattern-engine" }
 
 wasm-bindgen = "0.2"

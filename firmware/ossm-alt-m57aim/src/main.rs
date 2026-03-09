@@ -15,13 +15,13 @@ use embassy_time::Delay;
 use embassy_time::{Duration, Ticker};
 use esp_hal::interrupt::software::SoftwareInterruptControl;
 use esp_hal::timer::timg::TimerGroup;
-use esp_hal::{Blocking, gpio::Output, interrupt::Priority, uart::Uart};
+use esp_hal::{Blocking, gpio::{Level, Output, OutputConfig}, interrupt::Priority, uart::{Config, Uart}};
 use esp_radio::esp_now::{EspNowManager, EspNowSender};
 use esp_rtos::embassy::InterruptExecutor;
 use log::info;
-use m57aim_motor::M57AIMMotor;
+use m57aim_motor::{Modbus, Motor57AIM, Motor57AIMConfig};
 use ossm::{MechanicalConfig, MotionController, MotionLimits, Ossm};
-use ossm_alt_board::{OssmAltBoard, Rs485};
+use ossm_alt_board::{OssmAlt, Rs485, Rs485ModbusTransport};
 use ossm_m5_remote::{RemoteConfig, RemoteEvent, RemoteEventChannel};
 use pattern_engine::{AnyPattern, PatternEngine};
 use static_cell::StaticCell;
@@ -33,6 +33,8 @@ extern crate alloc;
 esp_bootloader_esp_idf::esp_app_desc!();
 
 const UPDATE_INTERVAL_SECS: f64 = 0.01;
+const MOTOR_BAUD_RATE: u32 = 115_200;
+const DEVICE_ADDR: u8 = 0x01;
 
 macro_rules! mk_static {
     ($t:ty, $val:expr) => {{
@@ -41,8 +43,9 @@ macro_rules! mk_static {
     }};
 }
 
-type ConcreteMotor = M57AIMMotor<Rs485<Uart<'static, Blocking>, Output<'static>>, Delay>;
-type ConcreteBoard = OssmAltBoard<ConcreteMotor>;
+type ConcreteTransport = Rs485ModbusTransport<Rs485<Uart<'static, Blocking>, Output<'static>>, Delay>;
+type ConcreteMotor = Motor57AIM<Modbus<ConcreteTransport>, Delay>;
+type ConcreteBoard = OssmAlt<ConcreteMotor>;
 
 static OSSM: Ossm = Ossm::new();
 static PATTERNS: PatternEngine = PatternEngine::new(&OSSM);
@@ -72,17 +75,32 @@ async fn main(spawner: Spawner) {
     let timg0 = TimerGroup::new(p.TIMG0);
     esp_rtos::start(timg0.timer0);
 
-    let board = OssmAltBoard::<ConcreteMotor>::new(
-        p.UART1,
-        p.GPIO10,
-        p.GPIO12,
-        p.GPIO11,
-        MechanicalConfig::default(),
+    let uart_config = Config::default().with_baudrate(MOTOR_BAUD_RATE);
+    let uart = Uart::new(p.UART1, uart_config)
+        .expect("Failed to initialize UART")
+        .with_tx(p.GPIO10)
+        .with_rx(p.GPIO12);
+
+    // Manual DE control — hardware RS485 mode has inverted RTS polarity
+    // on the OSSM Alt board, so we toggle a GPIO directly instead.
+    let de = Output::new(p.GPIO11, Level::Low, OutputConfig::default());
+    let rs485 = Rs485::new(uart, de);
+
+    let transport = Rs485ModbusTransport::new(rs485, Delay);
+    let motor = Motor57AIM::new(
+        Modbus::new(transport, DEVICE_ADDR),
+        Motor57AIMConfig::default(),
+        Delay,
     );
-    let mech_config = board.mechanical_config().clone();
+
+    static MECHANICAL: MechanicalConfig = MechanicalConfig {
+        pulley_teeth: 20,
+        belt_pitch_mm: 2.0,
+    };
     let limits = MotionLimits::default();
 
-    let controller = OSSM.controller(board, &mech_config, limits.clone(), UPDATE_INTERVAL_SECS);
+    let board = OssmAlt::new(motor, &MECHANICAL);
+    let controller = OSSM.controller(board, limits.clone(), UPDATE_INTERVAL_SECS);
 
     let sw_ints = SoftwareInterruptControl::new(p.SW_INTERRUPT);
     let executor = EXECUTOR_HIGH.init(InterruptExecutor::new(sw_ints.software_interrupt1));
@@ -118,7 +136,7 @@ async fn main(spawner: Spawner) {
 
     let remote_config = RemoteConfig {
         max_velocity_mm_s: limits.max_velocity_mm_s,
-        max_travel_mm: mech_config.max_position_mm - mech_config.min_position_mm,
+        max_travel_mm: limits.max_position_mm - limits.min_position_mm,
     };
 
     spawner

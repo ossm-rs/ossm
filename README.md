@@ -148,6 +148,19 @@ Features are optional higher-level capabilities built on top of the core motion 
    cargo install just
    ```
 
+   Optionally, enable shell completions for `just` so you can tab-complete recipe names:
+
+   ```sh
+   # zsh (add to ~/.zshrc)
+   eval "$(just --completions zsh)"
+
+   # bash (add to ~/.bashrc)
+   eval "$(just --completions bash)"
+
+   # fish (add to ~/.config/fish/config.fish)
+   just --completions fish | source
+   ```
+
 4. **Install [espflash](https://github.com/esp-rs/espflash)** (for flashing firmware to the board):
 
    ```sh
@@ -160,6 +173,20 @@ Features are optional higher-level capabilities built on top of the core motion 
    just build
    just flash
    ```
+
+#### Configuring rust-analyzer
+
+This project targets multiple architectures (ESP32, ESP32-S3, WASM), each with its own Rust target triple and cargo features. Since rust-analyzer can only analyse one target at a time, it needs to be told which one to use — otherwise it defaults to your host platform and will report false errors for embedded or WASM code.
+
+The `just focus` command generates a `rust-analyzer.toml` at the workspace root that configures the correct target and features:
+
+```sh
+just focus esp32      # ossm-stock firmware (Xtensa ESP32)
+just focus esp32s3    # ossm-alt / m5cores3 firmware (Xtensa ESP32-S3)
+just focus wasm       # WASM simulator
+```
+
+After running this, restart rust-analyzer (or reload your editor) to pick up the new settings. You only need to re-run it when switching to a different target.
 
 #### In a dev container
 

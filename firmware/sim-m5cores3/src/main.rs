@@ -27,10 +27,10 @@ use esp_hal::time::Rate;
 use esp_hal::timer::timg::TimerGroup;
 use esp_radio::esp_now::{EspNowManager, EspNowSender};
 use log::info;
-use ossm::{MechanicalConfig, MotionController, MotionLimits, Motor, Ossm};
+use ossm::{MechanicalConfig, MotionController, MotionLimits, Ossm};
 use ossm_m5_remote::{RemoteConfig, RemoteEvent, RemoteEventChannel};
 use pattern_engine::{AnyPattern, PatternEngine};
-use sim_m5cores3_board::{Display, FrameState, create_terminal, render_ui};
+use sim_m5cores3_board::{Display, FrameState, SimBoard, create_terminal, render_ui};
 use sim_motor::SimMotor;
 use static_cell::StaticCell;
 
@@ -61,7 +61,7 @@ static APP_CORE_STACK: StaticCell<Stack<16384>> = StaticCell::new();
 static MOTION_READY: Signal<CriticalSectionRawMutex, bool> = Signal::new();
 
 #[embassy_executor::task]
-async fn motion_task(mut controller: MotionController<'static, SimMotor>) {
+async fn motion_task(mut controller: MotionController<'static, SimBoard>) {
     let interval_us = (UPDATE_INTERVAL_SECS * 1_000_000.0) as u64;
     let mut ticker = Ticker::every(Duration::from_micros(interval_us));
 
@@ -165,21 +165,21 @@ async fn main(spawner: Spawner) {
 
     info!("Board initialization complete");
 
-    let motor = SimMotor::new(&MOTOR_POSITION);
-    let mech_config = MechanicalConfig {
-        max_position_mm: 250.0,
-        ..MechanicalConfig::default()
+    static MECHANICAL: MechanicalConfig = MechanicalConfig {
+        pulley_teeth: 20,
+        belt_pitch_mm: 2.0,
     };
-    let limits = MotionLimits::default();
 
-    let steps_per_mm = mech_config.steps_per_mm(SimMotor::STEPS_PER_REV) as f64;
+    let motor = SimMotor::new(&MOTOR_POSITION);
+    let limits = MotionLimits {
+        max_position_mm: 250.0,
+        ..MotionLimits::default()
+    };
 
-    let controller = OSSM.controller(
-        motor,
-        &mech_config,
-        limits.clone(),
-        UPDATE_INTERVAL_SECS,
-    );
+    let steps_per_mm = MECHANICAL.steps_per_mm(SimMotor::STEPS_PER_REV) as f64;
+    let board = SimBoard::new(motor, &MECHANICAL);
+
+    let controller = OSSM.controller(board, limits.clone(), UPDATE_INTERVAL_SECS);
 
     let sw_int = SoftwareInterruptControl::new(p.SW_INTERRUPT);
     let app_core_stack = APP_CORE_STACK.init(Stack::new());
@@ -210,8 +210,8 @@ async fn main(spawner: Spawner) {
         .spawn(display_task(
             display,
             steps_per_mm,
-            mech_config.min_position_mm,
-            mech_config.max_position_mm,
+            limits.min_position_mm,
+            limits.max_position_mm,
         ))
         .unwrap();
 
@@ -239,7 +239,7 @@ async fn main(spawner: Spawner) {
 
     let remote_config = RemoteConfig {
         max_velocity_mm_s: limits.max_velocity_mm_s,
-        max_travel_mm: mech_config.max_position_mm - mech_config.min_position_mm,
+        max_travel_mm: limits.max_position_mm - limits.min_position_mm,
     };
 
     spawner

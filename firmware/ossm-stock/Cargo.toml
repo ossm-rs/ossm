@@ -1,35 +1,30 @@
 [package]
-name = "sim-m5cores3"
+name = "ossm-stock"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.88"
 
 [features]
-default = ["esp32s3"]
+default = ["esp32"]
+esp32 = [
+    "esp-hal/esp32",
+    "esp-rtos/esp32",
+    "esp-bootloader-esp-idf/esp32",
+    "esp-backtrace/esp32",
+    "esp-println/esp32",
+]
 esp32s3 = [
     "esp-hal/esp32s3",
     "esp-rtos/esp32s3",
     "esp-bootloader-esp-idf/esp32s3",
     "esp-backtrace/esp32s3",
     "esp-println/esp32s3",
-    "esp-radio/esp32s3",
-    "ossm-m5-remote/esp32s3",
-    "sim-m5cores3-board/esp32s3",
 ]
 
 [dependencies]
 ossm = { path = "../../ossm" }
+ossm-stock-board = { path = "../../boards/ossm-stock" }
 pattern-engine = { path = "../../features/pattern-engine" }
-sim-motor = { path = "../../drivers/sim-motor" }
-sim-m5cores3-board = { path = "../../boards/sim-m5cores3" }
-ossm-m5-remote = { path = "../../features/ossm-m5-remote" }
-
-esp-radio = { version = "0.17.0", default-features = false, features = [
-    "esp-now",
-    "log-04",
-    "unstable",
-    "wifi",
-] }
 
 esp-hal = { version = "~1.0", features = ["log-04", "unstable"] }
 
@@ -37,7 +32,6 @@ esp-rtos = { version = "0.2.0", features = [
     "log-04",
     "embassy",
     "esp-alloc",
-    "esp-radio",
 ] }
 
 esp-bootloader-esp-idf = { version = "0.4.0", features = ["log-04"] }
@@ -45,13 +39,20 @@ esp-bootloader-esp-idf = { version = "0.4.0", features = ["log-04"] }
 log = "0.4.27"
 
 embassy-executor = { version = "0.9.1", features = ["log"] }
-embassy-futures = "0.1"
 embassy-time = { version = "0.5.0", features = ["log"] }
 esp-alloc = { version = "0.9.0" }
-esp-backtrace = { version = "0.18.1", features = ["println", "panic-handler"] }
+esp-backtrace = { version = "0.18.1", features = [
+    "println",
+    "panic-handler",
+] }
 esp-println = { version = "0.16.1", features = ["log-04"] }
 
-embassy-sync = "0.7.2"
-static_cell = "2"
+embassy-futures = "0.1"
+embassy-sync = "0.7"
+
+embedded-hal = "1.0"
+nb = "1.1"
+
 critical-section = "1.2.0"
 portable-atomic = { version = "1", default-features = false }
+static_cell = "2.1.1"
