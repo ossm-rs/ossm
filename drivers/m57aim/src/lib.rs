@@ -254,6 +254,7 @@ where
     type Error = MotorError<<UART as ErrorType>::Error>;
 
     const STEPS_PER_REV: u32 = 32768;
+    const MAX_OUTPUT: u16 = OPERATING_MAX_OUTPUT;
 
     async fn enable(&mut self) -> Result<(), Self::Error> {
         self.write_register(&ReadWriteMotorRegisters::ModbusEnable, 1)

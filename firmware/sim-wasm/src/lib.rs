@@ -1,21 +1,16 @@
-use core::cell::Cell;
 use core::sync::atomic::{AtomicI32, Ordering};
 
 use embassy_time::{Delay, Duration, Ticker};
 extern crate alloc;
 use alloc::string::String;
 
-use ossm::{MechanicalConfig, MotionLimits, Motor, Ossm, OssmChannels};
-use pattern_engine::{
-    AnyPattern, Pattern, PatternEngine, PatternEngineChannels, PatternInput, SharedPatternInput,
-};
+use ossm::{MechanicalConfig, MotionLimits, Motor, Ossm};
+use pattern_engine::{AnyPattern, Pattern, PatternEngine};
 use sim_motor::SimMotor;
 use wasm_bindgen::prelude::*;
 
-static CHANNELS: OssmChannels = OssmChannels::new();
-static ENGINE_CHANNELS: PatternEngineChannels = PatternEngineChannels::new();
-static PATTERN_INPUT: SharedPatternInput =
-    SharedPatternInput::new(Cell::new(PatternInput::DEFAULT));
+static OSSM: Ossm = Ossm::new();
+static PATTERNS: PatternEngine = PatternEngine::new(&OSSM);
 static MOTOR_POSITION: AtomicI32 = AtomicI32::new(0);
 
 const CONFIG: MechanicalConfig = MechanicalConfig {
@@ -27,7 +22,6 @@ const CONFIG: MechanicalConfig = MechanicalConfig {
 
 #[wasm_bindgen]
 pub struct Simulator {
-    engine: PatternEngine,
     steps_per_mm: f64,
     min_position_mm: f64,
     max_position_mm: f64,
@@ -43,12 +37,11 @@ impl Simulator {
         let update_interval_secs = update_interval_ms / 1000.0;
         let motor = SimMotor::new(&MOTOR_POSITION);
 
-        let (ossm, mut controller) = Ossm::new(
+        let mut controller = OSSM.controller(
             motor,
             &CONFIG,
             MotionLimits::default(),
             update_interval_secs,
-            &CHANNELS,
         );
 
         let interval_us = (update_interval_secs * 1_000_000.0) as u64;
@@ -61,17 +54,15 @@ impl Simulator {
             }
         });
 
-        let (engine, mut pattern_runner) =
-            PatternEngine::new(AnyPattern::all_builtin(), &ENGINE_CHANNELS, ossm);
+        let mut pattern_runner = PATTERNS.runner(AnyPattern::all_builtin());
 
         wasm_bindgen_futures::spawn_local(async move {
-            pattern_runner.run(&CHANNELS, &PATTERN_INPUT, Delay).await;
+            pattern_runner.run(Delay).await;
         });
 
         let steps_per_mm = CONFIG.steps_per_mm(SimMotor::STEPS_PER_REV) as f64;
 
         Self {
-            engine,
             steps_per_mm,
             min_position_mm: CONFIG.min_position_mm,
             max_position_mm: CONFIG.max_position_mm,
@@ -80,7 +71,7 @@ impl Simulator {
 
     /// Engine state: 0 = idle, 1 = homing, 2 = playing, 3 = paused.
     pub fn get_engine_state(&self) -> u8 {
-        self.engine.state().as_u8()
+        PATTERNS.state().as_u8()
     }
 
     /// Current position as a fraction of the machine range (0.0–1.0).
@@ -93,7 +84,7 @@ impl Simulator {
 
     /// Set the maximum depth as a fraction of the machine range (0.0–1.0).
     pub fn set_depth(&self, depth: f64) {
-        PATTERN_INPUT.lock(|cell| {
+        PATTERNS.input().lock(|cell| {
             let mut input = cell.get();
             input.depth = depth;
             cell.set(input);
@@ -102,7 +93,7 @@ impl Simulator {
 
     /// Set the stroke length as a fraction of the machine range (0.0–1.0).
     pub fn set_stroke(&self, stroke: f64) {
-        PATTERN_INPUT.lock(|cell| {
+        PATTERNS.input().lock(|cell| {
             let mut input = cell.get();
             input.stroke = stroke;
             cell.set(input);
@@ -111,7 +102,7 @@ impl Simulator {
 
     /// Set velocity as a fraction of max velocity (0.0–1.0).
     pub fn set_velocity(&self, velocity: f64) {
-        PATTERN_INPUT.lock(|cell| {
+        PATTERNS.input().lock(|cell| {
             let mut input = cell.get();
             input.velocity = velocity;
             cell.set(input);
@@ -120,7 +111,7 @@ impl Simulator {
 
     /// Set sensation value (-1.0 to 1.0). Meaning is pattern-specific.
     pub fn set_sensation(&self, sensation: f64) {
-        PATTERN_INPUT.lock(|cell| {
+        PATTERNS.input().lock(|cell| {
             let mut input = cell.get();
             input.sensation = sensation;
             cell.set(input);
@@ -128,19 +119,19 @@ impl Simulator {
     }
 
     pub fn play(&self, index: usize) {
-        self.engine.play(index);
+        PATTERNS.play(index);
     }
 
     pub fn pause(&self) {
-        self.engine.pause();
+        PATTERNS.pause();
     }
 
     pub fn resume(&self) {
-        self.engine.resume();
+        PATTERNS.resume();
     }
 
     pub fn stop(&self) {
-        self.engine.stop();
+        PATTERNS.stop();
     }
 
     pub fn pattern_count(&self) -> usize {

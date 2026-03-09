@@ -17,7 +17,7 @@ impl Pattern for TeasingPounding {
         "Alternating strokes. Sensation controls speed ratio of in and out strokes."
     }
 
-    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) {
+    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), ossm::Cancelled> {
         loop {
             let sensation = ctx.sensation();
             let factor = scale(sensation.abs(), 0.0, MAX_SENSATION, 1.0, MAX_SCALING_FACTOR);
@@ -30,8 +30,8 @@ impl Pattern for TeasingPounding {
                 (BASE_SPEED, BASE_SPEED)
             };
 
-            ctx.motion().position(1.0).speed(out_speed).send().await;
-            ctx.motion().position(0.0).speed(in_speed).send().await;
+            ctx.motion().position(1.0).speed(out_speed).send().await?;
+            ctx.motion().position(0.0).speed(in_speed).send().await?;
         }
     }
 }

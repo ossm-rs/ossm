@@ -5,6 +5,13 @@ pub trait Motor {
     type Error: Debug;
 
     const STEPS_PER_REV: u32;
+    /// Full-scale motor output value used to scale torque fractions (0.0–1.0).
+    ///
+    /// This is a dimensionless driver-specific value that caps the current the
+    /// driver will deliver to the motor windings (e.g. M57AIM register `0x18`
+    /// `StandstillMaxOutput`). Higher values allow more current and therefore
+    /// more torque, at the cost of heat.
+    const MAX_OUTPUT: u16;
 
     async fn enable(&mut self) -> Result<(), Self::Error>;
     async fn disable(&mut self) -> Result<(), Self::Error>;

@@ -17,14 +17,14 @@ impl Pattern for StopNGo {
         "Stops after a series of strokes. Sensation controls the delay."
     }
 
-    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) {
+    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), ossm::Cancelled> {
         let mut num_strokes: usize = 1;
         let mut counting_up = true;
 
         loop {
             for _ in 0..num_strokes {
-                ctx.motion().position(1.0).send().await;
-                ctx.motion().position(0.0).send().await;
+                ctx.motion().position(1.0).send().await?;
+                ctx.motion().position(0.0).send().await?;
             }
 
             let delay = ctx.scale_sensation(MIN_DELAY_MS, MAX_DELAY_MS) as u64;

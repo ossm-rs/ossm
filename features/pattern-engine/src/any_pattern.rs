@@ -67,7 +67,7 @@ impl Pattern for AnyPattern {
         }
     }
 
-    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) {
+    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), ossm::Cancelled> {
         match self {
             Self::Simple(p) => p.run(ctx).await,
             Self::Deeper(p) => p.run(ctx).await,

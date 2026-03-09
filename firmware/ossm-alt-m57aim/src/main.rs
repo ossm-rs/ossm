@@ -7,8 +7,6 @@
 )]
 #![deny(clippy::large_stack_frames)]
 
-use core::cell::Cell;
-
 use embassy_executor::Spawner;
 use embassy_futures::join::join;
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
@@ -22,12 +20,10 @@ use esp_radio::esp_now::{EspNowManager, EspNowSender};
 use esp_rtos::embassy::InterruptExecutor;
 use log::info;
 use m57aim_motor::M57AIMMotor;
-use ossm::{MechanicalConfig, MotionController, MotionLimits, Ossm, OssmChannels};
+use ossm::{MechanicalConfig, MotionController, MotionLimits, Ossm};
 use ossm_alt_board::{OssmAltBoard, Rs485};
 use ossm_m5_remote::{RemoteConfig, RemoteEvent, RemoteEventChannel};
-use pattern_engine::{
-    AnyPattern, PatternEngine, PatternEngineChannels, PatternInput, SharedPatternInput,
-};
+use pattern_engine::{AnyPattern, PatternEngine};
 use static_cell::StaticCell;
 
 use {esp_backtrace as _, esp_println as _};
@@ -48,10 +44,9 @@ macro_rules! mk_static {
 type ConcreteMotor = M57AIMMotor<Rs485<Uart<'static, Blocking>, Output<'static>>, Delay>;
 type ConcreteBoard = OssmAltBoard<ConcreteMotor>;
 
-static CHANNELS: OssmChannels = OssmChannels::new();
-static ENGINE_CHANNELS: PatternEngineChannels = PatternEngineChannels::new();
-static PATTERN_INPUT: SharedPatternInput =
-    SharedPatternInput::new(Cell::new(PatternInput::DEFAULT));
+static OSSM: Ossm = Ossm::new();
+static PATTERNS: PatternEngine = PatternEngine::new(&OSSM);
+
 static REMOTE_EVENTS: RemoteEventChannel = RemoteEventChannel::new();
 static EXECUTOR_HIGH: StaticCell<InterruptExecutor<1>> = StaticCell::new();
 
@@ -87,13 +82,7 @@ async fn main(spawner: Spawner) {
     let mech_config = board.mechanical_config().clone();
     let limits = MotionLimits::default();
 
-    let (ossm, controller) = Ossm::new(
-        board,
-        &mech_config,
-        limits.clone(),
-        UPDATE_INTERVAL_SECS,
-        &CHANNELS,
-    );
+    let controller = OSSM.controller(board, &mech_config, limits.clone(), UPDATE_INTERVAL_SECS);
 
     let sw_ints = SoftwareInterruptControl::new(p.SW_INTERRUPT);
     let executor = EXECUTOR_HIGH.init(InterruptExecutor::new(sw_ints.software_interrupt1));
@@ -137,7 +126,7 @@ async fn main(spawner: Spawner) {
             manager,
             sender,
             receiver,
-            &PATTERN_INPUT,
+            &PATTERNS.input(),
             &REMOTE_EVENTS,
             remote_config,
         ))
@@ -155,36 +144,36 @@ async fn main(spawner: Spawner) {
 
     info!("ESP-NOW remote tasks started, waiting for connection...");
 
-    let (engine, mut pattern_runner) = PatternEngine::new(AnyPattern::all_builtin(), &ENGINE_CHANNELS, ossm);
+    let mut pattern_runner = PATTERNS.runner(AnyPattern::all_builtin());
 
-    join(pattern_runner.run(&CHANNELS, &PATTERN_INPUT, Delay), async {
+    join(pattern_runner.run(Delay), async {
         let mut current_pattern: usize = 0;
 
         loop {
             while !matches!(REMOTE_EVENTS.receive().await, RemoteEvent::Connected) {}
 
             info!("Remote connected, homing...");
-            engine.home();
+            PATTERNS.home();
 
             loop {
                 match REMOTE_EVENTS.receive().await {
                     RemoteEvent::Disconnected => {
-                        engine.stop();
+                        PATTERNS.stop();
                         info!("Remote disconnected");
                         break;
                     }
                     RemoteEvent::Play => {
                         info!("Playing pattern {}", current_pattern);
-                        engine.play(current_pattern);
+                        PATTERNS.play(current_pattern);
                     }
                     RemoteEvent::Pause => {
-                        engine.pause();
+                        PATTERNS.pause();
                         info!("Paused");
                     }
                     RemoteEvent::SwitchPattern(idx) => {
                         current_pattern = idx as usize;
                         info!("Switching to pattern {}", current_pattern);
-                        engine.play(current_pattern);
+                        PATTERNS.play(current_pattern);
                     }
                     RemoteEvent::Connected => {}
                 }

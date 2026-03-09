@@ -7,7 +7,6 @@
 )]
 #![deny(clippy::large_stack_frames)]
 
-use core::cell::Cell;
 use core::sync::atomic::{AtomicI32, Ordering};
 
 use embassy_executor::Spawner;
@@ -28,11 +27,9 @@ use esp_hal::time::Rate;
 use esp_hal::timer::timg::TimerGroup;
 use esp_radio::esp_now::{EspNowManager, EspNowSender};
 use log::info;
-use ossm::{MechanicalConfig, MotionController, MotionLimits, Motor, Ossm, OssmChannels};
+use ossm::{MechanicalConfig, MotionController, MotionLimits, Motor, Ossm};
 use ossm_m5_remote::{RemoteConfig, RemoteEvent, RemoteEventChannel};
-use pattern_engine::{
-    AnyPattern, PatternEngine, PatternEngineChannels, PatternInput, SharedPatternInput,
-};
+use pattern_engine::{AnyPattern, PatternEngine};
 use sim_m5cores3_board::{Display, FrameState, create_terminal, render_ui};
 use sim_motor::SimMotor;
 use static_cell::StaticCell;
@@ -54,14 +51,8 @@ macro_rules! mk_static {
 
 const UPDATE_INTERVAL_SECS: f64 = 1.0 / 30.0;
 
-static CHANNELS: OssmChannels = OssmChannels::new();
-static ENGINE_CHANNELS: PatternEngineChannels = PatternEngineChannels::new();
-static PATTERN_INPUT: SharedPatternInput = SharedPatternInput::new(Cell::new(PatternInput {
-    depth: 0.0,
-    stroke: 0.0,
-    velocity: 0.0,
-    sensation: 0.0,
-}));
+static OSSM: Ossm = Ossm::new();
+static PATTERNS: PatternEngine = PatternEngine::new(&OSSM);
 static MOTOR_POSITION: AtomicI32 = AtomicI32::new(0);
 static REMOTE_EVENTS: RemoteEventChannel = RemoteEventChannel::new();
 
@@ -103,7 +94,7 @@ async fn display_task(mut display: Display, steps_per_mm: f64, min_mm: f64, max_
             0.0
         };
 
-        let input = PATTERN_INPUT.lock(|cell| cell.get());
+        let input = PATTERNS.input().lock(|cell| cell.get());
 
         let connected = ossm_m5_remote::is_connected();
         let pattern_idx = ossm_m5_remote::current_pattern() as usize;
@@ -183,12 +174,11 @@ async fn main(spawner: Spawner) {
 
     let steps_per_mm = mech_config.steps_per_mm(SimMotor::STEPS_PER_REV) as f64;
 
-    let (ossm, controller) = Ossm::new(
+    let controller = OSSM.controller(
         motor,
         &mech_config,
         limits.clone(),
         UPDATE_INTERVAL_SECS,
-        &CHANNELS,
     );
 
     let sw_int = SoftwareInterruptControl::new(p.SW_INTERRUPT);
@@ -257,7 +247,7 @@ async fn main(spawner: Spawner) {
             manager,
             sender,
             receiver,
-            &PATTERN_INPUT,
+            &PATTERNS.input(),
             &REMOTE_EVENTS,
             remote_config,
         ))
@@ -275,11 +265,10 @@ async fn main(spawner: Spawner) {
 
     info!("ESP-NOW remote tasks started, waiting for connection...");
 
-    let (patterns, mut pattern_runner) =
-        PatternEngine::new(AnyPattern::all_builtin(), &ENGINE_CHANNELS, ossm);
+    let mut pattern_runner = PATTERNS.runner(AnyPattern::all_builtin());
 
     join(
-        pattern_runner.run(&CHANNELS, &PATTERN_INPUT, Delay),
+        pattern_runner.run(Delay),
         async {
             let mut current_pattern: usize = 0;
 
@@ -287,27 +276,27 @@ async fn main(spawner: Spawner) {
                 while !matches!(REMOTE_EVENTS.receive().await, RemoteEvent::Connected) {}
 
                 info!("Remote connected, homing...");
-                patterns.home();
+                PATTERNS.home();
 
                 loop {
                     match REMOTE_EVENTS.receive().await {
                         RemoteEvent::Disconnected => {
-                            patterns.stop();
+                            PATTERNS.stop();
                             info!("Remote disconnected");
                             break;
                         }
                         RemoteEvent::Play => {
                             info!("Playing pattern {}", current_pattern);
-                            patterns.play(current_pattern);
+                            PATTERNS.play(current_pattern);
                         }
                         RemoteEvent::Pause => {
-                            patterns.pause();
+                            PATTERNS.pause();
                             info!("Paused");
                         }
                         RemoteEvent::SwitchPattern(idx) => {
                             current_pattern = idx as usize;
                             info!("Switching to pattern {}", current_pattern);
-                            patterns.play(current_pattern);
+                            PATTERNS.play(current_pattern);
                         }
                         RemoteEvent::Connected => {}
                     }

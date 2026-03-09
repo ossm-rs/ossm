@@ -17,7 +17,7 @@ impl Pattern for HalfHalf {
         "Alternate between full and half strokes. Sensation controls speed ratio."
     }
 
-    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) {
+    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), ossm::Cancelled> {
         let mut half = false;
 
         loop {
@@ -35,8 +35,8 @@ impl Pattern for HalfHalf {
             let depth = if half { 0.5 } else { 1.0 };
             half = !half;
 
-            ctx.motion().position(depth).speed(out_speed).send().await;
-            ctx.motion().position(0.0).speed(in_speed).send().await;
+            ctx.motion().position(depth).speed(out_speed).send().await?;
+            ctx.motion().position(0.0).speed(in_speed).send().await?;
         }
     }
 }

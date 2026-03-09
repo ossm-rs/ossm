@@ -33,6 +33,7 @@ impl Motor for SimMotor {
     type Error = Infallible;
 
     const STEPS_PER_REV: u32 = 32_768;
+    const MAX_OUTPUT: u16 = 600;
 
     async fn enable(&mut self) -> Result<(), Self::Error> {
         self.enabled = true;

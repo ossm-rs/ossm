@@ -1,5 +1,5 @@
 use embedded_hal_async::delay::DelayNs;
-use ossm::{Command, MotionCommand, OssmChannels};
+use ossm::{Cancelled, MotionCommand, Ossm};
 
 use crate::input::{PatternInput, SharedPatternInput};
 use crate::util::scale;
@@ -9,30 +9,30 @@ pub const MAX_SENSATION: f64 = 1.0;
 
 /// An async pattern that drives repetitive motion.
 ///
-/// `run()` loops forever (or until the future is dropped). Cancellation is
-/// handled externally — the caller races the pattern against a cancel signal
-/// using `embassy_futures::select`. Patterns need no explicit cancellation logic.
+/// `run()` loops forever, using `?` on each move to propagate cancellation.
+/// When a state command (disable, home) cancels the in-flight move,
+/// `send().await?` returns `Err(Cancelled)`, which exits the pattern cleanly.
 #[allow(async_fn_in_trait)]
 pub trait Pattern {
     fn name(&self) -> &'static str;
     fn description(&self) -> &'static str;
-    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>);
+    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), Cancelled>;
 }
 
 pub struct PatternCtx<D: DelayNs> {
-    channels: &'static OssmChannels,
+    ossm: &'static Ossm,
     input: &'static SharedPatternInput,
     delay: D,
 }
 
 impl<D: DelayNs> PatternCtx<D> {
     pub fn new(
-        channels: &'static OssmChannels,
+        ossm: &'static Ossm,
         input: &'static SharedPatternInput,
         delay: D,
     ) -> Self {
         Self {
-            channels,
+            ossm,
             input,
             delay,
         }
@@ -52,11 +52,11 @@ impl<D: DelayNs> PatternCtx<D> {
     /// Start building a motion command.
     ///
     /// Chain `.position()` to set the target, optionally `.speed()` to override
-    /// the velocity multiplier, then `.send().await` to execute.
+    /// the velocity multiplier, then `.send().await?` to execute.
     ///
     /// ```ignore
-    /// ctx.motion().position(1.0).send().await;
-    /// ctx.motion().position(0.5).speed(0.5).send().await;
+    /// ctx.motion().position(1.0).send().await?;
+    /// ctx.motion().position(0.5).speed(0.5).send().await?;
     /// ```
     pub fn motion(&self) -> MotionBuilder<'_, D, NoPosition> {
         MotionBuilder {
@@ -67,10 +67,8 @@ impl<D: DelayNs> PatternCtx<D> {
         }
     }
 
-    async fn send_command(&self, cmd: MotionCommand) {
-        self.channels.move_complete.reset();
-        let _ = self.channels.commands.try_send(Command::Motion(cmd));
-        self.channels.move_complete.wait().await;
+    async fn send_command(&self, cmd: MotionCommand) -> Result<(), Cancelled> {
+        self.ossm.push_motion(cmd).await
     }
 
     pub async fn delay_ms(&mut self, ms: u64) {
@@ -137,7 +135,7 @@ impl<'a, D: DelayNs> MotionBuilder<'a, D, NoPosition> {
 }
 
 impl<'a, D: DelayNs> MotionBuilder<'a, D, HasPosition> {
-    pub async fn send(self) {
+    pub async fn send(self) -> Result<(), Cancelled> {
         let input = self.ctx.input();
         let fraction = self.position.0.clamp(0.0, 1.0);
         let shallow = input.depth - input.stroke;
@@ -149,6 +147,6 @@ impl<'a, D: DelayNs> MotionBuilder<'a, D, HasPosition> {
                 speed,
                 torque: self.torque,
             })
-            .await;
+            .await
     }
 }

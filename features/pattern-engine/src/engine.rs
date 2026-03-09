@@ -1,13 +1,14 @@
+use core::cell::Cell;
 use core::sync::atomic::{AtomicU16, Ordering};
 
 use embassy_futures::select::{self, Either};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
 use embedded_hal_async::delay::DelayNs;
-use ossm::{Command, Ossm, OssmChannels};
+use ossm::Ossm;
 
 use crate::any_pattern::AnyPattern;
-use crate::input::SharedPatternInput;
+use crate::input::{PatternInput, SharedPatternInput};
 use crate::pattern::{Pattern, PatternCtx};
 
 #[derive(Debug, Clone, Copy)]
@@ -15,6 +16,8 @@ enum EngineCommand {
     Play(usize),
     Stop,
     Home,
+    Pause,
+    Resume,
 }
 
 type EngineCommandChannel = Channel<CriticalSectionRawMutex, EngineCommand, 4>;
@@ -66,38 +69,20 @@ impl EngineState {
     }
 }
 
-/// Shared channels and state for communication between the
-/// [`PatternEngine`] handle and the [`PatternEngineRunner`] async task.
-///
-/// Create as a `static` and pass a reference to
-/// [`PatternEngine::new()`].
-pub struct PatternEngineChannels {
+struct PatternEngineChannels {
     commands: EngineCommandChannel,
     state: AtomicU16,
 }
 
 impl PatternEngineChannels {
-    pub const fn new() -> Self {
+    const fn new() -> Self {
         Self {
             commands: EngineCommandChannel::new(),
             state: AtomicU16::new(EngineState::Idle.encode()),
         }
     }
 
-    fn play(&self, index: usize) {
-        let _ = self.commands.try_send(EngineCommand::Play(index));
-    }
-
-    fn stop(&self) {
-        let _ = self.commands.try_send(EngineCommand::Stop);
-    }
-
-    fn home(&self) {
-        let _ = self.commands.try_send(EngineCommand::Home);
-    }
-
-    /// Current engine state.
-    pub fn state(&self) -> EngineState {
+    fn state(&self) -> EngineState {
         EngineState::decode(self.state.load(Ordering::Relaxed))
     }
 
@@ -106,70 +91,66 @@ impl PatternEngineChannels {
     }
 }
 
-/// Thin handle for sending commands to, and reading state from, the
-/// pattern engine.
+/// Pattern engine that owns its command channels and delegates motion
+/// to an [`Ossm`] instance.
 ///
-/// Create via [`PatternEngine::new()`], which returns this handle
-/// alongside a [`PatternEngineRunner`] that should be spawned as an
-/// async task.
-#[derive(Clone, Copy)]
+/// Create as a `static` and use `&'static PatternEngine` as the handle
+/// for sending commands and reading state. Create a
+/// [`PatternEngineRunner`] via [`runner()`](Self::runner) and spawn it
+/// as an async task.
 pub struct PatternEngine {
-    channels: &'static PatternEngineChannels,
-    ossm: Ossm,
+    channels: PatternEngineChannels,
+    input: SharedPatternInput,
+    ossm: &'static Ossm,
 }
 
 impl PatternEngine {
-    /// Create a new pattern engine handle and its runner.
-    ///
-    /// The handle is used to send commands and read state.
-    /// The runner should be spawned as an async task via
-    /// [`PatternEngineRunner::run()`].
-    pub fn new<const N: usize>(
+    pub const fn new(ossm: &'static Ossm) -> Self {
+        Self {
+            channels: PatternEngineChannels::new(),
+            input: SharedPatternInput::new(Cell::new(PatternInput::DEFAULT)),
+            ossm,
+        }
+    }
+
+    pub fn input(&self) -> &SharedPatternInput {
+        &self.input
+    }
+
+    pub fn runner<const N: usize>(
+        &'static self,
         patterns: [AnyPattern; N],
-        channels: &'static PatternEngineChannels,
-        ossm: Ossm,
-    ) -> (Self, PatternEngineRunner<N>) {
-        let handle = Self { channels, ossm };
-        let runner = PatternEngineRunner {
-            channels,
+    ) -> PatternEngineRunner<N> {
+        PatternEngineRunner {
+            engine: self,
             patterns,
             state: RunnerState::Idle,
-        };
-        (handle, runner)
+        }
+    }
+
+    pub fn ossm(&self) -> &Ossm {
+        self.ossm
     }
 
     pub fn play(&self, index: usize) {
-        if let EngineState::Paused(current) = self.channels.state() {
-            self.ossm.resume();
-            if current == index {
-                self.channels.store(EngineState::Playing(index));
-                return;
-            }
-        }
         self.channels.store(EngineState::Playing(index));
-        self.channels.play(index);
+        let _ = self.channels.commands.try_send(EngineCommand::Play(index));
     }
 
     pub fn pause(&self) {
-        if let EngineState::Playing(idx) = self.channels.state() {
-            self.ossm.pause();
-            self.channels.store(EngineState::Paused(idx));
-        }
+        let _ = self.channels.commands.try_send(EngineCommand::Pause);
     }
 
     pub fn resume(&self) {
-        if let EngineState::Paused(idx) = self.channels.state() {
-            self.ossm.resume();
-            self.channels.store(EngineState::Playing(idx));
-        }
+        let _ = self.channels.commands.try_send(EngineCommand::Resume);
     }
 
     pub fn stop(&self) {
-        self.channels.stop();
+        let _ = self.channels.commands.try_send(EngineCommand::Stop);
     }
 
     pub fn home(&self) {
-        self.channels.home();
+        let _ = self.channels.commands.try_send(EngineCommand::Home);
     }
 
     pub fn state(&self) -> EngineState {
@@ -177,8 +158,7 @@ impl PatternEngine {
     }
 }
 
-/// Internal runner state. Carries extra detail (e.g. which pattern to play
-/// after homing) that the public [`EngineState`] does not expose.
+/// Internal runner state.
 #[derive(Debug, Clone, Copy)]
 enum RunnerState {
     Idle,
@@ -199,7 +179,7 @@ impl RunnerState {
 }
 
 pub struct PatternEngineRunner<const N: usize> {
-    channels: &'static PatternEngineChannels,
+    engine: &'static PatternEngine,
     patterns: [AnyPattern; N],
     state: RunnerState,
 }
@@ -214,53 +194,89 @@ impl<const N: usize> PatternEngineRunner<N> {
     /// each time a pattern starts. All embassy `Delay` types are `Copy`.
     pub async fn run<D: DelayNs + Clone>(
         &mut self,
-        ossm_channels: &'static OssmChannels,
-        input: &'static SharedPatternInput,
         delay: D,
     ) -> ! {
+        let ossm = self.engine.ossm();
+        let input = self.engine.input();
+
         loop {
             match self.state {
                 RunnerState::Idle | RunnerState::Ready => {
-                    let cmd = self.channels.commands.receive().await;
-                    self.handle_command(cmd, ossm_channels);
+                    let cmd = self.engine.channels.commands.receive().await;
+                    self.handle_command(cmd).await;
                 }
                 RunnerState::Homing(maybe_idx) => {
-                    ossm_channels.homing_done.reset();
-                    let _ = ossm_channels.commands.try_send(Command::Enable);
-                    let _ = ossm_channels.commands.try_send(Command::Home);
+                    ossm.enable().await;
 
                     let result = select::select(
-                        ossm_channels.homing_done.wait(),
-                        self.channels.commands.receive(),
+                        ossm.home(),
+                        self.engine.channels.commands.receive(),
                     )
                     .await;
 
                     match result {
-                        Either::First(()) => match maybe_idx {
+                        Either::First(_) => match maybe_idx {
                             Some(idx) => self.set_state(RunnerState::Playing(idx)),
                             None => self.set_state(RunnerState::Ready),
                         },
                         Either::Second(cmd) => {
-                            self.handle_command(cmd, ossm_channels);
+                            self.handle_command(cmd).await;
                         }
                     }
                 }
                 RunnerState::Playing(idx) => {
-                    let mut ctx = PatternCtx::new(ossm_channels, input, delay.clone());
+                    let mut ctx = PatternCtx::new(ossm, input, delay.clone());
 
-                    let result = select::select(
-                        self.patterns[idx].run(&mut ctx),
-                        self.channels.commands.receive(),
-                    )
-                    .await;
+                    // Split borrows: the pinned future holds `patterns[idx]`,
+                    // so we access `engine` and `state` through separate refs.
+                    let engine = self.engine;
+                    let state = &mut self.state;
+                    let pattern_fut = core::pin::pin!(
+                        self.patterns[idx].run(&mut ctx)
+                    );
+                    let mut pattern_fut = pattern_fut;
 
-                    match result {
-                        Either::First(()) => {
-                            // Pattern returned (unusual — they normally loop forever).
-                            self.set_state(RunnerState::Idle);
-                        }
-                        Either::Second(cmd) => {
-                            self.handle_command(cmd, ossm_channels);
+                    loop {
+                        let result = select::select(
+                            pattern_fut.as_mut(),
+                            engine.channels.commands.receive(),
+                        )
+                        .await;
+
+                        match result {
+                            Either::First(_result) => {
+                                if matches!(*state, RunnerState::Playing(_)) {
+                                    *state = RunnerState::Idle;
+                                    engine.channels.store(EngineState::Idle);
+                                }
+                                break;
+                            }
+                            Either::Second(cmd) => match cmd {
+                                EngineCommand::Pause => {
+                                    let _ = ossm.pause().await;
+                                    engine.channels.store(EngineState::Paused(idx));
+                                }
+                                EngineCommand::Resume => {
+                                    let _ = ossm.resume().await;
+                                    engine.channels.store(EngineState::Playing(idx));
+                                }
+                                EngineCommand::Play(i) if i == idx => {
+                                    let _ = ossm.resume().await;
+                                    engine.channels.store(EngineState::Playing(idx));
+                                }
+                                EngineCommand::Play(new_idx) if new_idx < N => {
+                                    *state = RunnerState::Playing(new_idx);
+                                    engine.channels.store(EngineState::Playing(new_idx));
+                                    break;
+                                }
+                                EngineCommand::Stop => {
+                                    let _ = ossm.disable().await;
+                                    *state = RunnerState::Idle;
+                                    engine.channels.store(EngineState::Idle);
+                                    break;
+                                }
+                                _ => {}
+                            },
                         }
                     }
                 }
@@ -270,10 +286,10 @@ impl<const N: usize> PatternEngineRunner<N> {
 
     fn set_state(&mut self, state: RunnerState) {
         self.state = state;
-        self.channels.store(state.as_engine_state());
+        self.engine.channels.store(state.as_engine_state());
     }
 
-    fn handle_command(&mut self, cmd: EngineCommand, ossm_channels: &OssmChannels) {
+    async fn handle_command(&mut self, cmd: EngineCommand) {
         match cmd {
             EngineCommand::Play(idx) => {
                 if idx < N {
@@ -285,13 +301,16 @@ impl<const N: usize> PatternEngineRunner<N> {
                 }
             }
             EngineCommand::Stop => {
-                let _ = ossm_channels.commands.try_send(Command::Disable);
+                let _ = self.engine.ossm().disable().await;
                 self.set_state(RunnerState::Idle);
             }
             EngineCommand::Home => {
                 if let RunnerState::Idle = self.state {
                     self.set_state(RunnerState::Homing(None));
                 }
+            }
+            EngineCommand::Pause | EngineCommand::Resume => {
+                // Only handled inside the Playing inner loop.
             }
         }
     }

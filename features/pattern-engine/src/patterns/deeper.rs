@@ -16,7 +16,7 @@ impl Pattern for Deeper {
         "Goes deeper with every stroke. Sensation controls the number of steps."
     }
 
-    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) {
+    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), ossm::Cancelled> {
         loop {
             let num_steps = (ctx.scale_sensation(MIN_STEPS, MAX_STEPS) as usize).max(1);
 
@@ -24,8 +24,8 @@ impl Pattern for Deeper {
                 ctx.motion()
                     .position(step as f64 / num_steps as f64)
                     .send()
-                    .await;
-                ctx.motion().position(0.0).send().await;
+                    .await?;
+                ctx.motion().position(0.0).send().await?;
             }
         }
     }

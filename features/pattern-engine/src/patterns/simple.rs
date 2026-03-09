@@ -13,10 +13,10 @@ impl Pattern for Simple {
         "Simple in and out. Sensation does nothing."
     }
 
-    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) {
+    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), ossm::Cancelled> {
         loop {
-            ctx.motion().position(1.0).send().await;
-            ctx.motion().position(0.0).send().await;
+            ctx.motion().position(1.0).send().await?;
+            ctx.motion().position(0.0).send().await?;
         }
     }
 }

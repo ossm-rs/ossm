@@ -1,6 +1,6 @@
 use rsruckig::prelude::*;
 
-use crate::command::{Command, OssmChannels};
+use crate::command::{Cancelled, MoveCommand, OssmChannels, StateCommand, StateResponse};
 use crate::{Board, MechanicalConfig, MotionLimits};
 
 // Floor applied to velocity requests to prevent degenerate Ruckig inputs.
@@ -49,6 +49,10 @@ pub struct MotionController<'a, B: Board> {
     /// The last-instructed motion target. `Some` when a move has been commanded,
     /// `None` when there is no active motion intent (e.g. disabled, just homed).
     target: Option<MotionTarget>,
+    /// Default velocity used by `MoveTo` commands (mm/s).
+    default_speed: f64,
+    /// Default torque used by `MoveTo` commands.
+    default_torque: Option<f64>,
     ruckig: Ruckig<1, ThrowErrorHandler>,
     input: InputParameter<1>,
     output: OutputParameter<1>,
@@ -59,7 +63,7 @@ impl<'a, B: Board> MotionController<'a, B> {
     ///
     /// `update_interval_secs` must match the ticker period the caller uses.
     /// Ruckig uses this as its fixed time step, so timing accuracy matters.
-    pub fn new(
+    pub(crate) fn new(
         board: B,
         config: &MechanicalConfig,
         limits: MotionLimits,
@@ -86,6 +90,8 @@ impl<'a, B: Board> MotionController<'a, B> {
             max_position_mm: config.max_position_mm,
             limits,
             target: None,
+            default_speed: MIN_VELOCITY,
+            default_torque: None,
             ruckig: Ruckig::<1, ThrowErrorHandler>::new(None, update_interval_secs),
             input,
             output: OutputParameter::new(None),
@@ -94,84 +100,124 @@ impl<'a, B: Board> MotionController<'a, B> {
 
     /// Advance the motion control loop by one step.
     ///
-    /// Ticks the state machine then processes one pending command. May await
-    /// internally (e.g. homing blocks until the motor completes), so the
-    /// caller should reset its ticker afterward to avoid catch-up bursts.
+    /// Ticks the state machine then processes pending commands. State commands
+    /// are processed before move commands so that `SetSpeed` applies before
+    /// a `MoveTo` arriving in the same tick.
     pub async fn update(&mut self) {
         self.tick().await;
 
-        if let Ok(cmd) = self.channels.commands.try_receive() {
-            self.process_command(cmd).await;
+        if let Ok(cmd) = self.channels.state_cmd.try_receive() {
+            self.process_state_command(cmd).await;
+        }
+
+        if let Ok(cmd) = self.channels.move_cmd.try_receive() {
+            self.process_move_command(cmd).await;
         }
     }
 
-    async fn process_command(&mut self, cmd: Command) {
+    async fn process_state_command(&mut self, cmd: StateCommand) {
         match (&self.state, cmd) {
-            (MotionState::Disabled, Command::Enable) => {
+            (MotionState::Disabled, StateCommand::Enable) => {
                 let _ = self.board.enable().await;
                 self.state = MotionState::Enabled;
+                self.respond(StateResponse::Completed);
             }
 
-            (MotionState::Enabled, Command::Home) => {
-                self.home().await;
-            }
-            (MotionState::Enabled, Command::Disable) => {
+            (MotionState::Enabled | MotionState::Ready, StateCommand::Disable) => {
                 self.disable().await;
+                self.respond(StateResponse::Completed);
             }
-
-            (MotionState::Ready, Command::MoveTo(fraction)) => {
-                let mm = self.fraction_to_mm(fraction);
-                self.set_target(|t| t.position = mm);
-                self.state = MotionState::Moving;
-            }
-            (MotionState::Ready, Command::Motion(cmd)) => {
-                self.set_motion_target(cmd);
-                self.state = MotionState::Moving;
-            }
-            (MotionState::Ready, Command::SetSpeed(fraction)) => {
-                let vel = self.fraction_to_velocity(fraction);
-                self.set_target(|t| t.velocity = vel);
-            }
-            (MotionState::Ready, Command::Home) => {
-                self.home().await;
-            }
-            (MotionState::Ready, Command::Disable) => {
+            (MotionState::Paused, StateCommand::Disable) => {
+                self.channels.move_resp.signal(Err(Cancelled));
                 self.disable().await;
+                self.respond(StateResponse::Completed);
             }
-
-            (MotionState::Moving, Command::MoveTo(fraction)) => {
-                let mm = self.fraction_to_mm(fraction);
-                self.set_target(|t| t.position = mm);
-            }
-            (MotionState::Moving, Command::Motion(cmd)) => {
-                self.set_motion_target(cmd);
-            }
-            (MotionState::Moving, Command::SetSpeed(fraction)) => {
-                let vel = self.fraction_to_velocity(fraction);
-                self.set_target(|t| t.velocity = vel);
-            }
-            (MotionState::Moving, Command::Home) => {
-                self.stop(StopReason::Home);
-            }
-            (MotionState::Moving, Command::Pause) => {
-                self.stop(StopReason::Pause);
-            }
-            (MotionState::Moving, Command::Disable) => {
+            (MotionState::Moving, StateCommand::Disable) => {
+                self.channels.move_resp.signal(Err(Cancelled));
                 self.stop(StopReason::Disable);
+                // Delayed response — respond when deceleration completes in tick()
             }
-
-            (MotionState::Paused, Command::Resume) => {
-                self.resume();
-            }
-            (MotionState::Paused, Command::Home) => {
-                self.home().await;
-            }
-            (MotionState::Paused, Command::Disable) => {
-                self.disable().await;
-            }
-
-            (MotionState::Stopping(_), Command::Disable) => {
+            (MotionState::Stopping(_), StateCommand::Disable) => {
                 self.state = MotionState::Stopping(StopReason::Disable);
+                // Already decelerating — tick() will respond when finished.
+            }
+
+            (MotionState::Enabled | MotionState::Ready, StateCommand::Home) => {
+                self.home().await;
+                self.respond(StateResponse::Completed);
+            }
+            (MotionState::Moving, StateCommand::Home) => {
+                self.channels.move_resp.signal(Err(Cancelled));
+                self.stop(StopReason::Home);
+                // Delayed response — respond when homing completes in tick()
+            }
+            (MotionState::Paused, StateCommand::Home) => {
+                self.channels.move_resp.signal(Err(Cancelled));
+                self.home().await;
+                self.respond(StateResponse::Completed);
+            }
+
+            (MotionState::Moving, StateCommand::Pause) => {
+                self.stop(StopReason::Pause);
+                self.respond(StateResponse::Completed);
+            }
+
+            (MotionState::Paused, StateCommand::Resume) => {
+                self.resume().await;
+                self.respond(StateResponse::Completed);
+            }
+
+            (_, StateCommand::SetSpeed(fraction)) => {
+                let vel = self.fraction_to_velocity(fraction);
+                self.default_speed = vel;
+                if matches!(self.state, MotionState::Moving) {
+                    if let Some(target) = &mut self.target {
+                        target.velocity = vel;
+                        self.sync_ruckig();
+                    }
+                }
+                self.respond(StateResponse::Completed);
+            }
+
+            (_, StateCommand::SetTorque(fraction)) => {
+                self.default_torque = Some(fraction);
+                if matches!(self.state, MotionState::Moving) {
+                    if let Some(target) = &mut self.target {
+                        target.torque = Some(fraction);
+                    }
+                    self.apply_torque().await;
+                }
+                self.respond(StateResponse::Completed);
+            }
+
+            _ => {
+                self.respond(StateResponse::InvalidTransition);
+            }
+        }
+    }
+
+    async fn process_move_command(&mut self, cmd: MoveCommand) {
+        match (&self.state, cmd) {
+            (MotionState::Ready, MoveCommand::MoveTo(fraction)) => {
+                let mm = self.fraction_to_mm(fraction);
+                self.set_target(|t| t.position = mm);
+                self.apply_torque().await;
+                self.state = MotionState::Moving;
+            }
+            (MotionState::Ready, MoveCommand::Motion(cmd)) => {
+                self.set_motion_target(cmd);
+                self.apply_torque().await;
+                self.state = MotionState::Moving;
+            }
+
+            (MotionState::Moving, MoveCommand::MoveTo(fraction)) => {
+                let mm = self.fraction_to_mm(fraction);
+                self.set_target(|t| t.position = mm);
+                self.apply_torque().await;
+            }
+            (MotionState::Moving, MoveCommand::Motion(cmd)) => {
+                self.set_motion_target(cmd);
+                self.apply_torque().await;
             }
 
             _ => {}
@@ -204,14 +250,16 @@ impl<'a, B: Board> MotionController<'a, B> {
                 }
                 MotionState::Stopping(StopReason::Disable) => {
                     self.disable().await;
+                    self.respond(StateResponse::Completed);
                 }
                 MotionState::Stopping(StopReason::Home) => {
                     self.home().await;
+                    self.respond(StateResponse::Completed);
                 }
                 _ => {
                     self.target = None;
                     self.state = MotionState::Ready;
-                    self.channels.move_complete.signal(());
+                    self.channels.move_resp.signal(Ok(()));
                 }
             }
         }
@@ -232,7 +280,6 @@ impl<'a, B: Board> MotionController<'a, B> {
 
         self.target = None;
 
-        self.channels.homing_done.signal(());
         self.state = MotionState::Ready;
     }
 
@@ -252,11 +299,16 @@ impl<'a, B: Board> MotionController<'a, B> {
         self.state = MotionState::Stopping(reason);
     }
 
-    fn resume(&mut self) {
+    async fn resume(&mut self) {
         // Switch back to position control and restore the instructed target.
         self.input.control_interface = ControlInterface::Position;
         self.sync_ruckig();
+        self.apply_torque().await;
         self.state = MotionState::Moving;
+    }
+
+    fn respond(&self, resp: StateResponse) {
+        self.channels.state_resp.signal(resp);
     }
 
     fn fraction_to_mm(&self, fraction: f64) -> f64 {
@@ -272,8 +324,8 @@ impl<'a, B: Board> MotionController<'a, B> {
     fn set_target(&mut self, f: impl FnOnce(&mut MotionTarget)) {
         let target = self.target.get_or_insert(MotionTarget {
             position: self.input.current_position[0],
-            velocity: MIN_VELOCITY,
-            torque: None,
+            velocity: self.default_speed,
+            torque: self.default_torque,
         });
         f(target);
         self.sync_ruckig();
@@ -296,5 +348,14 @@ impl<'a, B: Board> MotionController<'a, B> {
             self.input.max_velocity[0] = target.velocity;
             self.output.time = 0.0;
         }
+    }
+
+    /// Apply the current target's torque limit to the motor.
+    async fn apply_torque(&mut self) {
+        let output = match self.target.as_ref().and_then(|t| t.torque) {
+            Some(fraction) => (fraction.clamp(0.0, 1.0) * B::MAX_OUTPUT as f64) as u16,
+            None => B::MAX_OUTPUT,
+        };
+        let _ = self.board.set_max_output(output).await;
     }
 }

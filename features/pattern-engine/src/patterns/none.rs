@@ -13,7 +13,7 @@ impl Pattern for NonePattern {
         "No pattern. Holds position."
     }
 
-    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) {
+    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), ossm::Cancelled> {
         loop {
             ctx.delay_ms(500).await;
         }

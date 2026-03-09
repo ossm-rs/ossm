@@ -15,6 +15,7 @@ pub trait Board {
     type Error: Debug;
 
     const STEPS_PER_REV: u32;
+    const MAX_OUTPUT: u16;
 
     async fn enable(&mut self) -> Result<(), Self::Error>;
     async fn disable(&mut self) -> Result<(), Self::Error>;
@@ -34,6 +35,7 @@ impl<M: Motor> Board for M {
     type Error = M::Error;
 
     const STEPS_PER_REV: u32 = M::STEPS_PER_REV;
+    const MAX_OUTPUT: u16 = M::MAX_OUTPUT;
 
     async fn enable(&mut self) -> Result<(), Self::Error> {
         Motor::enable(self).await

@@ -8,79 +8,90 @@ mod mechanical;
 mod motion;
 mod motor;
 
-pub use command::{
-    Command, CommandChannel, HomingSignal, MotionCommand, MoveCompleteSignal, OssmChannels,
-};
+pub use command::{Cancelled, MotionCommand, StateCommand, StateResponse};
+use command::{MoveCommand, OssmChannels};
 pub use board::Board;
 pub use limits::MotionLimits;
 pub use mechanical::MechanicalConfig;
 pub use motion::MotionController;
 pub use motor::{Motor, MotorTelemetry};
 
-#[derive(Clone, Copy)]
 pub struct Ossm {
-    channels: &'static OssmChannels,
-    update_interval_secs: f64,
+    channels: OssmChannels,
 }
 
 impl Ossm {
-    pub fn new<B: Board>(
+    pub const fn new() -> Self {
+        Self {
+            channels: OssmChannels::new(),
+        }
+    }
+
+    pub fn controller<B: Board>(
+        &'static self,
         board: B,
         config: &MechanicalConfig,
         limits: MotionLimits,
         update_interval_secs: f64,
-        channels: &'static OssmChannels,
-    ) -> (Self, MotionController<'static, B>) {
-        let controller =
-            MotionController::new(board, config, limits, update_interval_secs, channels);
-        let handle = Self {
-            channels,
-            update_interval_secs,
-        };
-        (handle, controller)
+    ) -> MotionController<'static, B> {
+        MotionController::new(board, config, limits, update_interval_secs, &self.channels)
     }
 
-    pub fn update_interval_secs(&self) -> f64 {
-        self.update_interval_secs
+    /// Drain any pending move command, then send the new one and await completion.
+    async fn send_move(&self, cmd: MoveCommand) -> Result<(), Cancelled> {
+        self.channels.move_resp.reset();
+        let _ = self.channels.move_cmd.try_receive();
+        let _ = self.channels.move_cmd.try_send(cmd);
+        self.channels.move_resp.wait().await
     }
 
-    pub fn enable(&self) {
-        let _ = self.channels.commands.try_send(Command::Enable);
+    /// Send a state command and wait for the motion controller to respond.
+    async fn send_state(&self, cmd: StateCommand) -> StateResponse {
+        self.channels.state_resp.reset();
+        self.channels.state_cmd.send(cmd).await;
+        self.channels.state_resp.wait().await
     }
 
-    pub fn disable(&self) {
-        let _ = self.channels.commands.try_send(Command::Disable);
+    // -- State commands (async, return response) --
+
+    pub async fn enable(&self) -> StateResponse {
+        self.send_state(StateCommand::Enable).await
     }
 
-    pub async fn home(&self) {
-        self.channels.homing_done.reset();
-        let _ = self.channels.commands.try_send(Command::Home);
-        self.channels.homing_done.wait().await;
+    pub async fn disable(&self) -> StateResponse {
+        self.send_state(StateCommand::Disable).await
     }
+
+    pub async fn home(&self) -> StateResponse {
+        self.send_state(StateCommand::Home).await
+    }
+
+    pub async fn pause(&self) -> StateResponse {
+        self.send_state(StateCommand::Pause).await
+    }
+
+    pub async fn resume(&self) -> StateResponse {
+        self.send_state(StateCommand::Resume).await
+    }
+
+    pub async fn set_speed(&self, speed: f64) -> StateResponse {
+        self.send_state(StateCommand::SetSpeed(speed)).await
+    }
+
+    pub async fn set_torque(&self, torque: f64) -> StateResponse {
+        self.send_state(StateCommand::SetTorque(torque)).await
+    }
+
+    // -- Move commands (async, return Result) --
 
     /// Move to a position expressed as a fraction of the machine range (0.0–1.0).
-    pub fn move_to(&self, position: f64) {
-        let _ = self.channels.commands.try_send(Command::MoveTo(position));
+    /// Returns `Ok(())` when the motor reaches the target, or `Err(Cancelled)` if
+    /// a state command (disable, home) interrupts the move.
+    pub async fn move_to(&self, position: f64) -> Result<(), Cancelled> {
+        self.send_move(MoveCommand::MoveTo(position)).await
     }
 
-    /// Set velocity as a fraction of max velocity (0.0–1.0).
-    pub fn set_speed(&self, speed: f64) {
-        let _ = self.channels.commands.try_send(Command::SetSpeed(speed));
-    }
-
-    pub fn pause(&self) {
-        let _ = self.channels.commands.try_send(Command::Pause);
-    }
-
-    pub fn resume(&self) {
-        let _ = self.channels.commands.try_send(Command::Resume);
-    }
-
-    pub fn push_motion(&self, cmd: MotionCommand) {
-        let _ = self.channels.commands.try_send(Command::Motion(cmd));
-    }
-
-    pub async fn wait_move_complete(&self) {
-        self.channels.move_complete.wait().await;
+    pub async fn push_motion(&self, cmd: MotionCommand) -> Result<(), Cancelled> {
+        self.send_move(MoveCommand::Motion(cmd)).await
     }
 }
