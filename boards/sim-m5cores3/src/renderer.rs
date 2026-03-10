@@ -26,7 +26,6 @@ pub struct FrameState {
     pub state: &'static str,
 }
 
-
 pub type OssmTerminal<'a> = Terminal<EmbeddedBackend<'a, Display, Rgb565>>;
 
 pub fn create_terminal(display: &mut Display) -> OssmTerminal<'_> {
@@ -115,7 +114,14 @@ fn build_rail(position_frac: f64, width: usize) -> AllocString {
     s
 }
 
-fn render_gauge(frame: &mut ratatui::Frame, area: Rect, label: &str, value: f64, min: f64, max: f64) {
+fn render_gauge(
+    frame: &mut ratatui::Frame,
+    area: Rect,
+    label: &str,
+    value: f64,
+    min: f64,
+    max: f64,
+) {
     let bipolar = min < 0.0 && max > 0.0;
 
     let cols = Layout::horizontal([
@@ -131,7 +137,11 @@ fn render_gauge(frame: &mut ratatui::Frame, area: Rect, label: &str, value: f64,
     if bipolar {
         frame.render_widget(Paragraph::new(build_bipolar_bar(value, bar_width)), cols[1]);
     } else {
-        let normalised = if max > min { (value - min) / (max - min) } else { 0.0 };
+        let normalised = if max > min {
+            (value - min) / (max - min)
+        } else {
+            0.0
+        };
         frame.render_widget(Paragraph::new(build_bar(normalised, bar_width)), cols[1]);
     }
 
@@ -219,4 +229,3 @@ fn build_bipolar_bar(value: f64, width: usize) -> AllocString {
     s.push(']');
     s
 }
-

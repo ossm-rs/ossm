@@ -7,14 +7,18 @@ mod limits;
 mod mechanical;
 mod motion;
 mod motor;
+pub mod transport;
 
+pub use board::Board;
 pub use command::{Cancelled, MotionCommand, StateCommand, StateResponse};
 use command::{MoveCommand, OssmChannels};
-pub use board::Board;
 pub use limits::MotionLimits;
 pub use mechanical::MechanicalConfig;
 pub use motion::MotionController;
-pub use motor::{Motor, MotorTelemetry};
+pub use motor::{Motor, Rs485, SelfHoming, StepDir};
+pub use transport::{
+    Modbus, ModbusTransport, StepDirConfig, StepDirError, StepDirMotor, StepOutput,
+};
 
 pub struct Ossm {
     channels: OssmChannels,
@@ -27,14 +31,17 @@ impl Ossm {
         }
     }
 
+    /// Create a motion controller bound to this Ossm instance.
+    ///
+    /// The board is a position follower — it doesn't need to know about
+    /// mechanical config or motion limits. Those are the controller's concern.
     pub fn controller<B: Board>(
         &'static self,
         board: B,
-        config: &MechanicalConfig,
         limits: MotionLimits,
         update_interval_secs: f64,
     ) -> MotionController<'static, B> {
-        MotionController::new(board, config, limits, update_interval_secs, &self.channels)
+        MotionController::new(board, limits, update_interval_secs, &self.channels)
     }
 
     /// Drain any pending move command, then send the new one and await completion.
@@ -51,8 +58,6 @@ impl Ossm {
         self.channels.state_cmd.send(cmd).await;
         self.channels.state_resp.wait().await
     }
-
-    // -- State commands (async, return response) --
 
     pub async fn enable(&self) -> StateResponse {
         self.send_state(StateCommand::Enable).await
@@ -82,11 +87,6 @@ impl Ossm {
         self.send_state(StateCommand::SetTorque(torque)).await
     }
 
-    // -- Move commands (async, return Result) --
-
-    /// Move to a position expressed as a fraction of the machine range (0.0–1.0).
-    /// Returns `Ok(())` when the motor reaches the target, or `Err(Cancelled)` if
-    /// a state command (disable, home) interrupts the move.
     pub async fn move_to(&self, position: f64) -> Result<(), Cancelled> {
         self.send_move(MoveCommand::MoveTo(position)).await
     }

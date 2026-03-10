@@ -26,16 +26,8 @@ pub struct PatternCtx<D: DelayNs> {
 }
 
 impl<D: DelayNs> PatternCtx<D> {
-    pub fn new(
-        ossm: &'static Ossm,
-        input: &'static SharedPatternInput,
-        delay: D,
-    ) -> Self {
-        Self {
-            ossm,
-            input,
-            delay,
-        }
+    pub fn new(ossm: &'static Ossm, input: &'static SharedPatternInput, delay: D) -> Self {
+        Self { ossm, input, delay }
     }
 
     /// Read the current sensation value (-1.0 to 1.0).

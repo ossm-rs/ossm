@@ -1,9 +1,8 @@
 [package]
-name = "m57aim-motor"
+name = "sim-board"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 ossm = { path = "../../ossm" }
-embedded-hal = "1.0"
-embedded-hal-async = "1.0"
+sim-motor = { path = "../../drivers/sim-motor" }

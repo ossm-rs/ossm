@@ -192,10 +192,7 @@ impl<const N: usize> PatternEngineRunner<N> {
     ///
     /// `delay` must implement `Clone` so a fresh [`PatternCtx`] can be created
     /// each time a pattern starts. All embassy `Delay` types are `Copy`.
-    pub async fn run<D: DelayNs + Clone>(
-        &mut self,
-        delay: D,
-    ) -> ! {
+    pub async fn run<D: DelayNs + Clone>(&mut self, delay: D) -> ! {
         let ossm = self.engine.ossm();
         let input = self.engine.input();
 
@@ -208,11 +205,8 @@ impl<const N: usize> PatternEngineRunner<N> {
                 RunnerState::Homing(maybe_idx) => {
                     ossm.enable().await;
 
-                    let result = select::select(
-                        ossm.home(),
-                        self.engine.channels.commands.receive(),
-                    )
-                    .await;
+                    let result =
+                        select::select(ossm.home(), self.engine.channels.commands.receive()).await;
 
                     match result {
                         Either::First(_) => match maybe_idx {
@@ -231,9 +225,7 @@ impl<const N: usize> PatternEngineRunner<N> {
                     // so we access `engine` and `state` through separate refs.
                     let engine = self.engine;
                     let state = &mut self.state;
-                    let pattern_fut = core::pin::pin!(
-                        self.patterns[idx].run(&mut ctx)
-                    );
+                    let pattern_fut = core::pin::pin!(self.patterns[idx].run(&mut ctx));
                     let mut pattern_fut = pattern_fut;
 
                     loop {

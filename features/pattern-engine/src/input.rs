@@ -1,7 +1,7 @@
 use core::cell::Cell;
 
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::blocking_mutex::Mutex;
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 
 #[derive(Debug, Clone, Copy)]
 pub struct PatternInput {

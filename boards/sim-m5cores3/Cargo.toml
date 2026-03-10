@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+sim-board = { path = "../sim-board" }
 esp-hal = { version = "1.0", features = ["unstable", "esp32s3"] }
 embedded-hal = "1.0"
 embedded-hal-bus = "0.3.0"

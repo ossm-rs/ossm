@@ -1,6 +1,6 @@
 use embedded_hal_async::delay::DelayNs;
 
-use crate::pattern::{Pattern, PatternCtx, MAX_SENSATION};
+use crate::pattern::{MAX_SENSATION, Pattern, PatternCtx};
 use crate::util::scale;
 
 const MAX_SCALING_FACTOR: f64 = 5.0;

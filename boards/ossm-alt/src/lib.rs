@@ -1,93 +1,80 @@
 #![no_std]
 
 mod rs485;
+mod transport;
 
 pub use rs485::Rs485;
+pub use transport::Rs485ModbusTransport;
 
-use embassy_time::Delay;
-use esp_hal::{
-    Blocking,
-    gpio::{Level, Output, OutputConfig},
-    peripherals::{GPIO10, GPIO11, GPIO12, UART1},
-    uart::{Config, Uart},
-};
-use ossm::{Board, MechanicalConfig, Motor};
+use ossm::{Board, MechanicalConfig, Rs485 as Rs485Motor, SelfHoming};
 
-const MOTOR_BAUD_RATE: u32 = 115_200;
+#[derive(Debug)]
+pub enum BoardError<E: core::fmt::Debug> {
+    Motor(E),
+}
 
-pub struct OssmAltBoard<M: Motor> {
+/// OSSM Alt board, generic over any [`Rs485`](ossm::Rs485) + [`SelfHoming`] motor.
+///
+/// This board is a **position follower**. The motion controller calls
+/// `set_position(mm)` every tick with the next point on the ruckig
+/// trajectory. The board converts mm to steps and sends the command
+/// to the motor.
+pub struct OssmAlt<M: Rs485Motor + SelfHoming> {
     motor: M,
-    config: MechanicalConfig,
+    mechanical: &'static MechanicalConfig,
 }
 
-impl<M> OssmAltBoard<M>
-where
-    M: Motor + From<(Rs485<Uart<'static, Blocking>, Output<'static>>, Delay)>,
-{
-    pub fn new(
-        uart1: UART1<'static>,
-        tx_pin: GPIO10<'static>,
-        rx_pin: GPIO12<'static>,
-        de_pin: GPIO11<'static>,
-        config: MechanicalConfig,
-    ) -> Self {
-        let uart_config = Config::default().with_baudrate(MOTOR_BAUD_RATE);
-        let uart = Uart::new(uart1, uart_config)
-            .expect("Failed to initialize UART")
-            .with_tx(tx_pin)
-            .with_rx(rx_pin);
-
-        // Manual DE control — hardware RS485 mode has inverted RTS polarity
-        // on the OSSM Alt board, so we toggle a GPIO directly instead.
-        let de = Output::new(de_pin, Level::Low, OutputConfig::default());
-        let rs485 = Rs485::new(uart, de);
-
-        let delay = Delay;
-
-        Self {
-            motor: M::from((rs485, delay)),
-            config,
-        }
+impl<M: Rs485Motor + SelfHoming> OssmAlt<M> {
+    pub fn new(motor: M, mechanical: &'static MechanicalConfig) -> Self {
+        Self { motor, mechanical }
     }
 }
 
-impl<M: Motor> OssmAltBoard<M> {
-    pub fn mechanical_config(&self) -> &MechanicalConfig {
-        &self.config
-    }
-}
-
-impl<M: Motor> Board for OssmAltBoard<M> {
-    type Error = M::Error;
-
-    const STEPS_PER_REV: u32 = M::STEPS_PER_REV;
-    const MAX_OUTPUT: u16 = M::MAX_OUTPUT;
+impl<M: Rs485Motor + SelfHoming> Board for OssmAlt<M> {
+    type Error = BoardError<M::Error>;
 
     async fn enable(&mut self) -> Result<(), Self::Error> {
-        self.motor.enable().await
+        self.motor.enable().await.map_err(BoardError::Motor)
     }
 
     async fn disable(&mut self) -> Result<(), Self::Error> {
-        self.motor.disable().await
+        self.motor.disable().await.map_err(BoardError::Motor)
     }
 
     async fn home(&mut self) -> Result<(), Self::Error> {
-        self.motor.home().await
+        self.motor.home().await.map_err(BoardError::Motor)
     }
 
-    async fn set_absolute_position(&mut self, steps: i32) -> Result<(), Self::Error> {
-        self.motor.set_absolute_position(steps).await
+    async fn set_position(&mut self, position_mm: f64) -> Result<(), Self::Error> {
+        let steps = self
+            .mechanical
+            .mm_to_steps(position_mm, self.motor.steps_per_rev());
+        self.motor
+            .set_absolute_position(steps)
+            .await
+            .map_err(BoardError::Motor)
     }
 
-    async fn set_speed(&mut self, rpm: u16) -> Result<(), Self::Error> {
-        self.motor.set_speed(rpm).await
+    async fn set_torque(&mut self, fraction: f64) -> Result<(), Self::Error> {
+        let output = (fraction.clamp(0.0, 1.0) * self.motor.max_output() as f64) as u16;
+        self.motor
+            .set_max_output(output)
+            .await
+            .map_err(BoardError::Motor)
     }
 
-    async fn set_acceleration(&mut self, value: u16) -> Result<(), Self::Error> {
-        self.motor.set_acceleration(value).await
+    async fn position_mm(&mut self) -> Result<f64, Self::Error> {
+        let steps = self
+            .motor
+            .read_absolute_position()
+            .await
+            .map_err(BoardError::Motor)?;
+        Ok(self
+            .mechanical
+            .steps_to_mm(steps, self.motor.steps_per_rev()))
     }
 
-    async fn set_max_output(&mut self, output: u16) -> Result<(), Self::Error> {
-        self.motor.set_max_output(output).await
+    async fn tick(&mut self) -> Result<(), Self::Error> {
+        Ok(())
     }
 }

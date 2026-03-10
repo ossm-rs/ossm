@@ -1349,14 +1349,9 @@ dependencies = [
 name = "m57aim-motor"
 version = "0.1.0"
 dependencies = [
- "crc",
  "embedded-hal 1.0.0",
  "embedded-hal-async",
- "embedded-io 0.7.1",
- "heapless 0.9.2",
- "log",
  "ossm",
- "rmodbus",
 ]
 
 [[package]]
@@ -1456,6 +1451,8 @@ name = "ossm"
 version = "0.1.0"
 dependencies = [
  "embassy-sync 0.7.2",
+ "embedded-hal 1.0.0",
+ "heapless 0.9.2",
  "rsruckig",
 ]
 
@@ -1489,11 +1486,14 @@ dependencies = [
 name = "ossm-alt-board"
 version = "0.1.0"
 dependencies = [
- "embassy-time",
+ "crc",
  "embedded-hal 1.0.0",
+ "embedded-hal-async",
  "embedded-io 0.7.1",
- "esp-hal",
+ "heapless 0.9.2",
+ "m57aim-motor",
  "ossm",
+ "rmodbus",
 ]
 
 [[package]]
@@ -1892,6 +1892,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "sim-board"
+version = "0.1.0"
+dependencies = [
+ "ossm",
+ "sim-motor",
+]
+
+[[package]]
 name = "sim-m5cores3"
 version = "0.1.0"
 dependencies = [
@@ -1931,15 +1939,13 @@ dependencies = [
  "mipidsi",
  "mousefood",
  "ratatui",
+ "sim-board",
  "static_cell",
 ]
 
 [[package]]
 name = "sim-motor"
 version = "0.1.0"
-dependencies = [
- "ossm",
-]
 
 [[package]]
 name = "sim-wasm"
@@ -1949,6 +1955,7 @@ dependencies = [
  "embassy-time",
  "ossm",
  "pattern-engine",
+ "sim-board",
  "sim-motor",
  "wasm-bindgen",
  "wasm-bindgen-futures",

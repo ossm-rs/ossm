@@ -4,8 +4,9 @@ use embassy_time::{Delay, Duration, Ticker};
 extern crate alloc;
 use alloc::string::String;
 
-use ossm::{MechanicalConfig, MotionLimits, Motor, Ossm};
+use ossm::{MechanicalConfig, MotionLimits, Ossm};
 use pattern_engine::{AnyPattern, Pattern, PatternEngine};
+use sim_board::SimBoard;
 use sim_motor::SimMotor;
 use wasm_bindgen::prelude::*;
 
@@ -13,11 +14,9 @@ static OSSM: Ossm = Ossm::new();
 static PATTERNS: PatternEngine = PatternEngine::new(&OSSM);
 static MOTOR_POSITION: AtomicI32 = AtomicI32::new(0);
 
-const CONFIG: MechanicalConfig = MechanicalConfig {
+static MECHANICAL: MechanicalConfig = MechanicalConfig {
     pulley_teeth: 20,
     belt_pitch_mm: 2.0,
-    min_position_mm: 10.0,
-    max_position_mm: 250.0,
 };
 
 #[wasm_bindgen]
@@ -36,13 +35,15 @@ impl Simulator {
     pub fn new(update_interval_ms: f64) -> Self {
         let update_interval_secs = update_interval_ms / 1000.0;
         let motor = SimMotor::new(&MOTOR_POSITION);
+        let board = SimBoard::new(motor, &MECHANICAL);
 
-        let mut controller = OSSM.controller(
-            motor,
-            &CONFIG,
-            MotionLimits::default(),
-            update_interval_secs,
-        );
+        let limits = MotionLimits {
+            min_position_mm: 10.0,
+            max_position_mm: 250.0,
+            ..MotionLimits::default()
+        };
+
+        let mut controller = OSSM.controller(board, limits.clone(), update_interval_secs);
 
         let interval_us = (update_interval_secs * 1_000_000.0) as u64;
 
@@ -60,12 +61,12 @@ impl Simulator {
             pattern_runner.run(Delay).await;
         });
 
-        let steps_per_mm = CONFIG.steps_per_mm(SimMotor::STEPS_PER_REV) as f64;
+        let steps_per_mm = MECHANICAL.steps_per_mm(SimMotor::STEPS_PER_REV) as f64;
 
         Self {
             steps_per_mm,
-            min_position_mm: CONFIG.min_position_mm,
-            max_position_mm: CONFIG.max_position_mm,
+            min_position_mm: limits.min_position_mm,
+            max_position_mm: limits.max_position_mm,
         }
     }
 
@@ -74,7 +75,7 @@ impl Simulator {
         PATTERNS.state().as_u8()
     }
 
-    /// Current position as a fraction of the machine range (0.0–1.0).
+    /// Current position as a fraction of the machine range (0.0-1.0).
     pub fn get_position(&self) -> f64 {
         let steps = MOTOR_POSITION.load(Ordering::Relaxed);
         let mm = steps as f64 / self.steps_per_mm;
@@ -82,7 +83,7 @@ impl Simulator {
         (mm - self.min_position_mm) / range
     }
 
-    /// Set the maximum depth as a fraction of the machine range (0.0–1.0).
+    /// Set the maximum depth as a fraction of the machine range (0.0-1.0).
     pub fn set_depth(&self, depth: f64) {
         PATTERNS.input().lock(|cell| {
             let mut input = cell.get();
@@ -91,7 +92,7 @@ impl Simulator {
         });
     }
 
-    /// Set the stroke length as a fraction of the machine range (0.0–1.0).
+    /// Set the stroke length as a fraction of the machine range (0.0-1.0).
     pub fn set_stroke(&self, stroke: f64) {
         PATTERNS.input().lock(|cell| {
             let mut input = cell.get();
@@ -100,7 +101,7 @@ impl Simulator {
         });
     }
 
-    /// Set velocity as a fraction of max velocity (0.0–1.0).
+    /// Set velocity as a fraction of max velocity (0.0-1.0).
     pub fn set_velocity(&self, velocity: f64) {
         PATTERNS.input().lock(|cell| {
             let mut input = cell.get();

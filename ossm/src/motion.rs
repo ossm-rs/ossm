@@ -1,7 +1,7 @@
 use rsruckig::prelude::*;
 
 use crate::command::{Cancelled, MoveCommand, OssmChannels, StateCommand, StateResponse};
-use crate::{Board, MechanicalConfig, MotionLimits};
+use crate::{Board, MotionLimits};
 
 // Floor applied to velocity requests to prevent degenerate Ruckig inputs.
 const MIN_VELOCITY: f64 = 0.001;
@@ -38,13 +38,23 @@ struct MotionTarget {
     torque: Option<f64>,
 }
 
+/// Drives the motion state machine and enforces safe motion profiles.
+///
+/// The controller owns a ruckig instance and generates jerk-limited
+/// trajectories. Each tick, it samples the trajectory and calls
+/// `board.set_position(mm)` with the next point on the curve. The board
+/// is a dumb position follower — it never plans its own trajectory.
+///
+/// # Safety
+///
+/// Ruckig enforces the acceleration and jerk limits from [`MotionLimits`].
+/// No upstream code (patterns, UI, remote) can cause motion that exceeds
+/// these limits. The motor's internal trajectory planner is bypassed by
+/// configuring it for maximum tracking speed.
 pub struct MotionController<'a, B: Board> {
     board: B,
     channels: &'a OssmChannels,
     state: MotionState,
-    steps_per_mm: f64,
-    min_position_mm: f64,
-    max_position_mm: f64,
     limits: MotionLimits,
     /// The last-instructed motion target. `Some` when a move has been commanded,
     /// `None` when there is no active motion intent (e.g. disabled, just homed).
@@ -65,16 +75,13 @@ impl<'a, B: Board> MotionController<'a, B> {
     /// Ruckig uses this as its fixed time step, so timing accuracy matters.
     pub(crate) fn new(
         board: B,
-        config: &MechanicalConfig,
         limits: MotionLimits,
         update_interval_secs: f64,
         channels: &'a OssmChannels,
     ) -> Self {
-        let steps_per_mm = config.steps_per_mm(B::STEPS_PER_REV) as f64;
-
         let mut input = InputParameter::new(None);
-        input.current_position[0] = config.min_position_mm;
-        input.target_position[0] = config.min_position_mm;
+        input.current_position[0] = limits.min_position_mm;
+        input.target_position[0] = limits.min_position_mm;
         input.max_velocity[0] = MIN_VELOCITY;
         input.max_acceleration[0] = limits.max_acceleration_mm_s2;
         input.max_jerk[0] = limits.max_jerk_mm_s3;
@@ -85,9 +92,6 @@ impl<'a, B: Board> MotionController<'a, B> {
             board,
             channels,
             state: MotionState::Disabled,
-            steps_per_mm,
-            min_position_mm: config.min_position_mm,
-            max_position_mm: config.max_position_mm,
             limits,
             target: None,
             default_speed: MIN_VELOCITY,
@@ -100,12 +104,17 @@ impl<'a, B: Board> MotionController<'a, B> {
 
     /// Advance the motion control loop by one step.
     ///
-    /// Ticks the state machine then processes pending commands. State commands
-    /// are processed before move commands so that `SetSpeed` applies before
-    /// a `MoveTo` arriving in the same tick.
+    /// Ticks the board, then the ruckig trajectory, then processes commands.
+    /// State commands are processed before move commands so that `SetSpeed`
+    /// applies before a `MoveTo` arriving in the same tick.
     pub async fn update(&mut self) {
+        // 1. Let the board do periodic housekeeping (fault polling etc.)
+        let _ = self.board.tick().await;
+
+        // 2. Advance the trajectory and send position to the board.
         self.tick().await;
 
+        // 3. Process commands: state before move.
         if let Ok(cmd) = self.channels.state_cmd.try_receive() {
             self.process_state_command(cmd).await;
         }
@@ -135,11 +144,9 @@ impl<'a, B: Board> MotionController<'a, B> {
             (MotionState::Moving, StateCommand::Disable) => {
                 self.channels.move_resp.signal(Err(Cancelled));
                 self.stop(StopReason::Disable);
-                // Delayed response — respond when deceleration completes in tick()
             }
             (MotionState::Stopping(_), StateCommand::Disable) => {
                 self.state = MotionState::Stopping(StopReason::Disable);
-                // Already decelerating — tick() will respond when finished.
             }
 
             (MotionState::Enabled | MotionState::Ready, StateCommand::Home) => {
@@ -149,7 +156,6 @@ impl<'a, B: Board> MotionController<'a, B> {
             (MotionState::Moving, StateCommand::Home) => {
                 self.channels.move_resp.signal(Err(Cancelled));
                 self.stop(StopReason::Home);
-                // Delayed response — respond when homing completes in tick()
             }
             (MotionState::Paused, StateCommand::Home) => {
                 self.channels.move_resp.signal(Err(Cancelled));
@@ -224,6 +230,7 @@ impl<'a, B: Board> MotionController<'a, B> {
         }
     }
 
+    /// Sample the ruckig trajectory and send the position to the board.
     async fn tick(&mut self) {
         if !matches!(self.state, MotionState::Moving | MotionState::Stopping(_)) {
             return;
@@ -238,9 +245,8 @@ impl<'a, B: Board> MotionController<'a, B> {
         }
 
         let mm = self.output.new_position[0]
-            .clamp(self.min_position_mm, self.max_position_mm);
-        let steps = (mm * self.steps_per_mm) as i32;
-        let _ = self.board.set_absolute_position(steps).await;
+            .clamp(self.limits.min_position_mm, self.limits.max_position_mm);
+        let _ = self.board.set_position(mm).await;
         self.output.pass_to_input(&mut self.input);
 
         if result == RuckigResult::Finished {
@@ -269,17 +275,17 @@ impl<'a, B: Board> MotionController<'a, B> {
         self.state = MotionState::Disabled;
         let _ = self.board.home().await;
 
-        let steps = (self.min_position_mm * self.steps_per_mm) as i32;
-        let _ = self.board.set_absolute_position(steps).await;
-
+        // Reset ruckig state to the home position.
         self.input.control_interface = ControlInterface::Position;
-        self.input.current_position[0] = self.min_position_mm;
-        self.input.target_position[0] = self.min_position_mm;
+        self.input.current_position[0] = self.limits.min_position_mm;
+        self.input.target_position[0] = self.limits.min_position_mm;
         self.input.current_velocity[0] = 0.0;
         self.input.current_acceleration[0] = 0.0;
 
-        self.target = None;
+        // Send the board to the min position (home).
+        let _ = self.board.set_position(self.limits.min_position_mm).await;
 
+        self.target = None;
         self.state = MotionState::Ready;
     }
 
@@ -312,8 +318,9 @@ impl<'a, B: Board> MotionController<'a, B> {
     }
 
     fn fraction_to_mm(&self, fraction: f64) -> f64 {
-        let mm = self.min_position_mm + fraction * (self.max_position_mm - self.min_position_mm);
-        mm.clamp(self.min_position_mm, self.max_position_mm)
+        let mm = self.limits.min_position_mm
+            + fraction * (self.limits.max_position_mm - self.limits.min_position_mm);
+        mm.clamp(self.limits.min_position_mm, self.limits.max_position_mm)
     }
 
     fn fraction_to_velocity(&self, fraction: f64) -> f64 {
@@ -350,12 +357,9 @@ impl<'a, B: Board> MotionController<'a, B> {
         }
     }
 
-    /// Apply the current target's torque limit to the motor.
+    /// Apply the current target's torque limit to the board.
     async fn apply_torque(&mut self) {
-        let output = match self.target.as_ref().and_then(|t| t.torque) {
-            Some(fraction) => (fraction.clamp(0.0, 1.0) * B::MAX_OUTPUT as f64) as u16,
-            None => B::MAX_OUTPUT,
-        };
-        let _ = self.board.set_max_output(output).await;
+        let fraction = self.target.as_ref().and_then(|t| t.torque).unwrap_or(1.0);
+        let _ = self.board.set_torque(fraction).await;
     }
 }
