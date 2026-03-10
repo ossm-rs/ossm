@@ -1,14 +1,16 @@
 {
-    "cSpell.words": [
-        "baudrate",
-        "espflash",
-        "espup",
-        "jtag",
-        "Ossm",
-        "println",
-        "UART",
-        "xtensa"
-    ],
-    "rust-analyzer.cargo.target": "xtensa-esp32s3-none-elf",
-    "rust-analyzer.cargo.allTargets": false
+  "cSpell.words": [
+    "baudrate",
+    "espflash",
+    "espup",
+    "jtag",
+    "Ossm",
+    "println",
+    "timg",
+    "UART",
+    "xtensa"
+  ],
+  "rust-analyzer.cfg.setTest": false,
+  "rust-analyzer.check.allTargets": false,
+  "rust-analyzer.check.workspace": false
 }

@@ -115,7 +115,7 @@ async fn main(spawner: Spawner) {
     let sw_int = SoftwareInterruptControl::new(p.SW_INTERRUPT);
     let app_core_stack = APP_CORE_STACK.init(Stack::new());
 
-    /// Run the motion controller interrupt on it's own core at high priority
+    // Run the motion controller interrupt on its own core at high priority
     let second_core = move || {
         let executor = InterruptExecutor::new(sw_int.software_interrupt2);
         let executor = EXECUTOR_CORE_1.init(executor);

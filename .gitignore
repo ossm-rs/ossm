@@ -1,3 +1,8 @@
 /target
+rust-analyzer.toml
+
+# These get symlinked to support multi platform rust-analyzer
+/.cargo
+/rust-toolchain.toml
 
 NOTES.md
