@@ -38,7 +38,11 @@ jobs:
         run: just build-ossm-alt
 
       - name: Install espflash
-        run: cargo install espflash@3.3.0
+        run: |
+          curl -L https://github.com/esp-rs/espflash/releases/download/v3.3.0/espflash-x86_64-unknown-linux-gnu.zip -o espflash.zip
+          unzip espflash.zip
+          chmod +x espflash
+          sudo mv espflash /usr/local/bin/
 
       - name: Create firmware binary
         run: espflash save-image --chip esp32s3 target/xtensa-esp32s3-none-elf/release/ossm-alt ossm-alt.bin
