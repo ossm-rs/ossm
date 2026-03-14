@@ -1,3 +1,5 @@
+set windows-shell := ["powershell.exe", "-NoLogo", "-c"]
+
 default:
     @just --list
 

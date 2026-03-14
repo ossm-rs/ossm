@@ -37,10 +37,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: esp-rs/xtensa-toolchain@v1.5
-        with:
-          default: true
-          ldproxy: false
-          cache: true
 
       - uses: Swatinem/rust-cache@v2
 
@@ -48,3 +44,36 @@ jobs:
 
       - name: Build ossm-alt
         run: just build-ossm-alt
+
+  build-windows:
+    name: Build on Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: esp-rs/xtensa-toolchain@v1.5
+
+      - name: Export ESP environment
+        shell: pwsh
+        run: |
+          Get-Content "$env:USERPROFILE/exports" | ForEach-Object {
+            if ($_ -match '\$Env:PATH\s*=\s*"([^"]+)"') {
+              $path = $matches[1] -replace '\s*\+\s*\$Env:PATH', '' -replace '"', '' -replace ';$', ''
+              $path >> $env:GITHUB_PATH
+            }
+            elseif ($_ -match '\$Env:(\w+)\s*=\s*"([^"]+)"') {
+              $name = $matches[1]
+              $value = $matches[2]
+              "$name=$value" >> $env:GITHUB_ENV
+            }
+          }
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: extractions/setup-just@v2
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack
+
+      - name: Build all
+        run: just build-all
