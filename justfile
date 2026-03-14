@@ -1,4 +1,5 @@
 set windows-shell := ["powershell.exe", "-NoLogo", "-c"]
+set dotenv-load := true
 
 default:
     @just --list

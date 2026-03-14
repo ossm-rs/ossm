@@ -167,7 +167,15 @@ Features are optional higher-level capabilities built on top of the core motion 
    cargo install espflash
    ```
 
-5. You should now be able to build and flash:
+5. **(Optional) Enable dev features** by copying the sample environment file:
+
+   ```sh
+   cp .env.sample .env
+   ```
+
+   This sets `ESP_LOG=info` which enables runtime log output when flashing. You can change the log level in `.env` to `debug`, `warn`, `error`, etc.
+
+6. You should now be able to build and flash:
 
    ```sh
    just build

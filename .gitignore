@@ -5,4 +5,4 @@ rust-analyzer.toml
 /.cargo
 /rust-toolchain.toml
 
-NOTES.md
+.env

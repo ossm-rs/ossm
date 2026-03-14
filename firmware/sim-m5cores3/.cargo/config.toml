@@ -5,8 +5,5 @@ rustflags = ["-C", "link-arg=-nostartfiles"]
 [target.xtensa-esp32s3-none-elf]
 runner = "espflash flash --monitor"
 
-[env]
-ESP_LOG = "info"
-
 [unstable]
 build-std = ["alloc", "core"]
