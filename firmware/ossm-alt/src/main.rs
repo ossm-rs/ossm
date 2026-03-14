@@ -9,13 +9,16 @@
 
 use embassy_executor::Spawner;
 use embassy_futures::join::join;
-use embassy_sync::blocking_mutex::raw::NoopRawMutex;
+use embassy_sync::blocking_mutex::raw::{CriticalSectionRawMutex, NoopRawMutex};
 use embassy_sync::mutex::Mutex;
+use embassy_sync::signal::Signal;
 use embassy_time::Delay;
 use embassy_time::{Duration, Ticker};
+use esp_hal::interrupt::Priority;
 use esp_hal::interrupt::software::SoftwareInterruptControl;
+use esp_hal::system::Stack;
 use esp_hal::timer::timg::TimerGroup;
-use esp_hal::{Blocking, gpio::Output, interrupt::Priority, uart::Uart};
+use esp_hal::{Blocking, gpio::Output, uart::Uart};
 use esp_radio::esp_now::{EspNowManager, EspNowSender};
 use esp_rtos::embassy::InterruptExecutor;
 use log::info;
@@ -48,7 +51,10 @@ static OSSM: Ossm = Ossm::new();
 static PATTERNS: PatternEngine = PatternEngine::new(&OSSM);
 
 static REMOTE_EVENTS: RemoteEventChannel = RemoteEventChannel::new();
-static EXECUTOR_HIGH: StaticCell<InterruptExecutor<1>> = StaticCell::new();
+
+static EXECUTOR_CORE_1: StaticCell<InterruptExecutor<2>> = StaticCell::new();
+static APP_CORE_STACK: StaticCell<Stack<16384>> = StaticCell::new();
+static MOTION_READY: Signal<CriticalSectionRawMutex, bool> = Signal::new();
 
 #[embassy_executor::task]
 async fn motion_task(mut controller: MotionController<'static, ConcreteBoard>) {
@@ -84,13 +90,34 @@ async fn main(spawner: Spawner) {
 
     let controller = OSSM.controller(board, &mech_config, limits.clone(), UPDATE_INTERVAL_SECS);
 
-    let sw_ints = SoftwareInterruptControl::new(p.SW_INTERRUPT);
-    let executor = EXECUTOR_HIGH.init(InterruptExecutor::new(sw_ints.software_interrupt1));
-    let high_spawner = executor.start(Priority::Priority2);
-    high_spawner.spawn(motion_task(controller)).unwrap();
+    let sw_int = SoftwareInterruptControl::new(p.SW_INTERRUPT);
+    let app_core_stack = APP_CORE_STACK.init(Stack::new());
+
+    /// Run the motion controller interrupt on it's own core at high priority
+    let second_core = move || {
+        let executor = InterruptExecutor::new(sw_int.software_interrupt2);
+        let executor = EXECUTOR_CORE_1.init(executor);
+        let spawner = executor.start(Priority::Priority2);
+
+        spawner.spawn(motion_task(controller)).unwrap();
+
+        MOTION_READY.signal(true);
+
+        loop {}
+    };
+
+    esp_rtos::start_second_core(
+        p.CPU_CTRL,
+        sw_int.software_interrupt0,
+        sw_int.software_interrupt1,
+        app_core_stack,
+        second_core,
+    );
+
+    MOTION_READY.wait().await;
 
     info!(
-        "Motion task started at {}ms interval",
+        "Motion task started on core 1 at {}ms interval",
         UPDATE_INTERVAL_SECS * 1000.0
     );
 
