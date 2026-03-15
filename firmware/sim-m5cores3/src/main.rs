@@ -10,7 +10,6 @@
 use core::sync::atomic::{AtomicI32, Ordering};
 
 use embassy_executor::Spawner;
-use embassy_futures::join::join;
 use embassy_futures::yield_now;
 use embassy_sync::blocking_mutex::raw::{CriticalSectionRawMutex, NoopRawMutex};
 use embassy_sync::mutex::Mutex;
@@ -27,8 +26,8 @@ use esp_hal::time::Rate;
 use esp_hal::timer::timg::TimerGroup;
 use esp_radio::esp_now::{EspNowManager, EspNowSender};
 use log::info;
-use ossm::{MechanicalConfig, MotionController, MotionLimits, Ossm};
-use ossm_m5_remote::{RemoteConfig, RemoteEvent, RemoteEventChannel};
+use ossm::{MechanicalConfig, MotionController, MotionLimits, Motor, Ossm};
+use ossm_m5_remote::RemoteConfig;
 use pattern_engine::{AnyPattern, PatternEngine};
 use sim_m5cores3_board::{Display, FrameState, SimBoard, create_terminal, render_ui};
 use sim_motor::SimMotor;
@@ -54,8 +53,6 @@ const UPDATE_INTERVAL_SECS: f64 = 1.0 / 30.0;
 static OSSM: Ossm = Ossm::new();
 static PATTERNS: PatternEngine = PatternEngine::new(&OSSM);
 static MOTOR_POSITION: AtomicI32 = AtomicI32::new(0);
-static REMOTE_EVENTS: RemoteEventChannel = RemoteEventChannel::new();
-
 static EXECUTOR_CORE_1: StaticCell<InterruptExecutor<2>> = StaticCell::new();
 static APP_CORE_STACK: StaticCell<Stack<16384>> = StaticCell::new();
 static MOTION_READY: Signal<CriticalSectionRawMutex, bool> = Signal::new();
@@ -242,64 +239,8 @@ async fn main(spawner: Spawner) {
         max_travel_mm: limits.max_position_mm - limits.min_position_mm,
     };
 
-    spawner
-        .spawn(ossm_m5_remote::receiver_task(
-            manager,
-            sender,
-            receiver,
-            &PATTERNS.input(),
-            &REMOTE_EVENTS,
-            remote_config,
-        ))
-        .unwrap();
-    spawner
-        .spawn(ossm_m5_remote::heartbeat_send_task(
-            manager,
-            sender,
-            remote_config,
-        ))
-        .unwrap();
-    spawner
-        .spawn(ossm_m5_remote::heartbeat_check_task(&REMOTE_EVENTS))
-        .unwrap();
-
-    info!("ESP-NOW remote tasks started, waiting for connection...");
+    ossm_m5_remote::start(&spawner, manager, sender, receiver, &PATTERNS, remote_config);
 
     let mut pattern_runner = PATTERNS.runner(AnyPattern::all_builtin());
-
-    join(pattern_runner.run(Delay), async {
-        let mut current_pattern: usize = 0;
-
-        loop {
-            while !matches!(REMOTE_EVENTS.receive().await, RemoteEvent::Connected) {}
-
-            info!("Remote connected, homing...");
-            PATTERNS.home();
-
-            loop {
-                match REMOTE_EVENTS.receive().await {
-                    RemoteEvent::Disconnected => {
-                        PATTERNS.stop();
-                        info!("Remote disconnected");
-                        break;
-                    }
-                    RemoteEvent::Play => {
-                        info!("Playing pattern {}", current_pattern);
-                        PATTERNS.play(current_pattern);
-                    }
-                    RemoteEvent::Pause => {
-                        PATTERNS.pause();
-                        info!("Paused");
-                    }
-                    RemoteEvent::SwitchPattern(idx) => {
-                        current_pattern = idx as usize;
-                        info!("Switching to pattern {}", current_pattern);
-                        PATTERNS.play(current_pattern);
-                    }
-                    RemoteEvent::Connected => {}
-                }
-            }
-        }
-    })
-    .await;
+    pattern_runner.run(Delay).await;
 }

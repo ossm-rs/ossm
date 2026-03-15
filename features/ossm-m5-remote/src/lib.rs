@@ -2,15 +2,15 @@
 
 use core::sync::atomic::{AtomicBool, Ordering};
 
-use embassy_sync::blocking_mutex::raw::{CriticalSectionRawMutex, NoopRawMutex};
-use embassy_sync::channel::Channel;
+use embassy_executor::Spawner;
+use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::mutex::Mutex;
 use embassy_time::{Duration, Instant, Ticker};
 use esp_radio::esp_now::{
     BROADCAST_ADDRESS, EspNowManager, EspNowReceiver, EspNowSender, PeerInfo,
 };
 use log::{error, info, trace};
-use pattern_engine::SharedPatternInput;
+use pattern_engine::PatternEngine;
 use portable_atomic::{AtomicU32, AtomicU64};
 use zerocopy::{Immutable, IntoBytes, KnownLayout, TryFromBytes};
 
@@ -102,17 +102,6 @@ pub struct RemoteConfig {
     pub max_travel_mm: f64,
 }
 
-#[derive(Debug, Clone)]
-pub enum RemoteEvent {
-    Play,
-    Pause,
-    Connected,
-    Disconnected,
-    SwitchPattern(u32),
-}
-
-pub type RemoteEventChannel = Channel<CriticalSectionRawMutex, RemoteEvent, 4>;
-
 #[derive(Default, Debug, TryFromBytes, IntoBytes, Immutable)]
 #[repr(i32)]
 #[allow(dead_code)]
@@ -193,13 +182,31 @@ async fn send_heartbeat_packet(
     }
 }
 
+pub fn start(
+    spawner: &Spawner,
+    manager: &'static EspNowManager<'static>,
+    sender: &'static Mutex<NoopRawMutex, EspNowSender<'static>>,
+    receiver: EspNowReceiver<'static>,
+    engine: &'static PatternEngine,
+    config: RemoteConfig,
+) {
+    spawner
+        .spawn(receiver_task(manager, sender, receiver, engine, config))
+        .unwrap();
+    spawner
+        .spawn(heartbeat_send_task(manager, sender, config))
+        .unwrap();
+    spawner.spawn(heartbeat_check_task(engine)).unwrap();
+
+    info!("ESP-NOW remote tasks started, waiting for connection...");
+}
+
 #[embassy_executor::task]
-pub async fn receiver_task(
+async fn receiver_task(
     manager: &'static EspNowManager<'static>,
     sender: &'static Mutex<NoopRawMutex, EspNowSender<'static>>,
     mut receiver: EspNowReceiver<'static>,
-    pattern_input: &'static SharedPatternInput,
-    remote_events: &'static RemoteEventChannel,
+    engine: &'static PatternEngine,
     config: RemoteConfig,
 ) {
     info!("ESP-NOW receiver task started");
@@ -242,7 +249,9 @@ pub async fn receiver_task(
                         error!("Could not send ON ack: {}", err);
                     }
                 }
-                remote_events.send(RemoteEvent::Play).await;
+                let current = CURRENT_PATTERN_IDX.load(Ordering::Acquire) as usize;
+                info!("Playing pattern {}", current);
+                engine.play(current);
             }
             M5Command::Off => {
                 let ack = M5Packet {
@@ -256,11 +265,12 @@ pub async fn receiver_task(
                         error!("Could not send OFF ack: {}", err);
                     }
                 }
-                remote_events.send(RemoteEvent::Pause).await;
+                engine.pause();
+                info!("Paused");
             }
             M5Command::Speed => {
                 let velocity = (packet.value as f64) / config.max_velocity_mm_s;
-                pattern_input.lock(|cell| {
+                engine.input().lock(|cell| {
                     let mut input = cell.get();
                     input.velocity = velocity.clamp(0.0, 1.0);
                     cell.set(input);
@@ -268,7 +278,7 @@ pub async fn receiver_task(
             }
             M5Command::Depth => {
                 let depth = (packet.value as f64) / config.max_travel_mm;
-                pattern_input.lock(|cell| {
+                engine.input().lock(|cell| {
                     let mut input = cell.get();
                     input.depth = depth.clamp(0.0, 1.0);
                     cell.set(input);
@@ -276,7 +286,7 @@ pub async fn receiver_task(
             }
             M5Command::Stroke => {
                 let stroke = (packet.value as f64) / config.max_travel_mm;
-                pattern_input.lock(|cell| {
+                engine.input().lock(|cell| {
                     let mut input = cell.get();
                     input.stroke = stroke.clamp(0.0, 1.0);
                     cell.set(input);
@@ -285,7 +295,7 @@ pub async fn receiver_task(
             M5Command::Sensation => {
                 // Remote sends -100..100; pattern engine expects -1.0..1.0
                 let sensation = ((packet.value as f64) / 100.0).clamp(-1.0, 1.0);
-                pattern_input.lock(|cell| {
+                engine.input().lock(|cell| {
                     let mut input = cell.get();
                     input.sensation = sensation;
                     cell.set(input);
@@ -296,9 +306,8 @@ pub async fn receiver_task(
                 if let Some(pattern) = RemotePattern::from_remote_index(remote_idx) {
                     let engine_idx = pattern.to_engine_index();
                     CURRENT_PATTERN_IDX.store(engine_idx, Ordering::Release);
-                    remote_events
-                        .send(RemoteEvent::SwitchPattern(engine_idx))
-                        .await;
+                    info!("Switching to pattern {}", engine_idx);
+                    engine.play(engine_idx as usize);
                 }
             }
             M5Command::Heartbeat => {
@@ -330,7 +339,7 @@ pub async fn receiver_task(
 }
 
 #[embassy_executor::task]
-pub async fn heartbeat_send_task(
+async fn heartbeat_send_task(
     manager: &'static EspNowManager<'static>,
     sender: &'static Mutex<NoopRawMutex, EspNowSender<'static>>,
     config: RemoteConfig,
@@ -352,7 +361,7 @@ pub async fn heartbeat_send_task(
 }
 
 #[embassy_executor::task]
-pub async fn heartbeat_check_task(remote_events: &'static RemoteEventChannel) {
+async fn heartbeat_check_task(engine: &'static PatternEngine) {
     info!("ESP-NOW heartbeat check task started");
 
     let mut ticker = Ticker::every(Duration::from_millis(1000));
@@ -370,10 +379,10 @@ pub async fn heartbeat_check_task(remote_events: &'static RemoteEventChannel) {
 
         if was_connected && !is_connected {
             info!("Remote disconnected, heartbeat lost");
-            remote_events.send(RemoteEvent::Disconnected).await;
+            engine.stop();
         } else if !was_connected && is_connected {
-            info!("Remote connected");
-            remote_events.send(RemoteEvent::Connected).await;
+            info!("Remote connected, homing...");
+            engine.home();
         }
     }
 }
