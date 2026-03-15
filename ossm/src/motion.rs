@@ -1,6 +1,6 @@
 use rsruckig::prelude::*;
 
-use crate::command::{Cancelled, MoveCommand, OssmChannels, StateCommand, StateResponse};
+use crate::command::{Cancelled, MotionCommand, OssmChannels, StateCommand, StateResponse};
 use crate::{Board, MotionLimits};
 
 // Floor applied to velocity requests to prevent degenerate Ruckig inputs.
@@ -59,10 +59,6 @@ pub struct MotionController<'a, B: Board> {
     /// The last-instructed motion target. `Some` when a move has been commanded,
     /// `None` when there is no active motion intent (e.g. disabled, just homed).
     target: Option<MotionTarget>,
-    /// Default velocity used by `MoveTo` commands (mm/s).
-    default_speed: f64,
-    /// Default torque used by `MoveTo` commands.
-    default_torque: Option<f64>,
     ruckig: Ruckig<1, ThrowErrorHandler>,
     input: InputParameter<1>,
     output: OutputParameter<1>,
@@ -94,8 +90,6 @@ impl<'a, B: Board> MotionController<'a, B> {
             state: MotionState::Disabled,
             limits,
             target: None,
-            default_speed: MIN_VELOCITY,
-            default_torque: None,
             ruckig: Ruckig::<1, ThrowErrorHandler>::new(None, update_interval_secs),
             input,
             output: OutputParameter::new(None),
@@ -105,8 +99,7 @@ impl<'a, B: Board> MotionController<'a, B> {
     /// Advance the motion control loop by one step.
     ///
     /// Ticks the board, then the ruckig trajectory, then processes commands.
-    /// State commands are processed before move commands so that `SetSpeed`
-    /// applies before a `MoveTo` arriving in the same tick.
+    /// State commands are processed before move commands.
     pub async fn update(&mut self) {
         // 1. Let the board do periodic housekeeping (fault polling etc.)
         let _ = self.board.tick().await;
@@ -173,55 +166,21 @@ impl<'a, B: Board> MotionController<'a, B> {
                 self.respond(StateResponse::Completed);
             }
 
-            (_, StateCommand::SetSpeed(fraction)) => {
-                let vel = self.fraction_to_velocity(fraction);
-                self.default_speed = vel;
-                if matches!(self.state, MotionState::Moving) {
-                    if let Some(target) = &mut self.target {
-                        target.velocity = vel;
-                        self.sync_ruckig();
-                    }
-                }
-                self.respond(StateResponse::Completed);
-            }
-
-            (_, StateCommand::SetTorque(fraction)) => {
-                self.default_torque = Some(fraction);
-                if matches!(self.state, MotionState::Moving) {
-                    if let Some(target) = &mut self.target {
-                        target.torque = Some(fraction);
-                    }
-                    self.apply_torque().await;
-                }
-                self.respond(StateResponse::Completed);
-            }
-
             _ => {
                 self.respond(StateResponse::InvalidTransition);
             }
         }
     }
 
-    async fn process_move_command(&mut self, cmd: MoveCommand) {
-        match (&self.state, cmd) {
-            (MotionState::Ready, MoveCommand::MoveTo(fraction)) => {
-                let mm = self.fraction_to_mm(fraction);
-                self.set_target(|t| t.position = mm);
-                self.apply_torque().await;
-                self.state = MotionState::Moving;
-            }
-            (MotionState::Ready, MoveCommand::Motion(cmd)) => {
+    async fn process_move_command(&mut self, cmd: MotionCommand) {
+        match self.state {
+            MotionState::Ready => {
                 self.set_motion_target(cmd);
                 self.apply_torque().await;
                 self.state = MotionState::Moving;
             }
 
-            (MotionState::Moving, MoveCommand::MoveTo(fraction)) => {
-                let mm = self.fraction_to_mm(fraction);
-                self.set_target(|t| t.position = mm);
-                self.apply_torque().await;
-            }
-            (MotionState::Moving, MoveCommand::Motion(cmd)) => {
+            MotionState::Moving => {
                 self.set_motion_target(cmd);
                 self.apply_torque().await;
             }
@@ -328,17 +287,7 @@ impl<'a, B: Board> MotionController<'a, B> {
         mm_s.clamp(MIN_VELOCITY, self.limits.max_velocity_mm_s)
     }
 
-    fn set_target(&mut self, f: impl FnOnce(&mut MotionTarget)) {
-        let target = self.target.get_or_insert(MotionTarget {
-            position: self.input.current_position[0],
-            velocity: self.default_speed,
-            torque: self.default_torque,
-        });
-        f(target);
-        self.sync_ruckig();
-    }
-
-    fn set_motion_target(&mut self, cmd: crate::command::MotionCommand) {
+    fn set_motion_target(&mut self, cmd: MotionCommand) {
         self.target = Some(MotionTarget {
             position: self.fraction_to_mm(cmd.position),
             velocity: self.fraction_to_velocity(cmd.speed),
@@ -354,6 +303,7 @@ impl<'a, B: Board> MotionController<'a, B> {
             self.input.target_position[0] = target.position;
             self.input.max_velocity[0] = target.velocity;
             self.output.time = 0.0;
+            self.ruckig.reset();
         }
     }
 

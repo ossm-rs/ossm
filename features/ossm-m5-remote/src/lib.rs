@@ -270,35 +270,35 @@ async fn receiver_task(
             }
             M5Command::Speed => {
                 let velocity = (packet.value as f64) / config.max_velocity_mm_s;
-                engine.input().lock(|cell| {
-                    let mut input = cell.get();
-                    input.velocity = velocity.clamp(0.0, 1.0);
-                    cell.set(input);
+                engine.input().sender().send_modify(|opt| {
+                    if let Some(input) = opt {
+                        input.velocity = velocity.clamp(0.0, 1.0);
+                    }
                 });
             }
             M5Command::Depth => {
                 let depth = (packet.value as f64) / config.max_travel_mm;
-                engine.input().lock(|cell| {
-                    let mut input = cell.get();
-                    input.depth = depth.clamp(0.0, 1.0);
-                    cell.set(input);
+                engine.input().sender().send_modify(|opt| {
+                    if let Some(input) = opt {
+                        input.depth = depth.clamp(0.0, 1.0);
+                    }
                 });
             }
             M5Command::Stroke => {
                 let stroke = (packet.value as f64) / config.max_travel_mm;
-                engine.input().lock(|cell| {
-                    let mut input = cell.get();
-                    input.stroke = stroke.clamp(0.0, 1.0);
-                    cell.set(input);
+                engine.input().sender().send_modify(|opt| {
+                    if let Some(input) = opt {
+                        input.stroke = stroke.clamp(0.0, 1.0);
+                    }
                 });
             }
             M5Command::Sensation => {
                 // Remote sends -100..100; pattern engine expects -1.0..1.0
                 let sensation = ((packet.value as f64) / 100.0).clamp(-1.0, 1.0);
-                engine.input().lock(|cell| {
-                    let mut input = cell.get();
-                    input.sensation = sensation;
-                    cell.set(input);
+                engine.input().sender().send_modify(|opt| {
+                    if let Some(input) = opt {
+                        input.sensation = sensation;
+                    }
                 });
             }
             M5Command::Pattern => {

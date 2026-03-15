@@ -1,4 +1,3 @@
-use core::cell::Cell;
 use core::sync::atomic::{AtomicU16, Ordering};
 
 use embassy_futures::select::{self, Either};
@@ -108,7 +107,7 @@ impl PatternEngine {
     pub const fn new(ossm: &'static Ossm) -> Self {
         Self {
             channels: PatternEngineChannels::new(),
-            input: SharedPatternInput::new(Cell::new(PatternInput::DEFAULT)),
+            input: SharedPatternInput::new_with(PatternInput::DEFAULT),
             ossm,
         }
     }

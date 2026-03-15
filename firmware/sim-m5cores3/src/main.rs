@@ -91,7 +91,7 @@ async fn display_task(mut display: Display, steps_per_mm: f64, min_mm: f64, max_
             0.0
         };
 
-        let input = PATTERNS.input().lock(|cell| cell.get());
+        let input = PATTERNS.input().try_get().unwrap_or_default();
 
         let connected = ossm_m5_remote::is_connected();
         let pattern_idx = ossm_m5_remote::current_pattern() as usize;

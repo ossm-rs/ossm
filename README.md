@@ -99,7 +99,7 @@ The project is split into several layers, each with a clear responsibility. Here
 
 ### Ossm (Public Control)
 
-`Ossm` is the public-facing API that features and application code interact with. On its own it doesn't do anything - it simply exposes methods like `enable()`, `disable()`, `home()`, `move_to()`, and `set_speed()` that accept fractional values (0.0-1.0) and forwards them over a lock-free channel to the motion controller. It's up to features (like the pattern engine or a controller) to call these methods and drive the machine.
+`Ossm` is the public-facing API that features and application code interact with. On its own it doesn't do anything - it simply exposes methods like `enable()`, `disable()`, `home()`, `pause()`, `resume()`, `begin_motion()`, `update_motion()`, and `await_motion()` that forward commands over a lock-free channel to the motion controller. It's up to features (like the pattern engine or a controller) to call these methods and drive the machine.
 
 ### Motion Controller
 
