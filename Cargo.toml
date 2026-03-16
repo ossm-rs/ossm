@@ -30,6 +30,13 @@ debug-assertions = false
 opt-level = 's'
 overflow-checks = false
 
+[profile.release.package.seeed-xiao]
+codegen-units = 1
+debug = 2
+debug-assertions = false
+opt-level = 's'
+overflow-checks = false
+
 [profile.release.package.sim-wasm]
 codegen-units = 1
 opt-level = 's'
