@@ -13,6 +13,15 @@ build-ossm-alt:
 flash-ossm-alt:
     cargo +esp run --release
 
+# Waveshare ESP32-S3-RS485-CAN
+[working-directory: 'firmware/waveshare']
+build-waveshare:
+    cargo +esp build --release
+
+[working-directory: 'firmware/waveshare']
+flash-waveshare:
+    cargo +esp run --release
+
 # M5CoreS3 Simulator (ESP32-S3)
 [working-directory: 'firmware/sim-m5cores3']
 build-m5cores3:
@@ -33,7 +42,7 @@ dev-patterns: build-wasm
 
 # All
 [parallel]
-build-all: build-ossm-alt build-wasm build-m5cores3
+build-all: build-ossm-alt build-waveshare build-wasm build-m5cores3
 
 # Focus rust-analyzer on a firmware crate by symlinking its .cargo to the workspace root
 [unix]

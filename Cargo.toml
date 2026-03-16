@@ -16,6 +16,13 @@ debug-assertions = false
 opt-level = 's'
 overflow-checks = false
 
+[profile.release.package.waveshare]
+codegen-units = 1
+debug = 2
+debug-assertions = false
+opt-level = 's'
+overflow-checks = false
+
 [profile.release.package.sim-m5cores3]
 codegen-units = 1
 debug = 2

@@ -9,24 +9,24 @@ pub enum BoardError<E: core::fmt::Debug> {
     Motor(E),
 }
 
-/// OSSM Alt board, generic over any [`Rs485Motor`] + [`SelfHoming`] motor.
+/// Generic RS485 board, generic over any [`Rs485Motor`] + [`SelfHoming`] motor.
 ///
 /// This board is a **position follower**. The motion controller calls
 /// `set_position(mm)` every tick with the next point on the ruckig
 /// trajectory. The board converts mm to steps and sends the command
 /// to the motor.
-pub struct OssmAlt<M: Rs485Motor + SelfHoming> {
+pub struct Rs485Board<M: Rs485Motor + SelfHoming> {
     motor: M,
     mechanical: &'static MechanicalConfig,
 }
 
-impl<M: Rs485Motor + SelfHoming> OssmAlt<M> {
+impl<M: Rs485Motor + SelfHoming> Rs485Board<M> {
     pub fn new(motor: M, mechanical: &'static MechanicalConfig) -> Self {
         Self { motor, mechanical }
     }
 }
 
-impl<M: Rs485Motor + SelfHoming> Board for OssmAlt<M> {
+impl<M: Rs485Motor + SelfHoming> Board for Rs485Board<M> {
     type Error = BoardError<M::Error>;
 
     async fn enable(&mut self) -> Result<(), Self::Error> {

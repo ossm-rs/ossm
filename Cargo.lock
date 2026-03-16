@@ -1480,19 +1480,11 @@ dependencies = [
  "log",
  "m57aim-motor",
  "ossm",
- "ossm-alt-board",
  "ossm-m5-remote",
  "pattern-engine",
  "portable-atomic",
+ "rs485-board",
  "static_cell",
-]
-
-[[package]]
-name = "ossm-alt-board"
-version = "0.1.0"
-dependencies = [
- "m57aim-motor",
- "ossm",
 ]
 
 [[package]]
@@ -1789,6 +1781,14 @@ checksum = "ae086fe401655097112f1bd988012c0334d19b0c495128b256f1506873c6ba8f"
 dependencies = [
  "heapless 0.9.2",
  "ieee754",
+]
+
+[[package]]
+name = "rs485-board"
+version = "0.1.0"
+dependencies = [
+ "m57aim-motor",
+ "ossm",
 ]
 
 [[package]]
@@ -2304,6 +2304,32 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
+]
+
+[[package]]
+name = "waveshare"
+version = "0.1.0"
+dependencies = [
+ "critical-section",
+ "embassy-executor",
+ "embassy-futures",
+ "embassy-sync 0.7.2",
+ "embassy-time",
+ "esp-alloc",
+ "esp-backtrace",
+ "esp-bootloader-esp-idf",
+ "esp-hal",
+ "esp-println",
+ "esp-radio",
+ "esp-rtos",
+ "log",
+ "m57aim-motor",
+ "ossm",
+ "ossm-m5-remote",
+ "pattern-engine",
+ "portable-atomic",
+ "rs485-board",
+ "static_cell",
 ]
 
 [[package]]

@@ -87,12 +87,10 @@ async fn main(spawner: Spawner) {
     let uart_config = Config::default().with_baudrate(MOTOR_BAUD_RATE);
     let uart = Uart::new(p.UART1, uart_config)
         .expect("Failed to initialize UART")
-        .with_tx(p.GPIO10)
-        .with_rx(p.GPIO12);
+        .with_tx(p.GPIO17)
+        .with_rx(p.GPIO18);
 
-    // Manual DE control — hardware RS485 mode has inverted RTS polarity
-    // on the OSSM Alt board, so we toggle a GPIO directly instead.
-    let de = Output::new(p.GPIO11, Level::Low, OutputConfig::default());
+    let de = Output::new(p.GPIO21, Level::Low, OutputConfig::default());
     let rs485 = Rs485::new(uart, de);
 
     let transport = Rs485ModbusTransport::new(rs485, Delay);
@@ -114,7 +112,6 @@ async fn main(spawner: Spawner) {
     let sw_int = SoftwareInterruptControl::new(p.SW_INTERRUPT);
     let app_core_stack = APP_CORE_STACK.init(Stack::new());
 
-    // Run the motion controller interrupt on its own core at high priority
     let second_core = move || {
         let executor = InterruptExecutor::new(sw_int.software_interrupt2);
         let executor = EXECUTOR_CORE_1.init(executor);

@@ -34,9 +34,7 @@ Boards:
 
   A cheap, compact, powerful s3 board with built in 28v USB-PD.
 
-- Industrial ESP32-S3-RS485-CAN by WaveShare
-
-  Coming soon.
+- [Industrial ESP32-S3-RS485-CAN](https://www.waveshare.com/esp32-s3-rs485-can.htm) by WaveShare
 
 Motors:
 
@@ -175,11 +173,14 @@ Features are optional higher-level capabilities built on top of the core motion 
 
    This sets `ESP_LOG=info` which enables runtime log output when flashing. You can change the log level in `.env` to `debug`, `warn`, `error`, etc.
 
-6. You should now be able to build and flash:
+6. You should now be able to build and flash for your board:
 
    ```sh
-   just build
-   just flash
+   just build-ossm-alt    # OSSM Alt Edition
+   just build-waveshare   # Waveshare ESP32-S3-RS485-CAN
+
+   just flash-ossm-alt    # Build + flash OSSM Alt Edition
+   just flash-waveshare   # Build + flash Waveshare
    ```
 
 #### Configuring rust-analyzer

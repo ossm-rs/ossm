@@ -1,5 +1,5 @@
 [package]
-name = "ossm-alt-board"
+name = "rs485-board"
 version = "0.1.0"
 edition = "2024"
 

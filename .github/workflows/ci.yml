@@ -31,8 +31,11 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
 
   build-esp:
-    name: Build ESP firmware
+    name: Build ${{ matrix.firmware }}
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        firmware: [ossm-alt, waveshare]
     steps:
       - uses: actions/checkout@v4
 
@@ -42,8 +45,8 @@ jobs:
 
       - uses: extractions/setup-just@v2
 
-      - name: Build ossm-alt
-        run: just build-ossm-alt
+      - name: Build ${{ matrix.firmware }}
+        run: just build-${{ matrix.firmware }}
 
   build-windows:
     name: Build on Windows
