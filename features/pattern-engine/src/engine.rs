@@ -4,7 +4,7 @@ use embassy_futures::select::{self, Either};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
 use embedded_hal_async::delay::DelayNs;
-use ossm::Ossm;
+use ossm::{Ossm, StateResponse};
 
 use crate::any_pattern::AnyPattern;
 use crate::input::{PatternInput, SharedPatternInput};
@@ -202,16 +202,27 @@ impl<const N: usize> PatternEngineRunner<N> {
                     self.handle_command(cmd).await;
                 }
                 RunnerState::Homing(maybe_idx) => {
-                    ossm.enable().await;
+                    if ossm.enable().await != StateResponse::Completed {
+                        log::error!("Enable failed, returning to idle");
+                        self.set_state(RunnerState::Idle);
+                        continue;
+                    }
 
                     let result =
                         select::select(ossm.home(), self.engine.channels.commands.receive()).await;
 
                     match result {
-                        Either::First(_) => match maybe_idx {
-                            Some(idx) => self.set_state(RunnerState::Playing(idx)),
-                            None => self.set_state(RunnerState::Ready),
-                        },
+                        Either::First(resp) => {
+                            if resp != StateResponse::Completed {
+                                log::error!("Home failed, returning to idle");
+                                self.set_state(RunnerState::Idle);
+                                continue;
+                            }
+                            match maybe_idx {
+                                Some(idx) => self.set_state(RunnerState::Playing(idx)),
+                                None => self.set_state(RunnerState::Ready),
+                            }
+                        }
                         Either::Second(cmd) => {
                             self.handle_command(cmd).await;
                         }
@@ -244,15 +255,30 @@ impl<const N: usize> PatternEngineRunner<N> {
                             }
                             Either::Second(cmd) => match cmd {
                                 EngineCommand::Pause => {
-                                    let _ = ossm.pause().await;
+                                    if ossm.pause().await != StateResponse::Completed {
+                                        log::error!("Pause failed, stopping engine");
+                                        *state = RunnerState::Idle;
+                                        engine.channels.store(EngineState::Idle);
+                                        break;
+                                    }
                                     engine.channels.store(EngineState::Paused(idx));
                                 }
                                 EngineCommand::Resume => {
-                                    let _ = ossm.resume().await;
+                                    if ossm.resume().await != StateResponse::Completed {
+                                        log::error!("Resume failed, stopping engine");
+                                        *state = RunnerState::Idle;
+                                        engine.channels.store(EngineState::Idle);
+                                        break;
+                                    }
                                     engine.channels.store(EngineState::Playing(idx));
                                 }
                                 EngineCommand::Play(i) if i == idx => {
-                                    let _ = ossm.resume().await;
+                                    if ossm.resume().await != StateResponse::Completed {
+                                        log::error!("Resume failed, stopping engine");
+                                        *state = RunnerState::Idle;
+                                        engine.channels.store(EngineState::Idle);
+                                        break;
+                                    }
                                     engine.channels.store(EngineState::Playing(idx));
                                 }
                                 EngineCommand::Play(new_idx) if new_idx < N => {
@@ -261,7 +287,9 @@ impl<const N: usize> PatternEngineRunner<N> {
                                     break;
                                 }
                                 EngineCommand::Stop => {
-                                    let _ = ossm.disable().await;
+                                    if ossm.disable().await == StateResponse::Fault {
+                                        log::error!("Board fault during disable");
+                                    }
                                     *state = RunnerState::Idle;
                                     engine.channels.store(EngineState::Idle);
                                     break;
@@ -292,7 +320,9 @@ impl<const N: usize> PatternEngineRunner<N> {
                 }
             }
             EngineCommand::Stop => {
-                let _ = self.engine.ossm().disable().await;
+                if self.engine.ossm().disable().await == StateResponse::Fault {
+                    log::error!("Board fault during disable");
+                }
                 self.set_state(RunnerState::Idle);
             }
             EngineCommand::Home => {
