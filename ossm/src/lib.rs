@@ -4,6 +4,7 @@ extern crate alloc;
 mod board;
 mod command;
 mod limits;
+pub mod logging;
 mod mechanical;
 mod motion;
 mod motor;

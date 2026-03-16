@@ -127,7 +127,9 @@ async fn display_task(mut display: Display, steps_per_mm: f64, min_mm: f64, max_
 
 #[esp_rtos::main]
 async fn main(spawner: Spawner) {
-    esp_println::logger::init_logger_from_env();
+    ossm::logging::init(log::LevelFilter::Info, |line| {
+        esp_println::println!("{}", line);
+    });
 
     let config = esp_hal::Config::default().with_cpu_clock(esp_hal::clock::CpuClock::max());
     let p = esp_hal::init(config);

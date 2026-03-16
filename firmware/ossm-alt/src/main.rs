@@ -77,7 +77,9 @@ async fn motion_task(mut controller: MotionController<'static, ConcreteBoard>) {
 
 #[esp_rtos::main]
 async fn main(spawner: Spawner) {
-    esp_println::logger::init_logger_from_env();
+    ossm::logging::init(log::LevelFilter::Info, |line| {
+        esp_println::println!("{}", line);
+    });
 
     let p = esp_hal::init(esp_hal::Config::default());
 
