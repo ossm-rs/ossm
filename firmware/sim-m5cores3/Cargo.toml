@@ -31,7 +31,7 @@ esp-rtos = { version = "0.2.0", features = [
 
 esp-bootloader-esp-idf = { version = "0.4.0", features = ["log-04", "esp32s3"] }
 
-log = "0.4.27"
+log = { version = "0.4.27", features = ["release_max_level_info"] }
 
 embassy-executor = { version = "0.9.1", features = ["log"] }
 embassy-futures = "0.1"

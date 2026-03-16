@@ -33,6 +33,10 @@ impl Simulator {
     /// `update_interval_ms` controls the motion controller tick rate (e.g. 10.0 for 10ms).
     #[wasm_bindgen(constructor)]
     pub fn new(update_interval_ms: f64) -> Self {
+        ossm::logging::init(log::LevelFilter::Info, |line| {
+            web_sys::console::log_1(&wasm_bindgen::JsValue::from_str(line));
+        });
+
         let update_interval_secs = update_interval_ms / 1000.0;
         let motor = SimMotor::new(&MOTOR_POSITION);
         let board = SimBoard::new(motor, &MECHANICAL);
