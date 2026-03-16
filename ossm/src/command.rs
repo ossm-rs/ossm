@@ -2,7 +2,7 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
 use embassy_sync::signal::Signal;
 
-pub(crate) type MoveChannel = Channel<CriticalSectionRawMutex, MoveCommand, 1>;
+pub(crate) type MoveChannel = Channel<CriticalSectionRawMutex, MotionCommand, 1>;
 pub(crate) type StateChannel = Channel<CriticalSectionRawMutex, StateCommand, 1>;
 pub(crate) type StateResponseSignal = Signal<CriticalSectionRawMutex, StateResponse>;
 pub(crate) type MoveResponseSignal = Signal<CriticalSectionRawMutex, Result<(), Cancelled>>;
@@ -36,20 +36,12 @@ pub struct MotionCommand {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum MoveCommand {
-    MoveTo(f64),
-    Motion(MotionCommand),
-}
-
-#[derive(Debug, Clone, Copy)]
 pub enum StateCommand {
     Enable,
     Disable,
     Home,
     Pause,
     Resume,
-    SetSpeed(f64),
-    SetTorque(f64),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

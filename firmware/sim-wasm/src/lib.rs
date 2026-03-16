@@ -85,37 +85,37 @@ impl Simulator {
 
     /// Set the maximum depth as a fraction of the machine range (0.0-1.0).
     pub fn set_depth(&self, depth: f64) {
-        PATTERNS.input().lock(|cell| {
-            let mut input = cell.get();
-            input.depth = depth;
-            cell.set(input);
+        PATTERNS.input().sender().send_modify(|opt| {
+            if let Some(input) = opt {
+                input.depth = depth;
+            }
         });
     }
 
     /// Set the stroke length as a fraction of the machine range (0.0-1.0).
     pub fn set_stroke(&self, stroke: f64) {
-        PATTERNS.input().lock(|cell| {
-            let mut input = cell.get();
-            input.stroke = stroke;
-            cell.set(input);
+        PATTERNS.input().sender().send_modify(|opt| {
+            if let Some(input) = opt {
+                input.stroke = stroke;
+            }
         });
     }
 
     /// Set velocity as a fraction of max velocity (0.0-1.0).
     pub fn set_velocity(&self, velocity: f64) {
-        PATTERNS.input().lock(|cell| {
-            let mut input = cell.get();
-            input.velocity = velocity;
-            cell.set(input);
+        PATTERNS.input().sender().send_modify(|opt| {
+            if let Some(input) = opt {
+                input.velocity = velocity;
+            }
         });
     }
 
     /// Set sensation value (-1.0 to 1.0). Meaning is pattern-specific.
     pub fn set_sensation(&self, sensation: f64) {
-        PATTERNS.input().lock(|cell| {
-            let mut input = cell.get();
-            input.sensation = sensation;
-            cell.set(input);
+        PATTERNS.input().sender().send_modify(|opt| {
+            if let Some(input) = opt {
+                input.sensation = sensation;
+            }
         });
     }
 

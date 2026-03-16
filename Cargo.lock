@@ -1453,6 +1453,7 @@ dependencies = [
  "embassy-sync 0.7.2",
  "embedded-hal 1.0.0",
  "heapless 0.9.2",
+ "log",
  "rsruckig",
 ]
 
@@ -1548,6 +1549,7 @@ dependencies = [
  "embassy-futures",
  "embassy-sync 0.7.2",
  "embedded-hal-async",
+ "log",
  "ossm",
 ]
 
@@ -1953,12 +1955,15 @@ version = "0.1.0"
 dependencies = [
  "critical-section",
  "embassy-time",
+ "js-sys",
+ "log",
  "ossm",
  "pattern-engine",
  "sim-board",
  "sim-motor",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

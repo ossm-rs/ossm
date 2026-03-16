@@ -11,7 +11,7 @@ pub mod transport;
 
 pub use board::Board;
 pub use command::{Cancelled, MotionCommand, StateCommand, StateResponse};
-use command::{MoveCommand, OssmChannels};
+use command::OssmChannels;
 pub use limits::MotionLimits;
 pub use mechanical::MechanicalConfig;
 pub use motion::MotionController;
@@ -44,14 +44,6 @@ impl Ossm {
         MotionController::new(board, limits, update_interval_secs, &self.channels)
     }
 
-    /// Drain any pending move command, then send the new one and await completion.
-    async fn send_move(&self, cmd: MoveCommand) -> Result<(), Cancelled> {
-        self.channels.move_resp.reset();
-        let _ = self.channels.move_cmd.try_receive();
-        let _ = self.channels.move_cmd.try_send(cmd);
-        self.channels.move_resp.wait().await
-    }
-
     /// Send a state command and wait for the motion controller to respond.
     async fn send_state(&self, cmd: StateCommand) -> StateResponse {
         self.channels.state_resp.reset();
@@ -79,19 +71,24 @@ impl Ossm {
         self.send_state(StateCommand::Resume).await
     }
 
-    pub async fn set_speed(&self, speed: f64) -> StateResponse {
-        self.send_state(StateCommand::SetSpeed(speed)).await
+    /// Start a motion without waiting for completion.
+    ///
+    /// Resets the move response signal, so a subsequent [`await_motion`](Self::await_motion)
+    /// will wait for this move to finish.
+    pub fn begin_motion(&self, cmd: MotionCommand) {
+        self.channels.move_resp.reset();
+        let _ = self.channels.move_cmd.try_receive();
+        let _ = self.channels.move_cmd.try_send(cmd);
     }
 
-    pub async fn set_torque(&self, torque: f64) -> StateResponse {
-        self.send_state(StateCommand::SetTorque(torque)).await
+    /// Update the target of an in-flight motion without resetting the completion signal.
+    pub fn update_motion(&self, cmd: MotionCommand) {
+        let _ = self.channels.move_cmd.try_receive();
+        let _ = self.channels.move_cmd.try_send(cmd);
     }
 
-    pub async fn move_to(&self, position: f64) -> Result<(), Cancelled> {
-        self.send_move(MoveCommand::MoveTo(position)).await
-    }
-
-    pub async fn push_motion(&self, cmd: MotionCommand) -> Result<(), Cancelled> {
-        self.send_move(MoveCommand::Motion(cmd)).await
+    /// Wait for the current in-flight motion to complete.
+    pub async fn await_motion(&self) -> Result<(), Cancelled> {
+        self.channels.move_resp.wait().await
     }
 }

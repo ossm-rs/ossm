@@ -1,3 +1,6 @@
+use embassy_futures::select::{self, Either};
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_sync::watch::Receiver;
 use embedded_hal_async::delay::DelayNs;
 use ossm::{Cancelled, MotionCommand, Ossm};
 
@@ -22,23 +25,33 @@ pub trait Pattern {
 pub struct PatternCtx<D: DelayNs> {
     ossm: &'static Ossm,
     input: &'static SharedPatternInput,
+    input_receiver: Receiver<'static, CriticalSectionRawMutex, PatternInput, 1>,
     delay: D,
 }
 
 impl<D: DelayNs> PatternCtx<D> {
     pub fn new(ossm: &'static Ossm, input: &'static SharedPatternInput, delay: D) -> Self {
-        Self { ossm, input, delay }
+        let input_receiver = input.receiver().expect("Watch receiver slot already taken");
+        Self {
+            ossm,
+            input,
+            input_receiver,
+            delay,
+        }
     }
 
     /// Read the current sensation value (-1.0 to 1.0).
     ///
     /// Re-read at each `.await` point to pick up live changes from BLE/UI.
     pub fn sensation(&self) -> f64 {
-        self.input.lock(|cell| cell.get()).sensation
+        self.input
+            .try_get()
+            .unwrap_or(PatternInput::DEFAULT)
+            .sensation
     }
 
     fn input(&self) -> PatternInput {
-        self.input.lock(|cell| cell.get())
+        self.input.try_get().unwrap_or(PatternInput::DEFAULT)
     }
 
     /// Start building a motion command.
@@ -50,17 +63,13 @@ impl<D: DelayNs> PatternCtx<D> {
     /// ctx.motion().position(1.0).send().await?;
     /// ctx.motion().position(0.5).speed(0.5).send().await?;
     /// ```
-    pub fn motion(&self) -> MotionBuilder<'_, D, NoPosition> {
+    pub fn motion(&mut self) -> MotionBuilder<'_, D, NoPosition> {
         MotionBuilder {
             ctx: self,
             position: NoPosition,
             speed_factor: 1.0,
             torque: None,
         }
-    }
-
-    async fn send_command(&self, cmd: MotionCommand) -> Result<(), Cancelled> {
-        self.ossm.push_motion(cmd).await
     }
 
     pub async fn delay_ms(&mut self, ms: u64) {
@@ -88,7 +97,7 @@ pub struct HasPosition(f64);
 /// Created via [`PatternCtx::motion()`]. Call `.position()` before `.send()` —
 /// the type system enforces this at compile time.
 pub struct MotionBuilder<'a, D: DelayNs, P> {
-    ctx: &'a PatternCtx<D>,
+    ctx: &'a mut PatternCtx<D>,
     position: P,
     speed_factor: f64,
     torque: Option<f64>,
@@ -126,19 +135,38 @@ impl<'a, D: DelayNs> MotionBuilder<'a, D, NoPosition> {
     }
 }
 
+fn compute_command(input: &PatternInput, fraction: f64, speed_factor: f64, torque: Option<f64>) -> MotionCommand {
+    let shallow = (input.depth - input.stroke).max(0.0);
+    let stroke = input.depth - shallow;
+    let position = shallow + fraction * stroke;
+    let speed = input.velocity * speed_factor;
+    MotionCommand {
+        position,
+        speed,
+        torque,
+    }
+}
+
 impl<'a, D: DelayNs> MotionBuilder<'a, D, HasPosition> {
     pub async fn send(self) -> Result<(), Cancelled> {
-        let input = self.ctx.input();
         let fraction = self.position.0.clamp(0.0, 1.0);
-        let shallow = input.depth - input.stroke;
-        let position = shallow + fraction * input.stroke;
-        let speed = input.velocity * self.speed_factor;
-        self.ctx
-            .send_command(MotionCommand {
-                position,
-                speed,
-                torque: self.torque,
-            })
-            .await
+        let speed_factor = self.speed_factor;
+        let torque = self.torque;
+
+        let input = self.ctx.input();
+        let cmd = compute_command(&input, fraction, speed_factor, torque);
+        self.ctx.ossm.begin_motion(cmd);
+
+        let mut move_done = core::pin::pin!(self.ctx.ossm.await_motion());
+
+        loop {
+            match select::select(move_done.as_mut(), self.ctx.input_receiver.changed()).await {
+                Either::First(result) => return result,
+                Either::Second(new_input) => {
+                    let cmd = compute_command(&new_input, fraction, speed_factor, torque);
+                    self.ctx.ossm.update_motion(cmd);
+                }
+            }
+        }
     }
 }

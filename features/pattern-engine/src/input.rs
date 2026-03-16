@@ -1,7 +1,5 @@
-use core::cell::Cell;
-
-use embassy_sync::blocking_mutex::Mutex;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_sync::watch::Watch;
 
 #[derive(Debug, Clone, Copy)]
 pub struct PatternInput {
@@ -31,4 +29,4 @@ impl Default for PatternInput {
     }
 }
 
-pub type SharedPatternInput = Mutex<CriticalSectionRawMutex, Cell<PatternInput>>;
+pub type SharedPatternInput = Watch<CriticalSectionRawMutex, PatternInput, 1>;
