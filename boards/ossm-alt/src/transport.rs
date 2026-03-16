@@ -143,9 +143,13 @@ where
         use crc::{CRC_16_MODBUS, Crc};
         const MODBUS_CRC: Crc<u16> = Crc::<u16>::new(&CRC_16_MODBUS);
         let mut frame: Vec<u8, 32> = Vec::new();
-        frame.extend_from_slice(request).ok();
+        frame
+            .extend_from_slice(request)
+            .map_err(|_| TransportError::Protocol("request exceeds frame buffer"))?;
         let crc = MODBUS_CRC.checksum(request).to_le_bytes();
-        frame.extend_from_slice(&crc).ok();
+        frame
+            .extend_from_slice(&crc)
+            .map_err(|_| TransportError::Protocol("request + CRC exceeds frame buffer"))?;
         self.uart.write_all(&frame).map_err(TransportError::Uart)?;
         self.uart.flush().map_err(TransportError::Uart)?;
         let expected_len = response.len();
