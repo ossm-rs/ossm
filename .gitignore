@@ -6,3 +6,5 @@ rust-analyzer.toml
 /rust-toolchain.toml
 
 .env
+
+.pnpm-store

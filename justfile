@@ -29,7 +29,7 @@ build-wasm:
 # Dev server (watches Rust sources and hot-reloads WASM)
 [working-directory: 'apps/simulator']
 dev-patterns: build-wasm
-    pnpm dev
+    pnpm dev --host
 
 # All
 [parallel]
