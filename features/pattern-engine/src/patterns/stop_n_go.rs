@@ -9,13 +9,8 @@ const MAX_DELAY_MS: f64 = 10_000.0;
 pub struct StopNGo;
 
 impl Pattern for StopNGo {
-    fn name(&self) -> &'static str {
-        "Stop'n'Go"
-    }
-
-    fn description(&self) -> &'static str {
-        "Stops after a series of strokes. Sensation controls the delay."
-    }
+    const NAME: &'static str = "Stop'n'Go";
+    const DESCRIPTION: &'static str = "Stops after a series of strokes. Sensation controls the delay.";
 
     async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), ossm::Cancelled> {
         let mut num_strokes: usize = 1;

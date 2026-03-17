@@ -5,13 +5,8 @@ use crate::pattern::{Pattern, PatternCtx};
 pub struct Torque;
 
 impl Pattern for Torque {
-    fn name(&self) -> &'static str {
-        "Torque"
-    }
-
-    fn description(&self) -> &'static str {
-        "Same as simple. Sensation controls the torque applied."
-    }
+    const NAME: &'static str = "Torque";
+    const DESCRIPTION: &'static str = "Same as simple. Sensation controls the torque applied.";
 
     async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), ossm::Cancelled> {
         loop {

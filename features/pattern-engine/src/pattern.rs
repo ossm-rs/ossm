@@ -17,8 +17,17 @@ pub const MAX_SENSATION: f64 = 1.0;
 /// `send().await?` returns `Err(Cancelled)`, which exits the pattern cleanly.
 #[allow(async_fn_in_trait)]
 pub trait Pattern {
-    fn name(&self) -> &'static str;
-    fn description(&self) -> &'static str;
+    const NAME: &'static str;
+    const DESCRIPTION: &'static str;
+
+    fn name(&self) -> &'static str {
+        Self::NAME
+    }
+
+    fn description(&self) -> &'static str {
+        Self::DESCRIPTION
+    }
+
     async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), Cancelled>;
 }
 
@@ -106,7 +115,7 @@ pub struct MotionBuilder<'a, D: DelayNs, P> {
 impl<'a, D: DelayNs, P> MotionBuilder<'a, D, P> {
     /// Set the velocity as a multiplier of the current input velocity.
     ///
-    /// Default is 1.0 (full input velocity). 0.5 = half speed, 2.0 = double.
+    /// Default is 1.0 (full input velocity). 0.5 = half speed. Clamped to 0.0–1.0.
     pub fn speed(mut self, factor: f64) -> Self {
         self.speed_factor = factor;
         self
@@ -139,7 +148,7 @@ fn compute_command(input: &PatternInput, fraction: f64, speed_factor: f64, torqu
     let shallow = (input.depth - input.stroke).max(0.0);
     let stroke = input.depth - shallow;
     let position = shallow + fraction * stroke;
-    let speed = input.velocity * speed_factor;
+    let speed = input.velocity * speed_factor.clamp(0.0, 1.0);
     MotionCommand {
         position,
         speed,

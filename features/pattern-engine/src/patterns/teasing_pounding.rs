@@ -9,13 +9,8 @@ const BASE_SPEED: f64 = 1.0 / MAX_SCALING_FACTOR;
 pub struct TeasingPounding;
 
 impl Pattern for TeasingPounding {
-    fn name(&self) -> &'static str {
-        "Teasing Pounding"
-    }
-
-    fn description(&self) -> &'static str {
-        "Alternating strokes. Sensation controls speed ratio of in and out strokes."
-    }
+    const NAME: &'static str = "Teasing Pounding";
+    const DESCRIPTION: &'static str = "Alternating strokes. Sensation controls speed ratio of in and out strokes.";
 
     async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), ossm::Cancelled> {
         loop {

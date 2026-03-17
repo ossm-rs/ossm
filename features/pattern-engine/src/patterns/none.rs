@@ -5,13 +5,8 @@ use crate::pattern::{Pattern, PatternCtx};
 pub struct NonePattern;
 
 impl Pattern for NonePattern {
-    fn name(&self) -> &'static str {
-        "None"
-    }
-
-    fn description(&self) -> &'static str {
-        "No pattern. Holds position."
-    }
+    const NAME: &'static str = "None";
+    const DESCRIPTION: &'static str = "No pattern. Holds position.";
 
     async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), ossm::Cancelled> {
         loop {

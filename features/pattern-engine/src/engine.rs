@@ -6,7 +6,7 @@ use embassy_sync::channel::Channel;
 use embedded_hal_async::delay::DelayNs;
 use ossm::Ossm;
 
-use crate::any_pattern::AnyPattern;
+use crate::AnyPattern;
 use crate::input::{PatternInput, SharedPatternInput};
 use crate::pattern::{Pattern, PatternCtx};
 

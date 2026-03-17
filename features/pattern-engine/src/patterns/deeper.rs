@@ -8,13 +8,8 @@ const MAX_STEPS: f64 = 22.0;
 pub struct Deeper;
 
 impl Pattern for Deeper {
-    fn name(&self) -> &'static str {
-        "Deeper"
-    }
-
-    fn description(&self) -> &'static str {
-        "Goes deeper with every stroke. Sensation controls the number of steps."
-    }
+    const NAME: &'static str = "Deeper";
+    const DESCRIPTION: &'static str = "Goes deeper with every stroke. Sensation controls the number of steps.";
 
     async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), ossm::Cancelled> {
         loop {

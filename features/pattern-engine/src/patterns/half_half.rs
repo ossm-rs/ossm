@@ -9,13 +9,8 @@ const BASE_SPEED: f64 = 1.0 / MAX_SCALING_FACTOR;
 pub struct HalfHalf;
 
 impl Pattern for HalfHalf {
-    fn name(&self) -> &'static str {
-        "Half'n'Half"
-    }
-
-    fn description(&self) -> &'static str {
-        "Alternate between full and half strokes. Sensation controls speed ratio."
-    }
+    const NAME: &'static str = "Half'n'Half";
+    const DESCRIPTION: &'static str = "Alternate between full and half strokes. Sensation controls speed ratio.";
 
     async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), ossm::Cancelled> {
         let mut half = false;
