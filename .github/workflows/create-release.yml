@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        firmware: [ossm-alt, waveshare]
+        firmware: [ossm-alt, waveshare, seeed-xiao]
     steps:
       - uses: actions/checkout@v4
 
@@ -75,7 +75,7 @@ jobs:
         uses: actions/download-artifact@v4
 
       - name: Create release
-        run: gh release create "$TAG" ossm-alt/ossm-alt.bin waveshare/waveshare.bin --repo "$GITHUB_REPOSITORY" --title "$TAG" --notes "$NOTES"
+        run: gh release create "$TAG" ossm-alt/ossm-alt.bin waveshare/waveshare.bin seeed-xiao/seeed-xiao.bin --repo "$GITHUB_REPOSITORY" --title "$TAG" --notes "$NOTES"
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.tag.outputs.new_tag }}

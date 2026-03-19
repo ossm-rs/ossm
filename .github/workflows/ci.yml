@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        firmware: [ossm-alt, waveshare]
+        firmware: [ossm-alt, waveshare, seeed-xiao]
     steps:
       - uses: actions/checkout@v4
 

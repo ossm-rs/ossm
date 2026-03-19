@@ -22,6 +22,15 @@ build-waveshare:
 flash-waveshare:
     cargo +esp run --release
 
+# Seeed Studio XIAO ESP32-S3
+[working-directory: 'firmware/seeed-xiao']
+build-seeed-xiao:
+    cargo +esp build --release
+
+[working-directory: 'firmware/seeed-xiao']
+flash-seeed-xiao:
+    cargo +esp run --release
+
 # M5CoreS3 Simulator (ESP32-S3)
 [working-directory: 'firmware/sim-m5cores3']
 build-m5cores3:
@@ -42,7 +51,7 @@ dev-patterns: build-wasm
 
 # All
 [parallel]
-build-all: build-ossm-alt build-waveshare build-wasm build-m5cores3
+build-all: build-ossm-alt build-waveshare build-seeed-xiao build-wasm build-m5cores3
 
 # Focus rust-analyzer on a firmware crate by symlinking its .cargo to the workspace root
 [unix]

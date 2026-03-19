@@ -36,6 +36,13 @@ Boards:
 
 - [Industrial ESP32-S3-RS485-CAN](https://www.waveshare.com/esp32-s3-rs485-can.htm) by WaveShare
 
+- Seeed Studio's Xiao ESP32-S3
+
+  You'll need:
+  - [XIAO ESP32-S3](https://www.seeedstudio.com/XIAO-ESP32S3-p-5627.html) MCU
+  - [RS384 Breakout board](https://www.seeedstudio.com/RS485-Breakout-Board-for-XIAO-p-6306.html) for the XIAO ESP32-S3
+  - A power supply for the motor
+
 Motors:
 
 - 57AIM series motor
@@ -178,9 +185,11 @@ Features are optional higher-level capabilities built on top of the core motion 
    ```sh
    just build-ossm-alt    # OSSM Alt Edition
    just build-waveshare   # Waveshare ESP32-S3-RS485-CAN
+   just build-seeed-xiao  # Seeed Studio XIAO ESP32-S3
 
    just flash-ossm-alt    # Build + flash OSSM Alt Edition
    just flash-waveshare   # Build + flash Waveshare
+   just flash-seeed-xiao  # Build + flash Seeed XIAO
    ```
 
 #### Configuring rust-analyzer
