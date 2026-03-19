@@ -2,14 +2,14 @@ mod rs485;
 mod self_homing;
 mod step_dir;
 
-pub use rs485::Rs485;
+pub use rs485::Rs485Motor;
 pub use self_homing::SelfHoming;
 pub use step_dir::StepDir;
 
 /// A motor that a board can drive as a position follower.
 ///
 /// Covers the basics: position control, enable/disable, torque.
-/// Communication interface traits ([`StepDir`], [`Rs485`]) extend this
+/// Communication interface traits ([`StepDir`], [`Rs485Motor`]) extend this
 /// with interface-specific capabilities.
 #[allow(async_fn_in_trait)]
 pub trait Motor {

@@ -15,9 +15,10 @@ use command::OssmChannels;
 pub use limits::MotionLimits;
 pub use mechanical::MechanicalConfig;
 pub use motion::MotionController;
-pub use motor::{Motor, Rs485, SelfHoming, StepDir};
+pub use motor::{Motor, Rs485Motor, SelfHoming, StepDir};
 pub use transport::{
-    Modbus, ModbusTransport, StepDirConfig, StepDirError, StepDirMotor, StepOutput,
+    Modbus, ModbusTransport, Rs485, Rs485ModbusTransport, StepDirConfig, StepDirError,
+    StepDirMotor, StepOutput, TransportError,
 };
 
 pub struct Ossm {

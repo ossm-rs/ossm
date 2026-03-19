@@ -1,5 +1,5 @@
 use embedded_hal_async::delay::DelayNs;
-use ossm::{Motor, Rs485, SelfHoming};
+use ossm::{Motor, Rs485Motor, SelfHoming};
 
 use crate::{Modbus, ModbusTransport, Motor57AIM, RoRegister, RwRegister};
 
@@ -165,7 +165,7 @@ impl<T: ModbusTransport, D: DelayNs> Motor for Motor57AIM<Modbus<T>, D> {
     }
 }
 
-impl<T: ModbusTransport, D: DelayNs> Rs485 for Motor57AIM<Modbus<T>, D> {}
+impl<T: ModbusTransport, D: DelayNs> Rs485Motor for Motor57AIM<Modbus<T>, D> {}
 
 impl<T: ModbusTransport, D: DelayNs> SelfHoming for Motor57AIM<Modbus<T>, D> {
     async fn home(&mut self) -> Result<(), Self::Error> {

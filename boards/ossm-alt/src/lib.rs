@@ -1,19 +1,15 @@
 #![no_std]
 
-mod rs485;
-mod transport;
+pub use ossm::{Rs485, Rs485ModbusTransport};
 
-pub use rs485::Rs485;
-pub use transport::Rs485ModbusTransport;
-
-use ossm::{Board, MechanicalConfig, Rs485 as Rs485Motor, SelfHoming};
+use ossm::{Board, MechanicalConfig, Rs485Motor, SelfHoming};
 
 #[derive(Debug)]
 pub enum BoardError<E: core::fmt::Debug> {
     Motor(E),
 }
 
-/// OSSM Alt board, generic over any [`Rs485`](ossm::Rs485) + [`SelfHoming`] motor.
+/// OSSM Alt board, generic over any [`Rs485Motor`] + [`SelfHoming`] motor.
 ///
 /// This board is a **position follower**. The motion controller calls
 /// `set_position(mm)` every tick with the next point on the ruckig

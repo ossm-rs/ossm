@@ -1,7 +1,8 @@
 use embedded_hal_async::delay::DelayNs;
 use embedded_io::{ErrorType, Read, Write};
 use heapless::Vec;
-use ossm::ModbusTransport;
+
+use super::ModbusTransport;
 
 const MOTOR_TIMEOUT_RETRIES: usize = 500;
 const RETRY_DELAY_US: u32 = 20;

@@ -1450,10 +1450,14 @@ checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
 name = "ossm"
 version = "0.1.0"
 dependencies = [
+ "crc",
  "embassy-sync 0.7.2",
  "embedded-hal 1.0.0",
+ "embedded-hal-async",
+ "embedded-io 0.7.1",
  "heapless 0.9.2",
  "log",
+ "rmodbus",
  "rsruckig",
 ]
 
@@ -1487,14 +1491,8 @@ dependencies = [
 name = "ossm-alt-board"
 version = "0.1.0"
 dependencies = [
- "crc",
- "embedded-hal 1.0.0",
- "embedded-hal-async",
- "embedded-io 0.7.1",
- "heapless 0.9.2",
  "m57aim-motor",
  "ossm",
- "rmodbus",
 ]
 
 [[package]]
