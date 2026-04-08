@@ -30,8 +30,8 @@ importers:
         specifier: ^0.6.0
         version: 0.6.0
       hono:
-        specifier: ^4.12.9
-        version: 4.12.9
+        specifier: ^4.12.12
+        version: 4.12.12
       react:
         specifier: ^19.0.0
         version: 19.2.4
@@ -2105,8 +2105,8 @@ packages:
   hls.js@1.6.15:
     resolution: {integrity: sha512-E3a5VwgXimGHwpRGV+WxRTKeSp2DW5DI5MWv34ulL3t5UNmyJWCQ1KmLEHbYzcfThfXG8amBL+fCYPneGHC4VA==}
 
-  hono@4.12.9:
-    resolution: {integrity: sha512-wy3T8Zm2bsEvxKZM5w21VdHDDcwVS1yUFFY6i8UobSsKfFceT7TOwhbhfKsDyx7tYQlmRM5FLpIuYvNFyjctiA==}
+  hono@4.12.12:
+    resolution: {integrity: sha512-p1JfQMKaceuCbpJKAPKVqyqviZdS0eUxH9v82oWo1kb9xjQ5wA6iP3FNVAPDFlz5/p7d45lO+BpSk1tuSZMF4Q==}
     engines: {node: '>=16.9.0'}
 
   html-url-attributes@3.0.1:
@@ -4693,7 +4693,7 @@ snapshots:
 
   hls.js@1.6.15: {}
 
-  hono@4.12.9: {}
+  hono@4.12.12: {}
 
   html-url-attributes@3.0.1: {}
 
