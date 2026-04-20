@@ -33,7 +33,7 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.31.0",
-    "@cloudflare/workers-types": "^4.20260329.1",
+    "@cloudflare/workers-types": "^4.20260420.1",
     "@types/crypto-js": "^4.2.2",
     "@types/d3": "^7.4.3",
     "@types/node": ">=24 <25",
