@@ -44,7 +44,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "three-stdlib": "^2.36.1",
     "typescript": "~6.0.2",
-    "vite": "^8.0.8",
+    "vite": "^8.0.9",
     "vite-plugin-top-level-await": "^1.4.0",
     "vite-plugin-wasm": "^3.6.0",
     "wrangler": "^4.80.0"
