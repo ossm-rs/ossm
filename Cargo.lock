@@ -1079,7 +1079,7 @@ dependencies = [
  "embassy-time",
  "embedded-hal 1.0.0",
  "embedded-hal-async",
- "embedded-io 0.6.1",
+ "embedded-io 0.7.1",
  "heapless 0.9.2",
  "log",
  "rmodbus",
@@ -1112,6 +1112,7 @@ version = "0.1.0"
 dependencies = [
  "embassy-futures",
  "embassy-sync 0.7.2",
+ "embassy-time",
  "embedded-hal-async",
  "log",
  "ossm",
