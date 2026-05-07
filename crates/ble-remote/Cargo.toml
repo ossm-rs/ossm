@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 pattern-engine = { path = "../pattern-engine" }
+events = { path = "../events" }
 
 embassy-sync = { version = "0.7", default-features = false }
 embassy-time = { version = "0.5.1" }

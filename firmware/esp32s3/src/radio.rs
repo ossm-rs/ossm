@@ -48,7 +48,7 @@ pub fn start(
         max_travel_mm: limits.max_position_mm - limits.min_position_mm,
     };
 
-    ossm_m5_remote::start(spawner, manager, sender, receiver, patterns, remote_config);
+    ossm_m5_remote::start(spawner, manager, sender, receiver, remote_config);
 
     let connector =
         BleConnector::new(radio, bt, Default::default()).expect("Could not create BleConnector");

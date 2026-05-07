@@ -32,7 +32,10 @@ use esp_hal::{
 use esp_rtos::embassy::InterruptExecutor;
 use log::info;
 use ossm::{MechanicalConfig, MotionController, MotionLimits, Ossm};
-use pattern_engine::{AnyPattern, PatternEngine};
+use pattern_engine::{
+    AnyPattern, PatternEngine,
+    commands::{PatternCmd, dispatch_pattern_cmd},
+};
 use static_cell::StaticCell;
 
 extern crate alloc;
@@ -77,6 +80,20 @@ async fn motion_task(mut controller: MotionController<'static, board::Board>) {
             log::error!("Motion controller fault: {:?}", e);
         }
         ticker.next().await;
+    }
+}
+
+/// Drains [`PatternCmd`] events from the event bus into the pattern engine.
+///
+/// Transports (BLE today, ESP-NOW + UART later) publish typed events via
+/// `events::publish`. This task is the single consumer that translates
+/// each event into the engine's internal command/input channels.
+#[embassy_executor::task]
+async fn pattern_command_task() {
+    let mut cmds = events::subscribe::<PatternCmd>();
+    loop {
+        let cmd = cmds.next().await;
+        dispatch_pattern_cmd(&PATTERNS, cmd);
     }
 }
 
@@ -135,6 +152,8 @@ pub async fn run(spawner: Spawner, config: Config) {
     );
 
     radio::start(&spawner, config.bt, &PATTERNS);
+
+    spawner.spawn(pattern_command_task()).unwrap();
 
     let mut pattern_runner = PATTERNS.runner(AnyPattern::all_builtin());
     pattern_runner.run(Delay).await;

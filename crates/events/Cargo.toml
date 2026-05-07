@@ -1,0 +1,8 @@
+[package]
+name = "events"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+embassy-sync = { version = "0.7", default-features = false }
+log = "0.4"

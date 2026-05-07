@@ -19,7 +19,7 @@ use heapless::String;
 use log::{error, info, warn};
 use pattern_engine::{
     EngineState, PatternEngine, PatternInput,
-    commands::{self, InputCommand, PlaybackCommand},
+    commands::{self, PatternCmd},
 };
 use static_cell::StaticCell;
 use trouble_host::prelude::*;
@@ -197,7 +197,7 @@ pub async fn ble_events_task(
                     },
                 }
 
-                commands::dispatch_playback(engine, PlaybackCommand::Stop);
+                events::publish(PatternCmd::Stop);
                 info!("BLE session ended, stopping engine");
             }
             Err(err) => {
@@ -263,7 +263,7 @@ async fn gatt_events_task<P: PacketPool>(
                         let command: String<MAX_COMMAND_LENGTH> =
                             server.get(&server.ossm_service.primary_command)?;
 
-                        process_command(&command, server, engine);
+                        process_command(&command, server);
                     }
                     if event_handle == server.ossm_service.pattern_description.handle {
                         let command: String<MAX_PATTERN_LENGTH> =
@@ -385,11 +385,7 @@ fn state_to_json(state: EngineState, input: &PatternInput) -> String<MAX_STATE_L
     out
 }
 
-fn process_command(
-    command: &String<MAX_COMMAND_LENGTH>,
-    server: &Server<'_>,
-    engine: &'static PatternEngine,
-) {
+fn process_command(command: &String<MAX_COMMAND_LENGTH>, server: &Server<'_>) {
     info!("BLE Command {}", command);
 
     let mut split_command = command.split(":");
@@ -404,27 +400,14 @@ fn process_command(
                         if let Ok(value) = value.parse::<u32>() {
                             let normalized = value as f64 / 100.0;
                             match action {
-                                "speed" => commands::dispatch_input(
-                                    engine,
-                                    InputCommand::SetSpeed(normalized),
-                                ),
-                                "stroke" => commands::dispatch_input(
-                                    engine,
-                                    InputCommand::SetStroke(normalized),
-                                ),
-                                "depth" => commands::dispatch_input(
-                                    engine,
-                                    InputCommand::SetDepth(normalized),
-                                ),
-                                // BLE sends 0–100; internal range is -1.0..1.0.
-                                "sensation" => commands::dispatch_input(
-                                    engine,
-                                    InputCommand::SetSensation(normalized * 2.0 - 1.0),
-                                ),
-                                "pattern" => commands::dispatch_playback(
-                                    engine,
-                                    PlaybackCommand::Play(value as usize),
-                                ),
+                                "speed" => events::publish(PatternCmd::SetSpeed(normalized)),
+                                "stroke" => events::publish(PatternCmd::SetStroke(normalized)),
+                                "depth" => events::publish(PatternCmd::SetDepth(normalized)),
+                                // BLE sends 0-100; internal range is -1.0..1.0.
+                                "sensation" => {
+                                    events::publish(PatternCmd::SetSensation(normalized * 2.0 - 1.0))
+                                }
+                                "pattern" => events::publish(PatternCmd::Play(value as usize)),
                                 _ => {
                                     error!("Invalid set command {}", action);
                                     fail = true;
@@ -440,10 +423,8 @@ fn process_command(
                     }
                 }
                 "go" => match action {
-                    "simplePenetration" | "strokeEngine" => {
-                        commands::dispatch_playback(engine, PlaybackCommand::Play(0))
-                    }
-                    "menu" => commands::dispatch_playback(engine, PlaybackCommand::Stop),
+                    "simplePenetration" | "strokeEngine" => events::publish(PatternCmd::Play(0)),
+                    "menu" => events::publish(PatternCmd::Stop),
                     _ => {
                         error!("Unknown go action: {}", action);
                         fail = true;
