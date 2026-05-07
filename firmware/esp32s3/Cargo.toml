@@ -32,6 +32,7 @@ path = "src/bin/seeed-xiao.rs"
 ossm = { path = "../../ossm" }
 ossm-esp = { path = "../../ossm-esp", features = ["esp32s3"] }
 pattern-engine = { path = "../../crates/pattern-engine" }
+events = { path = "../../crates/events" }
 ossm-m5-remote = { path = "../../crates/ossm-m5-remote", features = [
     "esp32s3",
 ] }

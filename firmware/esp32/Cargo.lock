@@ -68,6 +68,7 @@ dependencies = [
  "embassy-sync 0.7.2",
  "embassy-time",
  "esp-radio",
+ "events",
  "heapless 0.9.2",
  "log",
  "pattern-engine",
@@ -854,6 +855,7 @@ dependencies = [
  "esp-println",
  "esp-radio",
  "esp-rtos",
+ "events",
  "log",
  "ossm",
  "ossm-esp",
@@ -940,6 +942,14 @@ checksum = "1810d8ee4845ef87542af981e38eb80ab531d0ef1061e1486014ab7af74c337a"
 dependencies = [
  "critical-section",
  "vcell",
+]
+
+[[package]]
+name = "events"
+version = "0.1.0"
+dependencies = [
+ "embassy-sync 0.7.2",
+ "log",
 ]
 
 [[package]]
@@ -1314,6 +1324,7 @@ dependencies = [
  "embassy-sync 0.7.2",
  "embassy-time",
  "embedded-hal-async",
+ "events",
  "log",
  "ossm",
 ]
