@@ -7,7 +7,7 @@ use esp_radio::esp_now::{EspNowManager, EspNowSender};
 use log::info;
 use ossm::MotionLimits;
 use ossm_m5_remote::RemoteConfig;
-use pattern_engine::PatternEngine;
+use pattern_engine::PatternObserver;
 
 use crate::mk_static;
 
@@ -15,7 +15,7 @@ pub fn start(
     spawner: &Spawner,
     wifi: WIFI<'static>,
     bt: BT<'static>,
-    patterns: &'static PatternEngine,
+    pattern_observer: &'static PatternObserver,
     limits: &MotionLimits,
 ) {
     let radio = &*mk_static!(
@@ -52,5 +52,5 @@ pub fn start(
 
     let connector =
         BleConnector::new(radio, bt, Default::default()).expect("Could not create BleConnector");
-    ble_remote::start(spawner, connector, patterns);
+    ble_remote::start(spawner, connector, pattern_observer);
 }

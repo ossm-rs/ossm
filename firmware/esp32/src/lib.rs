@@ -33,8 +33,8 @@ use esp_rtos::embassy::InterruptExecutor;
 use log::info;
 use ossm::{MechanicalConfig, MotionController, MotionLimits, Ossm};
 use pattern_engine::{
-    AnyPattern, PatternEngine,
-    commands::{PatternCmd, dispatch_pattern_cmd},
+    AnyPattern, PatternEngine, PatternObserver, PatternSender,
+    commands::PatternCmd,
 };
 use static_cell::StaticCell;
 
@@ -51,7 +51,7 @@ macro_rules! mk_static {
 const UPDATE_INTERVAL_SECS: f64 = 0.01;
 
 static OSSM_CELL: StaticCell<Ossm> = StaticCell::new();
-static PATTERNS: PatternEngine = PatternEngine::new();
+static PATTERNS_CELL: StaticCell<PatternEngine> = StaticCell::new();
 
 static EXECUTOR_CORE_1: StaticCell<InterruptExecutor<2>> = StaticCell::new();
 // ESP32 DRAM is tighter than ESP32-S3. 16KB stack is needed for ruckig's
@@ -89,11 +89,10 @@ async fn motion_task(mut controller: MotionController<'static, board::Board>) {
 /// `events::publish`. This task is the single consumer that translates
 /// each event into the engine's internal command/input channels.
 #[embassy_executor::task]
-async fn pattern_command_task() {
+async fn pattern_command_task(patterns: PatternSender) {
     let mut cmds = events::subscribe::<PatternCmd>();
     loop {
-        let cmd = cmds.next().await;
-        dispatch_pattern_cmd(&PATTERNS, cmd);
+        patterns.apply(cmds.next().await);
     }
 }
 
@@ -153,10 +152,13 @@ pub async fn run(spawner: Spawner, config: Config) {
         UPDATE_INTERVAL_SECS * 1000.0
     );
 
-    radio::start(&spawner, config.bt, &PATTERNS);
+    let (runner, pattern_observer, patterns) = PATTERNS_CELL.init(PatternEngine::new()).split();
+    let pattern_observer: &'static PatternObserver =
+        mk_static!(PatternObserver, pattern_observer);
 
-    spawner.spawn(pattern_command_task()).unwrap();
+    radio::start(&spawner, config.bt, pattern_observer);
 
-    let mut pattern_runner = PATTERNS.runner(&motion, AnyPattern::all_builtin());
-    pattern_runner.run(Delay).await;
+    spawner.spawn(pattern_command_task(patterns)).unwrap();
+
+    runner.run(&motion, AnyPattern::all_builtin(), Delay).await
 }

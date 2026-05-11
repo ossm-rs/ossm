@@ -1,11 +1,15 @@
 use embassy_executor::Spawner;
 use esp_hal::peripherals::BT;
 use esp_radio::ble::controller::BleConnector;
-use pattern_engine::PatternEngine;
+use pattern_engine::PatternObserver;
 
 use crate::mk_static;
 
-pub fn start(spawner: &Spawner, bt: BT<'static>, patterns: &'static PatternEngine) {
+pub fn start(
+    spawner: &Spawner,
+    bt: BT<'static>,
+    pattern_observer: &'static PatternObserver,
+) {
     let radio = &*mk_static!(
         esp_radio::Controller<'static>,
         esp_radio::init().expect("Failed to initialize radio controller")
@@ -13,5 +17,5 @@ pub fn start(spawner: &Spawner, bt: BT<'static>, patterns: &'static PatternEngin
 
     let connector = BleConnector::new(radio, bt, Default::default())
         .expect("Could not create BleConnector");
-    ble_remote::start(spawner, connector, patterns);
+    ble_remote::start(spawner, connector, pattern_observer);
 }

@@ -3,13 +3,19 @@
 pub mod commands;
 mod engine;
 mod input;
+mod observer;
 mod pattern;
 pub mod patterns;
+mod runner;
+mod sender;
 mod util;
 
-pub use engine::{EngineState, PatternEngine, PatternEngineRunner};
+pub use engine::{EngineState, PatternEngine};
 pub use input::{PatternInput, SharedPatternInput};
+pub use observer::PatternObserver;
 pub use pattern::{Pattern, PatternCtx};
+pub use runner::PatternRunner;
+pub use sender::PatternSender;
 pub use util::scale;
 
 /// Public-facing metadata for a pattern.

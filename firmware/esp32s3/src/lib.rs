@@ -32,8 +32,8 @@ use esp_rtos::embassy::InterruptExecutor;
 use log::info;
 use ossm::{MechanicalConfig, MotionController, MotionLimits, Ossm};
 use pattern_engine::{
-    AnyPattern, PatternEngine,
-    commands::{PatternCmd, dispatch_pattern_cmd},
+    AnyPattern, PatternEngine, PatternObserver, PatternSender,
+    commands::PatternCmd,
 };
 use static_cell::StaticCell;
 
@@ -50,7 +50,7 @@ macro_rules! mk_static {
 const UPDATE_INTERVAL_SECS: f64 = 0.01;
 
 static OSSM_CELL: StaticCell<Ossm> = StaticCell::new();
-static PATTERNS: PatternEngine = PatternEngine::new();
+static PATTERNS_CELL: StaticCell<PatternEngine> = StaticCell::new();
 
 static EXECUTOR_CORE_1: StaticCell<InterruptExecutor<2>> = StaticCell::new();
 static APP_CORE_STACK: StaticCell<Stack<32768>> = StaticCell::new();
@@ -85,11 +85,10 @@ async fn motion_task(mut controller: MotionController<'static, board::Board>) {
 /// each event into the engine's internal command/input channels. Without
 /// this task, published events sit in the bus and nothing happens.
 #[embassy_executor::task]
-async fn pattern_command_task() {
+async fn pattern_command_task(patterns: PatternSender) {
     let mut cmds = events::subscribe::<PatternCmd>();
     loop {
-        let cmd = cmds.next().await;
-        dispatch_pattern_cmd(&PATTERNS, cmd);
+        patterns.apply(cmds.next().await);
     }
 }
 
@@ -149,10 +148,13 @@ pub async fn run(spawner: Spawner, config: Config) {
         UPDATE_INTERVAL_SECS * 1000.0
     );
 
-    radio::start(&spawner, config.wifi, config.bt, &PATTERNS, &limits);
+    let (runner, pattern_observer, patterns) = PATTERNS_CELL.init(PatternEngine::new()).split();
+    let pattern_observer: &'static PatternObserver =
+        mk_static!(PatternObserver, pattern_observer);
 
-    spawner.spawn(pattern_command_task()).unwrap();
+    radio::start(&spawner, config.wifi, config.bt, pattern_observer, &limits);
 
-    let mut pattern_runner = PATTERNS.runner(&motion, AnyPattern::all_builtin());
-    pattern_runner.run(Delay).await;
+    spawner.spawn(pattern_command_task(patterns)).unwrap();
+
+    runner.run(&motion, AnyPattern::all_builtin(), Delay).await
 }

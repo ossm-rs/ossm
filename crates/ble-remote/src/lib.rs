@@ -18,7 +18,7 @@ use esp_radio::ble::controller::BleConnector;
 use heapless::String;
 use log::{error, info, warn};
 use pattern_engine::{
-    EngineState, PatternEngine, PatternInput,
+    EngineState, PatternInput, PatternObserver,
     commands::{self, PatternCmd},
 };
 use static_cell::StaticCell;
@@ -95,7 +95,11 @@ fn get_pattern_description(index: usize) -> String<MAX_PATTERN_LENGTH> {
     output
 }
 
-pub fn start(spawner: &Spawner, connector: BleConnector<'static>, engine: &'static PatternEngine) {
+pub fn start(
+    spawner: &Spawner,
+    connector: BleConnector<'static>,
+    pattern_observer: &'static PatternObserver,
+) {
     let bt_controller: ExternalController<_, 20> = ExternalController::new(connector);
 
     let resources = mk_static!(HostResources<DefaultPacketPool, CONNECTIONS_MAX, L2CAP_CHANNELS_MAX>, HostResources::new());
@@ -113,7 +117,7 @@ pub fn start(spawner: &Spawner, connector: BleConnector<'static>, engine: &'stat
     } = stack.build();
 
     spawner.must_spawn(ble_runner_task(runner));
-    spawner.must_spawn(ble_events_task(stack, peripheral, engine));
+    spawner.must_spawn(ble_events_task(stack, peripheral, pattern_observer));
 
     info!("BLE remote tasks started, waiting for connection...");
 }
@@ -130,7 +134,7 @@ pub async fn ble_events_task(
         ExternalController<BleConnector<'static>, 20>,
         DefaultPacketPool,
     >,
-    engine: &'static PatternEngine,
+    pattern_observer: &'static PatternObserver,
 ) {
     info!("Starting advertising and GATT service");
     let server = Server::new_with_config(GapConfig::Peripheral(PeripheralConfig {
@@ -182,8 +186,8 @@ pub async fn ble_events_task(
                     .with_attribute_server(&server)
                     .expect("Could not transform connection into GATT connection");
 
-                let events = gatt_events_task(&server, &gatt_connection, engine);
-                let notify = state_notifications(&server, &gatt_connection, engine);
+                let events = gatt_events_task(&server, &gatt_connection, pattern_observer);
+                let notify = state_notifications(&server, &gatt_connection, pattern_observer);
 
                 match select(events, notify).await {
                     Either::First(res) => {
@@ -221,7 +225,7 @@ pub async fn ble_runner_task(
 async fn gatt_events_task<P: PacketPool>(
     server: &Server<'_>,
     connection: &GattConnection<'_, '_, P>,
-    engine: &'static PatternEngine,
+    pattern_observer: &'static PatternObserver,
 ) -> Result<(), Error> {
     let reason = loop {
         match connection.next().await {
@@ -232,8 +236,8 @@ async fn gatt_events_task<P: PacketPool>(
                 match &event {
                     GattEvent::Read(event) => {
                         if event.handle() == server.ossm_service.current_state.handle {
-                            let engine_state = commands::current_state(engine);
-                            let input = commands::current_input(engine);
+                            let engine_state = pattern_observer.state();
+                            let input = pattern_observer.input();
                             let state_json = state_to_json(engine_state, &input);
                             server.set(&server.ossm_service.current_state, &state_json)?;
                         }
@@ -331,19 +335,18 @@ async fn advertise<'values, 'server, C: Controller>(
 async fn state_notifications<P: PacketPool>(
     server: &Server<'_>,
     connection: &GattConnection<'_, '_, P>,
-    engine: &'static PatternEngine,
+    pattern_observer: &'static PatternObserver,
 ) -> Result<(), Error> {
-    let mut sub =
-        commands::subscribe_state(engine).expect("No state subscriber slots available");
+    let mut sub = pattern_observer.subscribe().expect("No state subscriber slots available");
     let mut heartbeat = Ticker::every(Duration::from_secs(1));
 
     loop {
         let engine_state = match select(sub.next_message_pure(), heartbeat.next()).await {
             Either::First(state) => state,
-            Either::Second(_) => commands::current_state(engine),
+            Either::Second(_) => pattern_observer.state(),
         };
 
-        let input = commands::current_input(engine);
+        let input = pattern_observer.input();
         let state_json = state_to_json(engine_state, &input);
         server
             .ossm_service
