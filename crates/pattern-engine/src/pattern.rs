@@ -3,7 +3,7 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::watch::Receiver;
 use embassy_time::{Duration, Ticker};
 use embedded_hal_async::delay::DelayNs;
-use ossm::{Cancelled, MotionCommand, Ossm};
+use ossm::{Cancelled, MotionSender, MotionCommand};
 
 use crate::input::{PatternInput, SharedPatternInput};
 use crate::util::scale;
@@ -28,21 +28,25 @@ pub trait Pattern {
     const NAME: &'static str;
     const DESCRIPTION: &'static str;
 
-    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), Cancelled>;
+    async fn run(&mut self, ctx: &mut PatternCtx<'_, impl DelayNs>) -> Result<(), Cancelled>;
 }
 
-pub struct PatternCtx<D: DelayNs> {
-    ossm: &'static Ossm,
-    input: &'static SharedPatternInput,
-    input_receiver: Receiver<'static, CriticalSectionRawMutex, PatternInput, 1>,
+pub struct PatternCtx<'m, D: DelayNs> {
+    motion: &'m MotionSender,
+    input: &'m SharedPatternInput,
+    input_receiver: Receiver<'m, CriticalSectionRawMutex, PatternInput, 1>,
     delay: D,
 }
 
-impl<D: DelayNs> PatternCtx<D> {
-    pub fn new(ossm: &'static Ossm, input: &'static SharedPatternInput, delay: D) -> Self {
+impl<'m, D: DelayNs> PatternCtx<'m, D> {
+    pub fn new(
+        motion: &'m MotionSender,
+        input: &'m SharedPatternInput,
+        delay: D,
+    ) -> Self {
         let input_receiver = input.receiver().expect("Watch receiver slot already taken");
         Self {
-            ossm,
+            motion,
             input,
             input_receiver,
             delay,
@@ -72,7 +76,7 @@ impl<D: DelayNs> PatternCtx<D> {
     /// ctx.motion().position(1.0).send().await?;
     /// ctx.motion().position(0.5).speed(0.5).send().await?;
     /// ```
-    pub fn motion(&mut self) -> MotionBuilder<'_, D, NoPosition> {
+    pub fn motion(&mut self) -> MotionBuilder<'_, 'm, D, NoPosition> {
         MotionBuilder {
             ctx: self,
             position: NoPosition,
@@ -103,25 +107,25 @@ pub struct HasPosition(f64);
 
 /// Builder for a single motion command.
 ///
-/// Created via [`PatternCtx::motion()`]. Call `.position()` before `.send()` —
+/// Created via [`PatternCtx::motion()`]. Call `.position()` before `.send()` -
 /// the type system enforces this at compile time.
-pub struct MotionBuilder<'a, D: DelayNs, P> {
-    ctx: &'a mut PatternCtx<D>,
+pub struct MotionBuilder<'a, 'm, D: DelayNs, P> {
+    ctx: &'a mut PatternCtx<'m, D>,
     position: P,
     speed_factor: f64,
     torque: Option<f64>,
 }
 
-impl<'a, D: DelayNs, P> MotionBuilder<'a, D, P> {
+impl<'a, 'm, D: DelayNs, P> MotionBuilder<'a, 'm, D, P> {
     /// Set the velocity as a multiplier of the current input velocity.
     ///
-    /// Default is 1.0 (full input velocity). 0.5 = half speed. Clamped to 0.0–1.0.
+    /// Default is 1.0 (full input velocity). 0.5 = half speed, max is 1.0.
     pub fn speed(mut self, factor: f64) -> Self {
         self.speed_factor = factor;
         self
     }
 
-    /// Set the torque limit as a factor (0.0–1.0).
+    /// Set the torque limit as a factor between 0.0 and 1.0.
     ///
     /// `None` (the default) uses the motor's default torque.
     pub fn torque(mut self, factor: f64) -> Self {
@@ -130,11 +134,11 @@ impl<'a, D: DelayNs, P> MotionBuilder<'a, D, P> {
     }
 }
 
-impl<'a, D: DelayNs> MotionBuilder<'a, D, NoPosition> {
+impl<'a, 'm, D: DelayNs> MotionBuilder<'a, 'm, D, NoPosition> {
     /// Set the target position as a fraction of the stroke range.
     ///
     /// 0.0 = shallowest (`depth - stroke`), 1.0 = deepest (`depth`).
-    pub fn position(self, fraction: f64) -> MotionBuilder<'a, D, HasPosition> {
+    pub fn position(self, fraction: f64) -> MotionBuilder<'a, 'm, D, HasPosition> {
         MotionBuilder {
             ctx: self.ctx,
             position: HasPosition(fraction),
@@ -161,7 +165,7 @@ fn compute_command(
     }
 }
 
-impl<'a, D: DelayNs> MotionBuilder<'a, D, HasPosition> {
+impl<'a, 'm, D: DelayNs> MotionBuilder<'a, 'm, D, HasPosition> {
     pub async fn send(self) -> Result<(), Cancelled> {
         let fraction = self.position.0.clamp(0.0, 1.0);
         let speed_factor = self.speed_factor;
@@ -169,9 +173,9 @@ impl<'a, D: DelayNs> MotionBuilder<'a, D, HasPosition> {
 
         let input = self.ctx.input();
         let cmd = compute_command(&input, fraction, speed_factor, torque);
-        self.ctx.ossm.begin_motion(cmd);
+        self.ctx.motion.begin_motion(cmd);
 
-        let mut move_done = core::pin::pin!(self.ctx.ossm.await_motion());
+        let mut move_done = core::pin::pin!(self.ctx.motion.await_motion());
         let mut throttle = Ticker::every(INPUT_UPDATE_THROTTLE);
         let mut pending: Option<PatternInput> = None;
 
@@ -190,7 +194,7 @@ impl<'a, D: DelayNs> MotionBuilder<'a, D, HasPosition> {
                 Either3::Third(()) => {
                     if let Some(input) = pending.take() {
                         let cmd = compute_command(&input, fraction, speed_factor, torque);
-                        self.ctx.ossm.update_motion(cmd);
+                        self.ctx.motion.update_motion(cmd);
                     }
                 }
             }

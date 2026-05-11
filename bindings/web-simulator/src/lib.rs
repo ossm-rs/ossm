@@ -2,17 +2,18 @@ extern crate alloc;
 use alloc::string::String;
 
 use embassy_time::{Delay, Duration, Ticker};
-use ossm::{MechanicalConfig, MotionLimits, Ossm};
+use ossm::{MechanicalConfig, MotionLimits, MotionObserver, Ossm};
 use pattern_engine::{
     AnyPattern, PatternEngine,
     commands::{self, InputCommand, PlaybackCommand},
 };
 use sim_board::SimBoard;
 use sim_motor::SimMotor;
+use static_cell::StaticCell;
 use wasm_bindgen::prelude::*;
 
-static OSSM: Ossm = Ossm::new();
-static PATTERNS: PatternEngine = PatternEngine::new(&OSSM);
+static OSSM_CELL: StaticCell<Ossm> = StaticCell::new();
+static PATTERNS: PatternEngine = PatternEngine::new();
 
 static MECHANICAL: MechanicalConfig = MechanicalConfig {
     pulley_teeth: 20,
@@ -21,7 +22,9 @@ static MECHANICAL: MechanicalConfig = MechanicalConfig {
 };
 
 #[wasm_bindgen]
-pub struct Simulator {}
+pub struct Simulator {
+    observer: MotionObserver,
+}
 
 #[wasm_bindgen]
 impl Simulator {
@@ -33,6 +36,8 @@ impl Simulator {
 
         ossm::build_info!();
 
+        let (receiver, observer, motion) = OSSM_CELL.init(Ossm::new()).split();
+
         let update_interval_secs = update_interval_ms / 1000.0;
         let motor = SimMotor::new();
         let board = SimBoard::new(motor, &MECHANICAL);
@@ -43,7 +48,7 @@ impl Simulator {
             ..MotionLimits::default()
         };
 
-        let mut controller = OSSM.controller(board, limits, update_interval_secs);
+        let mut controller = receiver.into_controller(board, limits, update_interval_secs);
 
         let interval_us = (update_interval_secs * 1_000_000.0) as u64;
 
@@ -57,13 +62,12 @@ impl Simulator {
             }
         });
 
-        let mut pattern_runner = PATTERNS.runner(AnyPattern::all_builtin());
-
         wasm_bindgen_futures::spawn_local(async move {
+            let mut pattern_runner = PATTERNS.runner(&motion, AnyPattern::all_builtin());
             pattern_runner.run(Delay).await;
         });
 
-        Self {}
+        Self { observer }
     }
 
     pub fn get_engine_state(&self) -> u8 {
@@ -71,7 +75,7 @@ impl Simulator {
     }
 
     pub fn get_position(&self) -> f32 {
-        OSSM.motion_state().position
+        self.observer.state().position
     }
 
     pub fn set_depth(&self, depth: f64) {

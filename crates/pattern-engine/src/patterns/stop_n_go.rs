@@ -12,7 +12,7 @@ impl Pattern for StopNGo {
     const NAME: &'static str = "Stop'n'Go";
     const DESCRIPTION: &'static str = "Stops after a series of strokes. Sensation controls the delay.";
 
-    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), ossm::Cancelled> {
+    async fn run(&mut self, ctx: &mut PatternCtx<'_, impl DelayNs>) -> Result<(), ossm::Cancelled> {
         let mut num_strokes: usize = 1;
         let mut counting_up = true;
 

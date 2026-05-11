@@ -2,32 +2,10 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
 use embassy_sync::signal::Signal;
 
-use crate::state::MotionStateChannels;
-
 pub(crate) type MoveChannel = Channel<CriticalSectionRawMutex, MotionCommand, 1>;
 pub(crate) type StateChannel = Channel<CriticalSectionRawMutex, StateCommand, 1>;
 pub(crate) type StateResponseSignal = Signal<CriticalSectionRawMutex, StateResponse>;
 pub(crate) type MoveResponseSignal = Signal<CriticalSectionRawMutex, Result<(), Cancelled>>;
-
-pub(crate) struct OssmChannels {
-    pub(crate) move_cmd: MoveChannel,
-    pub(crate) state_cmd: StateChannel,
-    pub(crate) state_resp: StateResponseSignal,
-    pub(crate) move_resp: MoveResponseSignal,
-    pub(crate) motion_state: MotionStateChannels,
-}
-
-impl OssmChannels {
-    pub(crate) const fn new() -> Self {
-        Self {
-            move_cmd: MoveChannel::new(),
-            state_cmd: StateChannel::new(),
-            state_resp: StateResponseSignal::new(),
-            move_resp: MoveResponseSignal::new(),
-            motion_state: MotionStateChannels::new(),
-        }
-    }
-}
 
 #[derive(Debug, Clone, Copy)]
 pub struct MotionCommand {

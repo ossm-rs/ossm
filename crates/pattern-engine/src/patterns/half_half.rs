@@ -12,7 +12,7 @@ impl Pattern for HalfHalf {
     const NAME: &'static str = "Half'n'Half";
     const DESCRIPTION: &'static str = "Alternate between full and half strokes. Sensation controls speed ratio.";
 
-    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), ossm::Cancelled> {
+    async fn run(&mut self, ctx: &mut PatternCtx<'_, impl DelayNs>) -> Result<(), ossm::Cancelled> {
         let mut half = false;
 
         loop {

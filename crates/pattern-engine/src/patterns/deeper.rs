@@ -11,7 +11,7 @@ impl Pattern for Deeper {
     const NAME: &'static str = "Deeper";
     const DESCRIPTION: &'static str = "Goes deeper with every stroke. Sensation controls the number of steps.";
 
-    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), ossm::Cancelled> {
+    async fn run(&mut self, ctx: &mut PatternCtx<'_, impl DelayNs>) -> Result<(), ossm::Cancelled> {
         loop {
             let num_steps = (ctx.scale_sensation(MIN_STEPS, MAX_STEPS) as usize).max(1);
 

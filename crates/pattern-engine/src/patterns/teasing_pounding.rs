@@ -12,7 +12,7 @@ impl Pattern for TeasingPounding {
     const NAME: &'static str = "Teasing Pounding";
     const DESCRIPTION: &'static str = "Alternating strokes. Sensation controls speed ratio of in and out strokes.";
 
-    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), ossm::Cancelled> {
+    async fn run(&mut self, ctx: &mut PatternCtx<'_, impl DelayNs>) -> Result<(), ossm::Cancelled> {
         loop {
             let sensation = ctx.sensation();
             let factor = scale(sensation.abs(), 0.0, MAX_SENSATION, 1.0, MAX_SCALING_FACTOR);

@@ -5,7 +5,7 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
 use embassy_sync::pubsub::{self, PubSubChannel};
 use embedded_hal_async::delay::DelayNs;
-use ossm::{Ossm, StateResponse};
+use ossm::{MotionSender, StateResponse};
 
 use log::info;
 
@@ -104,27 +104,29 @@ impl PatternEngineChannels {
     }
 }
 
-/// Pattern engine that owns its command channels and delegates motion
-/// to an [`Ossm`] instance.
+/// Pattern engine that owns its command channels and shared input.
 ///
 /// Create as a `static` and use `&'static PatternEngine` as the handle
-/// for sending commands and reading state. Create a
-/// [`PatternEngineRunner`] via [`runner()`](Self::runner) and spawn it
-/// as an async task.
+/// for sending commands and reading state. Construct a
+/// [`PatternEngineRunner`] via [`runner()`](Self::runner) and drive it
+/// with `.run(delay).await` - the runner is the active driver and is
+/// only alive for as long as the caller holds it.
+///
+/// The engine itself does **not** hold a [`MotionSender`]; it is just
+/// the channel layer that remotes push to. Motion is granted to the
+/// runner at construction time.
 pub struct PatternEngine {
     channels: PatternEngineChannels,
     input: SharedPatternInput,
     state_channel: StateChannel,
-    ossm: &'static Ossm,
 }
 
 impl PatternEngine {
-    pub const fn new(ossm: &'static Ossm) -> Self {
+    pub const fn new() -> Self {
         Self {
             channels: PatternEngineChannels::new(),
             input: SharedPatternInput::new_with(PatternInput::DEFAULT),
             state_channel: StateChannel::new(),
-            ossm,
         }
     }
 
@@ -139,19 +141,21 @@ impl PatternEngine {
         self.state_channel.subscriber()
     }
 
-    pub fn runner<const N: usize>(
-        &'static self,
+    /// Build a runner bound to this engine and a [`MotionSender`].
+    ///
+    /// The runner is what actually drives motion. Constructing one
+    /// turns this engine "live"; drop it to stop driving.
+    pub fn runner<'m, const N: usize>(
+        &'m self,
+        motion: &'m MotionSender,
         patterns: [AnyPattern; N],
-    ) -> PatternEngineRunner<N> {
+    ) -> PatternEngineRunner<'m, N> {
         PatternEngineRunner {
             engine: self,
+            motion,
             patterns,
             state: RunnerState::Idle,
         }
-    }
-
-    pub(crate) fn ossm(&self) -> &Ossm {
-        self.ossm
     }
 
     pub(crate) fn play(&self, index: usize) {
@@ -190,6 +194,12 @@ impl PatternEngine {
     }
 }
 
+impl Default for PatternEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Internal runner state.
 #[derive(Debug, Clone, Copy)]
 enum RunnerState {
@@ -210,22 +220,20 @@ impl RunnerState {
     }
 }
 
-pub struct PatternEngineRunner<const N: usize> {
-    engine: &'static PatternEngine,
+pub struct PatternEngineRunner<'m, const N: usize> {
+    engine: &'m PatternEngine,
+    motion: &'m MotionSender,
     patterns: [AnyPattern; N],
     state: RunnerState,
 }
 
-impl<const N: usize> PatternEngineRunner<N> {
+impl<'m, const N: usize> PatternEngineRunner<'m, N> {
     /// Run the engine forever, processing commands and driving patterns.
-    ///
-    /// This method never returns. It should be the last `.await` in the
-    /// pattern task, or spawned as a dedicated async task.
     ///
     /// `delay` must implement `Clone` so a fresh [`PatternCtx`] can be created
     /// each time a pattern starts. All embassy `Delay` types are `Copy`.
     pub async fn run<D: DelayNs + Clone>(&mut self, delay: D) -> ! {
-        let ossm = self.engine.ossm();
+        let motion = self.motion;
         let input = self.engine.input();
 
         loop {
@@ -235,13 +243,13 @@ impl<const N: usize> PatternEngineRunner<N> {
                     self.handle_command(cmd).await;
                 }
                 RunnerState::Homing(maybe_idx) => {
-                    if ossm.enable().await != StateResponse::Completed {
+                    if motion.enable().await != StateResponse::Completed {
                         log::error!("Enable failed, returning to idle");
                         self.set_state(RunnerState::Idle);
                         continue;
                     }
 
-                    let home_fut = ossm.home();
+                    let home_fut = motion.home();
                     let mut home_fut = core::pin::pin!(home_fut);
 
                     loop {
@@ -265,7 +273,7 @@ impl<const N: usize> PatternEngineRunner<N> {
                                 break;
                             }
                             Either::Second(EngineCommand::Stop | EngineCommand::Pause) => {
-                                if ossm.disable().await == StateResponse::Fault {
+                                if motion.disable().await == StateResponse::Fault {
                                     log::error!("Board fault during disable");
                                 }
                                 self.set_state(RunnerState::Idle);
@@ -276,14 +284,14 @@ impl<const N: usize> PatternEngineRunner<N> {
                     }
                 }
                 RunnerState::Playing(idx) => {
-                    let mut ctx = PatternCtx::new(ossm, input, delay.clone());
+                    let mut ctx = PatternCtx::new(motion, input, delay.clone());
 
+                    let engine = self.engine;
                     // Split borrows: the pinned future holds `patterns[idx]`,
                     // so we access `engine` and `state` through separate refs.
                     // This also means we cannot call `set_state()` here, so
                     // transitions publish state directly via
                     // `engine.publish_state()`.
-                    let engine = self.engine;
                     let state = &mut self.state;
                     let pattern_fut = core::pin::pin!(self.patterns[idx].run(&mut ctx));
                     let mut pattern_fut = pattern_fut;
@@ -306,7 +314,7 @@ impl<const N: usize> PatternEngineRunner<N> {
                             }
                             Either::Second(cmd) => match cmd {
                                 EngineCommand::Pause => {
-                                    if ossm.pause().await != StateResponse::Completed {
+                                    if motion.pause().await != StateResponse::Completed {
                                         log::error!("Pause failed, stopping engine");
                                         *state = RunnerState::Idle;
                                         engine.channels.store(EngineState::Idle);
@@ -317,7 +325,7 @@ impl<const N: usize> PatternEngineRunner<N> {
                                     engine.publish_state(EngineState::Paused(idx));
                                 }
                                 EngineCommand::Resume => {
-                                    if ossm.resume().await != StateResponse::Completed {
+                                    if motion.resume().await != StateResponse::Completed {
                                         log::error!("Resume failed, stopping engine");
                                         *state = RunnerState::Idle;
                                         engine.channels.store(EngineState::Idle);
@@ -335,7 +343,7 @@ impl<const N: usize> PatternEngineRunner<N> {
                                     break;
                                 }
                                 EngineCommand::Stop => {
-                                    if ossm.disable().await == StateResponse::Fault {
+                                    if motion.disable().await == StateResponse::Fault {
                                         log::error!("Board fault during disable");
                                     }
                                     *state = RunnerState::Idle;
@@ -374,7 +382,7 @@ impl<const N: usize> PatternEngineRunner<N> {
                 }
             }
             EngineCommand::Stop => {
-                if self.engine.ossm().disable().await == StateResponse::Fault {
+                if self.motion.disable().await == StateResponse::Fault {
                     log::error!("Board fault during disable");
                 }
                 self.set_state(RunnerState::Idle);

@@ -8,7 +8,7 @@ impl Pattern for NonePattern {
     const NAME: &'static str = "None";
     const DESCRIPTION: &'static str = "No pattern. Holds position.";
 
-    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), ossm::Cancelled> {
+    async fn run(&mut self, ctx: &mut PatternCtx<'_, impl DelayNs>) -> Result<(), ossm::Cancelled> {
         loop {
             ctx.delay_ms(500).await;
         }

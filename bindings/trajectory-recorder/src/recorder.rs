@@ -6,7 +6,7 @@ use core::task::{Context, Poll, Waker};
 use alloc::vec::Vec;
 
 use ossm::planner::Planner;
-use ossm::{MotionCommand, Ossm, StateCommand, StateResponse};
+use ossm::{MotionCommand, MotionReceiver, MotionSender, StateCommand, StateResponse};
 use pattern_engine::{Pattern, PatternCtx, PatternInput, SharedPatternInput};
 
 /// Shared state between `RecordingDelay` and the recorder loop.
@@ -79,14 +79,23 @@ pub struct Sample {
 
 /// Synchronously records a pattern's trajectory by manually polling
 /// the pattern's async future and feeding motion commands to a planner.
-pub struct PatternRecorder {
-    ossm: &'static Ossm,
+pub struct PatternRecorder<'r, 'm> {
+    receiver: &'r MotionReceiver,
     input: &'static SharedPatternInput,
+    motion: &'m MotionSender,
 }
 
-impl PatternRecorder {
-    pub fn new(ossm: &'static Ossm, input: &'static SharedPatternInput) -> Self {
-        Self { ossm, input }
+impl<'r, 'm> PatternRecorder<'r, 'm> {
+    pub fn new(
+        receiver: &'r MotionReceiver,
+        input: &'static SharedPatternInput,
+        motion: &'m MotionSender,
+    ) -> Self {
+        Self {
+            receiver,
+            input,
+            motion,
+        }
     }
 
     /// Record `max_samples` of trajectory data from `pattern` using the
@@ -112,14 +121,14 @@ impl PatternRecorder {
         planner.set_position(start_position);
 
         // Clear any stale commands.
-        let _ = self.ossm.try_recv_state();
-        let _ = self.ossm.try_recv_motion();
+        let _ = self.receiver.try_recv_state();
+        let _ = self.receiver.try_recv_motion();
 
         let delay_state = DelayState::new();
         let delay = RecordingDelay {
             state: &delay_state,
         };
-        let mut ctx = PatternCtx::new(self.ossm, self.input, delay);
+        let mut ctx = PatternCtx::new(self.motion, self.input, delay);
         let future = pattern.run(&mut ctx);
         let mut future = pin!(future);
 
@@ -136,10 +145,10 @@ impl PatternRecorder {
             }
 
             // Check for state commands (enable, home) and respond.
-            if let Some(cmd) = self.ossm.try_recv_state() {
+            if let Some(cmd) = self.receiver.try_recv_state() {
                 match cmd {
                     StateCommand::Enable | StateCommand::Home => {
-                        self.ossm.respond_state(StateResponse::Completed);
+                        self.receiver.respond_state(StateResponse::Completed);
                     }
                     _ => {}
                 }
@@ -147,14 +156,14 @@ impl PatternRecorder {
             }
 
             // Check for a motion command.
-            if let Some(cmd) = self.ossm.try_recv_motion() {
+            if let Some(cmd) = self.receiver.try_recv_motion() {
                 self.drive_planner(planner, &cmd, &mut samples, max_samples);
 
                 if samples.len() >= max_samples {
                     break;
                 }
 
-                self.ossm.signal_motion_complete();
+                self.receiver.signal_motion_complete();
                 continue;
             }
 

@@ -34,7 +34,7 @@ macro_rules! define_patterns {
             const NAME: &'static str = "AnyPattern";
             const DESCRIPTION: &'static str = "Enum dispatch wrapper";
 
-            async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), ossm::Cancelled> {
+            async fn run(&mut self, ctx: &mut PatternCtx<'_, impl DelayNs>) -> Result<(), ossm::Cancelled> {
                 match self { $( Self::$variant(p) => p.run(ctx).await, )+ }
             }
         }
