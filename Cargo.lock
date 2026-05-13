@@ -866,6 +866,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "events"
+version = "0.1.0"
+dependencies = [
+ "embassy-sync 0.7.2",
+ "log",
+]
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1188,6 +1196,7 @@ dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-async",
  "embedded-io 0.6.1",
+ "events",
  "heapless 0.9.2",
  "log",
  "rmodbus",
@@ -1230,6 +1239,7 @@ dependencies = [
  "embassy-sync 0.7.2",
  "embassy-time",
  "embedded-hal-async",
+ "events",
  "log",
  "ossm",
 ]

@@ -2,7 +2,6 @@ use core::cell::Cell;
 
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::blocking_mutex::Mutex;
-use embassy_sync::pubsub::{self, PubSubChannel};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum MotionPhase {
@@ -13,6 +12,8 @@ pub enum MotionPhase {
     Stopping,
     Paused,
 }
+
+events::declare_state!(MotionPhase, MotionPhase::Disabled);
 
 #[derive(Debug, Clone, Copy)]
 pub struct MotionState {
@@ -39,27 +40,17 @@ impl MotionState {
     }
 }
 
-/// Broadcast channel for [`MotionPhase`] transitions.
-///
-/// Uses `PubSubChannel` so subscribers can be created and dropped
-/// dynamically as services start and stop.
-///
-/// - `CAP = 1`: only the latest transition matters; older messages are dropped.
-/// - `SUBS = 8`: up to 8 concurrent async subscribers.
-/// - `PUBS = 0`: publishing uses [`PubSubChannel::immediate_publisher()`]
-///   which does not consume a publisher slot.
-type PhaseChannel = PubSubChannel<CriticalSectionRawMutex, MotionPhase, 1, 8, 0>;
-
+/// Holds the most recent [`MotionState`] snapshot. Phase transitions
+/// are mirrored to `events::state::<MotionPhase>()` so subscribers
+/// outside this crate don't need a handle to `Ossm`.
 pub(crate) struct MotionStateChannels {
     state: Mutex<CriticalSectionRawMutex, Cell<MotionState>>,
-    phase: PhaseChannel,
 }
 
 impl MotionStateChannels {
     pub(crate) const fn new() -> Self {
         Self {
             state: Mutex::new(Cell::new(MotionState::new())),
-            phase: PhaseChannel::new(),
         }
     }
 
@@ -68,17 +59,10 @@ impl MotionStateChannels {
     }
 
     pub(crate) fn publish_phase(&self, phase: MotionPhase) {
-        self.phase.immediate_publisher().publish_immediate(phase);
+        events::state::<MotionPhase>().write(phase);
     }
 
     pub fn get(&self) -> MotionState {
         self.state.lock(|cell| cell.get())
-    }
-
-    pub fn phase_subscriber(
-        &self,
-    ) -> Result<pubsub::Subscriber<'_, CriticalSectionRawMutex, MotionPhase, 1, 8, 0>, pubsub::Error>
-    {
-        self.phase.subscriber()
     }
 }

@@ -7,6 +7,7 @@ edition = "2024"
 sim = []
 
 [dependencies]
+events = { path = "../crates/events" }
 rsruckig = { version = "2.1.3", default-features = false, features = [
     "libm",
     "alloc",

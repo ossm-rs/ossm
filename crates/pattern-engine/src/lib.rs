@@ -11,7 +11,7 @@ mod sender;
 mod util;
 
 pub use engine::{EngineState, PatternEngine};
-pub use input::{PatternInput, SharedPatternInput};
+pub use input::PatternInput;
 pub use observer::PatternObserver;
 pub use pattern::{Pattern, PatternCtx};
 pub use runner::PatternRunner;

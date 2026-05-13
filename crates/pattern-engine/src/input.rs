@@ -1,6 +1,3 @@
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
-use embassy_sync::watch::Watch;
-
 #[derive(Debug, Clone, Copy)]
 pub struct PatternInput {
     /// Maximum depth as a fraction of the machine range (0.0–1.0).
@@ -29,4 +26,4 @@ impl Default for PatternInput {
     }
 }
 
-pub type SharedPatternInput = Watch<CriticalSectionRawMutex, PatternInput, 1>;
+events::declare_state!(PatternInput, PatternInput::DEFAULT);

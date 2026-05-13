@@ -1,8 +1,3 @@
-use core::sync::atomic::Ordering;
-
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
-use embassy_sync::pubsub::{self, Subscriber};
-
 use crate::commands::PatternCommand;
 use crate::engine::{EngineCommand, EngineState, PatternEngine};
 use crate::input::PatternInput;
@@ -20,8 +15,7 @@ use crate::input::PatternInput;
 /// Produced by [`PatternEngine::split`](crate::PatternEngine::split).
 /// Not [`Clone`] and not publicly constructible. The intended pattern
 /// is to hand `&PatternSender` (or own a static one) to every
-/// subsystem that needs to issue commands - typically the events-bus
-/// adapter that bridges `PatternCommand` into the engine.
+/// subsystem that needs to issue commands.
 pub struct PatternSender {
     engine: &'static PatternEngine,
 }
@@ -45,10 +39,8 @@ impl PatternSender {
 
     pub fn stop(&self) {
         let _ = self.engine.commands.try_send(EngineCommand::Stop);
-        self.engine.input.sender().send_modify(|opt| {
-            if let Some(input) = opt {
-                input.velocity = 0.0;
-            }
+        events::state::<PatternInput>().update(|input| {
+            input.velocity = 0.0;
         });
     }
 
@@ -58,44 +50,36 @@ impl PatternSender {
 
     /// Set velocity as a fraction of max velocity. Clamped to `0.0..=1.0`.
     pub fn set_speed(&self, value: f64) {
-        self.engine.input.sender().send_modify(|opt| {
-            if let Some(input) = opt {
-                input.velocity = value.clamp(0.0, 1.0);
-            }
+        events::state::<PatternInput>().update(|input| {
+            input.velocity = value.clamp(0.0, 1.0);
         });
     }
 
     /// Set stroke as a fraction of depth. Clamped to `0.0..=1.0`.
     pub fn set_stroke(&self, value: f64) {
-        self.engine.input.sender().send_modify(|opt| {
-            if let Some(input) = opt {
-                input.stroke = value.clamp(0.0, 1.0);
-            }
+        events::state::<PatternInput>().update(|input| {
+            input.stroke = value.clamp(0.0, 1.0);
         });
     }
 
     /// Set depth as a fraction of machine range. Clamped to `0.0..=1.0`.
     pub fn set_depth(&self, value: f64) {
-        self.engine.input.sender().send_modify(|opt| {
-            if let Some(input) = opt {
-                input.depth = value.clamp(0.0, 1.0);
-            }
+        events::state::<PatternInput>().update(|input| {
+            input.depth = value.clamp(0.0, 1.0);
         });
     }
 
     /// Set sensation (pattern-specific). Clamped to `-1.0..=1.0`.
     pub fn set_sensation(&self, value: f64) {
-        self.engine.input.sender().send_modify(|opt| {
-            if let Some(input) = opt {
-                input.sensation = value.clamp(-1.0, 1.0);
-            }
+        events::state::<PatternInput>().update(|input| {
+            input.sensation = value.clamp(-1.0, 1.0);
         });
     }
 
-    /// Apply a single [`PatternCommand`] - the bridge from the events bus.
+    /// Apply a single [`PatternCommand`].
     ///
-    /// A long-running task subscribes to `PatternCommand` events and calls
-    /// `apply` for each one.
+    /// A long-running task subscribes to `PatternCommand` events and
+    /// calls `apply` for each one.
     pub fn apply(&self, cmd: PatternCommand) {
         match cmd {
             PatternCommand::Play(idx) => self.play(idx),
@@ -116,21 +100,16 @@ impl PatternSender {
     /// read capability so command-issuing code can plan against current
     /// state without also being handed an observer.
     pub fn state(&self) -> EngineState {
-        EngineState::decode(self.engine.state.load(Ordering::Relaxed))
+        events::state::<EngineState>().read()
     }
 
     /// Current pattern input (depth, stroke, velocity, sensation).
     pub fn input(&self) -> PatternInput {
-        self.engine.input.try_get().unwrap_or(PatternInput::DEFAULT)
+        events::state::<PatternInput>().read()
     }
 
     /// Subscribe to [`EngineState`] transitions.
-    ///
-    /// Returns `Err` if all subscriber slots are in use.
-    pub fn subscribe(
-        &self,
-    ) -> Result<Subscriber<'static, CriticalSectionRawMutex, EngineState, 1, 8, 0>, pubsub::Error>
-    {
-        self.engine.state_channel.subscriber()
+    pub fn subscribe(&self) -> events::StateSubscription<EngineState> {
+        events::state::<EngineState>().subscribe()
     }
 }

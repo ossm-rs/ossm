@@ -1,11 +1,9 @@
 use embassy_futures::select::{self, Either3};
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
-use embassy_sync::watch::Receiver;
 use embassy_time::{Duration, Ticker};
 use embedded_hal_async::delay::DelayNs;
-use ossm::{Cancelled, MotionSender, MotionCommand};
+use ossm::{Cancelled, MotionCommand, MotionSender};
 
-use crate::input::{PatternInput, SharedPatternInput};
+use crate::input::PatternInput;
 use crate::util::scale;
 
 /// Cap on how often input-driven motion updates are forwarded to the controller.
@@ -33,22 +31,15 @@ pub trait Pattern {
 
 pub struct PatternCtx<'m, D: DelayNs> {
     motion: &'m MotionSender,
-    input: &'m SharedPatternInput,
-    input_receiver: Receiver<'m, CriticalSectionRawMutex, PatternInput, 1>,
+    input_sub: events::StateSubscription<PatternInput>,
     delay: D,
 }
 
 impl<'m, D: DelayNs> PatternCtx<'m, D> {
-    pub fn new(
-        motion: &'m MotionSender,
-        input: &'m SharedPatternInput,
-        delay: D,
-    ) -> Self {
-        let input_receiver = input.receiver().expect("Watch receiver slot already taken");
+    pub fn new(motion: &'m MotionSender, delay: D) -> Self {
         Self {
             motion,
-            input,
-            input_receiver,
+            input_sub: events::state::<PatternInput>().subscribe(),
             delay,
         }
     }
@@ -57,14 +48,11 @@ impl<'m, D: DelayNs> PatternCtx<'m, D> {
     ///
     /// Re-read at each `.await` point to pick up live changes from BLE/UI.
     pub fn sensation(&self) -> f64 {
-        self.input
-            .try_get()
-            .unwrap_or(PatternInput::DEFAULT)
-            .sensation
+        events::state::<PatternInput>().read().sensation
     }
 
     fn input(&self) -> PatternInput {
-        self.input.try_get().unwrap_or(PatternInput::DEFAULT)
+        events::state::<PatternInput>().read()
     }
 
     /// Start building a motion command.
@@ -182,7 +170,7 @@ impl<'a, 'm, D: DelayNs> MotionBuilder<'a, 'm, D, HasPosition> {
         loop {
             match select::select3(
                 move_done.as_mut(),
-                self.ctx.input_receiver.changed(),
+                self.ctx.input_sub.changed(),
                 throttle.next(),
             )
             .await

@@ -11,6 +11,7 @@ edition = "2024"
 crate-type = ["cdylib"]
 
 [dependencies]
+events = { path = "../../crates/events" }
 ossm = { path = "../../ossm", features = ["sim"] }
 pattern-engine = { path = "../../crates/pattern-engine" }
 

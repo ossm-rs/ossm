@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 
 use ossm::planner::Planner;
 use ossm::{MotionCommand, MotionReceiver, MotionSender, StateCommand, StateResponse};
-use pattern_engine::{Pattern, PatternCtx, PatternInput, SharedPatternInput};
+use pattern_engine::{Pattern, PatternCtx, PatternInput};
 
 /// Shared state between `RecordingDelay` and the recorder loop.
 /// The delay writes the requested duration; the loop reads and clears it.
@@ -81,21 +81,12 @@ pub struct Sample {
 /// the pattern's async future and feeding motion commands to a planner.
 pub struct PatternRecorder<'r, 'm> {
     receiver: &'r MotionReceiver,
-    input: &'static SharedPatternInput,
     motion: &'m MotionSender,
 }
 
 impl<'r, 'm> PatternRecorder<'r, 'm> {
-    pub fn new(
-        receiver: &'r MotionReceiver,
-        input: &'static SharedPatternInput,
-        motion: &'m MotionSender,
-    ) -> Self {
-        Self {
-            receiver,
-            input,
-            motion,
-        }
+    pub fn new(receiver: &'r MotionReceiver, motion: &'m MotionSender) -> Self {
+        Self { receiver, motion }
     }
 
     /// Record `max_samples` of trajectory data from `pattern` using the
@@ -115,7 +106,7 @@ impl<'r, 'm> PatternRecorder<'r, 'm> {
         max_samples: usize,
     ) -> Vec<Sample> {
         // Publish the input so PatternCtx can read it.
-        self.input.sender().send(pattern_input);
+        events::state::<PatternInput>().write(pattern_input);
 
         // Set the planner to the start position.
         planner.set_position(start_position);
@@ -128,7 +119,7 @@ impl<'r, 'm> PatternRecorder<'r, 'm> {
         let delay = RecordingDelay {
             state: &delay_state,
         };
-        let mut ctx = PatternCtx::new(self.motion, self.input, delay);
+        let mut ctx = PatternCtx::new(self.motion, delay);
         let future = pattern.run(&mut ctx);
         let mut future = pin!(future);
 

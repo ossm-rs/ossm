@@ -1,8 +1,3 @@
-use core::sync::atomic::Ordering;
-
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
-use embassy_sync::pubsub::{self, Subscriber};
-
 use crate::engine::{EngineState, PatternEngine};
 use crate::input::PatternInput;
 
@@ -14,36 +9,35 @@ use crate::input::PatternInput;
 /// the observer can read engine state, subscribe to state transitions,
 /// and read the current pattern input, but cannot issue commands.
 ///
-/// Not [`Clone`] and not publicly constructible.
+/// Not [`Clone`] and not publicly constructible. State and input live
+/// in the global event bus; this type is just a capability-gated
+/// projection of `events::state::<EngineState>()` and
+/// `events::state::<PatternInput>()`.
 pub struct PatternObserver {
-    engine: &'static PatternEngine,
+    _engine: &'static PatternEngine,
 }
 
 impl PatternObserver {
     pub(crate) fn new(engine: &'static PatternEngine) -> Self {
-        Self { engine }
+        Self { _engine: engine }
     }
 
     /// Current engine state (idle, homing, playing, paused, ready).
     pub fn state(&self) -> EngineState {
-        EngineState::decode(self.engine.state.load(Ordering::Relaxed))
+        events::state::<EngineState>().read()
     }
 
     /// Current pattern input (depth, stroke, velocity, sensation).
-    ///
-    /// Returns the default input if the watch has not been initialised
-    /// (i.e. nothing has set any value yet).
     pub fn input(&self) -> PatternInput {
-        self.engine.input.try_get().unwrap_or(PatternInput::DEFAULT)
+        events::state::<PatternInput>().read()
     }
 
     /// Subscribe to [`EngineState`] transitions.
     ///
-    /// Returns `Err` if all subscriber slots are in use.
-    pub fn subscribe(
-        &self,
-    ) -> Result<Subscriber<'static, CriticalSectionRawMutex, EngineState, 1, 8, 0>, pubsub::Error>
-    {
-        self.engine.state_channel.subscriber()
+    /// The subscription yields the current state on first
+    /// [`changed()`](events::StateSubscription::changed), then each
+    /// subsequent transition.
+    pub fn subscribe(&self) -> events::StateSubscription<EngineState> {
+        events::state::<EngineState>().subscribe()
     }
 }

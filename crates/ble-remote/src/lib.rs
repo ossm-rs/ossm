@@ -334,13 +334,11 @@ async fn state_notifications<P: PacketPool>(
     connection: &GattConnection<'_, '_, P>,
     patterns: &'static PatternSender,
 ) -> Result<(), Error> {
-    let mut sub = patterns
-        .subscribe()
-        .expect("No state subscriber slots available");
+    let mut sub = patterns.subscribe();
     let mut heartbeat = Ticker::every(Duration::from_secs(1));
 
     loop {
-        let engine_state = match select(sub.next_message_pure(), heartbeat.next()).await {
+        let engine_state = match select(sub.changed(), heartbeat.next()).await {
             Either::First(state) => state,
             Either::Second(_) => patterns.state(),
         };

@@ -1,5 +1,3 @@
-use core::sync::atomic::Ordering;
-
 use embassy_futures::select::{self, Either};
 use embedded_hal_async::delay::DelayNs;
 use log::info;
@@ -64,7 +62,6 @@ impl PatternRunner {
         delay: D,
     ) -> ! {
         let engine = self.engine;
-        let input = &engine.input;
         let mut state = RunnerState::Idle;
 
         loop {
@@ -76,7 +73,7 @@ impl PatternRunner {
                 RunnerState::Homing(maybe_idx) => {
                     if motion.enable().await != StateResponse::Completed {
                         log::error!("Enable failed, returning to idle");
-                        set_state(engine, &mut state, RunnerState::Idle);
+                        set_state(&mut state, RunnerState::Idle);
                         continue;
                     }
 
@@ -91,13 +88,13 @@ impl PatternRunner {
                             Either::First(resp) => {
                                 if resp != StateResponse::Completed {
                                     log::error!("Home failed, returning to idle");
-                                    set_state(engine, &mut state, RunnerState::Idle);
+                                    set_state(&mut state, RunnerState::Idle);
                                 } else {
                                     match maybe_idx {
                                         Some(idx) => {
-                                            set_state(engine, &mut state, RunnerState::Playing(idx))
+                                            set_state(&mut state, RunnerState::Playing(idx))
                                         }
-                                        None => set_state(engine, &mut state, RunnerState::Ready),
+                                        None => set_state(&mut state, RunnerState::Ready),
                                     }
                                 }
                                 break;
@@ -106,7 +103,7 @@ impl PatternRunner {
                                 if motion.disable().await == StateResponse::Fault {
                                     log::error!("Board fault during disable");
                                 }
-                                set_state(engine, &mut state, RunnerState::Idle);
+                                set_state(&mut state, RunnerState::Idle);
                                 break;
                             }
                             Either::Second(_) => {}
@@ -114,7 +111,7 @@ impl PatternRunner {
                     }
                 }
                 RunnerState::Playing(idx) => {
-                    let mut ctx = PatternCtx::new(motion, input, delay.clone());
+                    let mut ctx = PatternCtx::new(motion, delay.clone());
                     let pattern_fut = core::pin::pin!(patterns[idx].run(&mut ctx));
                     let mut pattern_fut = pattern_fut;
 
@@ -126,7 +123,7 @@ impl PatternRunner {
                             Either::First(_result) => {
                                 if matches!(state, RunnerState::Playing(_)) {
                                     state = RunnerState::Idle;
-                                    store_and_publish(engine, EngineState::Idle);
+                                    events::state::<EngineState>().write(EngineState::Idle);
                                 }
                                 break;
                             }
@@ -135,24 +132,27 @@ impl PatternRunner {
                                     if motion.pause().await != StateResponse::Completed {
                                         log::error!("Pause failed, stopping engine");
                                         state = RunnerState::Idle;
-                                        store_and_publish(engine, EngineState::Idle);
+                                        events::state::<EngineState>().write(EngineState::Idle);
                                         break;
                                     }
-                                    store_and_publish(engine, EngineState::Paused(idx));
+                                    events::state::<EngineState>()
+                                        .write(EngineState::Paused(idx));
                                 }
                                 EngineCommand::Resume => {
                                     if motion.resume().await != StateResponse::Completed {
                                         log::error!("Resume failed, stopping engine");
                                         state = RunnerState::Idle;
-                                        store_and_publish(engine, EngineState::Idle);
+                                        events::state::<EngineState>().write(EngineState::Idle);
                                         break;
                                     }
-                                    store_and_publish(engine, EngineState::Playing(idx));
+                                    events::state::<EngineState>()
+                                        .write(EngineState::Playing(idx));
                                 }
                                 EngineCommand::Play(i) if i == idx => {}
                                 EngineCommand::Play(new_idx) if new_idx < N => {
                                     state = RunnerState::Playing(new_idx);
-                                    store_and_publish(engine, EngineState::Playing(new_idx));
+                                    events::state::<EngineState>()
+                                        .write(EngineState::Playing(new_idx));
                                     break;
                                 }
                                 EngineCommand::Stop => {
@@ -160,7 +160,7 @@ impl PatternRunner {
                                         log::error!("Board fault during disable");
                                     }
                                     state = RunnerState::Idle;
-                                    store_and_publish(engine, EngineState::Idle);
+                                    events::state::<EngineState>().write(EngineState::Idle);
                                     break;
                                 }
                                 _ => {}
@@ -173,43 +173,35 @@ impl PatternRunner {
     }
 }
 
-fn set_state(engine: &PatternEngine, current: &mut RunnerState, new_state: RunnerState) {
+fn set_state(current: &mut RunnerState, new_state: RunnerState) {
     *current = new_state;
     let engine_state = new_state.as_engine_state();
     info!("Engine state: {:?}", engine_state);
-    store_and_publish(engine, engine_state);
-}
-
-fn store_and_publish(engine: &PatternEngine, state: EngineState) {
-    engine.state.store(state.encode(), Ordering::Relaxed);
-    engine
-        .state_channel
-        .immediate_publisher()
-        .publish_immediate(state);
+    events::state::<EngineState>().write(engine_state);
 }
 
 async fn handle_command<const N: usize>(
-    engine: &PatternEngine,
+    _engine: &PatternEngine,
     motion: &MotionSender,
     cmd: EngineCommand,
     state: &mut RunnerState,
 ) {
     match cmd {
         EngineCommand::Play(idx) if idx < N => match *state {
-            RunnerState::Idle => set_state(engine, state, RunnerState::Homing(Some(idx))),
+            RunnerState::Idle => set_state(state, RunnerState::Homing(Some(idx))),
             RunnerState::Homing(_) => log::warn!("Ignoring Play command while homing"),
-            _ => set_state(engine, state, RunnerState::Playing(idx)),
+            _ => set_state(state, RunnerState::Playing(idx)),
         },
         EngineCommand::Play(_) => {}
         EngineCommand::Stop => {
             if motion.disable().await == StateResponse::Fault {
                 log::error!("Board fault during disable");
             }
-            set_state(engine, state, RunnerState::Idle);
+            set_state(state, RunnerState::Idle);
         }
         EngineCommand::Home => {
             if let RunnerState::Idle = *state {
-                set_state(engine, state, RunnerState::Homing(None));
+                set_state(state, RunnerState::Homing(None));
             }
         }
         EngineCommand::Pause | EngineCommand::Resume => {

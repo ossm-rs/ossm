@@ -1,6 +1,3 @@
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
-use embassy_sync::pubsub::{self, Subscriber};
-
 use crate::Ossm;
 use crate::command::{Cancelled, MotionCommand, StateCommand, StateResponse};
 use crate::state::{MotionPhase, MotionState};
@@ -102,14 +99,12 @@ impl MotionSender {
         self.channels.motion_state.get()
     }
 
-    /// Create an async subscriber that receives [`MotionPhase`] on every
-    /// phase transition.
+    /// Subscribe to [`MotionPhase`] transitions.
     ///
-    /// Returns `Err` if all subscriber slots are in use.
-    pub fn subscribe(
-        &self,
-    ) -> Result<Subscriber<'static, CriticalSectionRawMutex, MotionPhase, 1, 8, 0>, pubsub::Error>
-    {
-        self.channels.motion_state.phase_subscriber()
+    /// The subscription yields the current phase on first
+    /// [`changed()`](events::StateSubscription::changed), then each
+    /// subsequent transition.
+    pub fn subscribe(&self) -> events::StateSubscription<MotionPhase> {
+        events::state::<MotionPhase>().subscribe()
     }
 }

@@ -5,13 +5,12 @@ mod recorder;
 
 use ossm::planner::RuckigPlanner;
 use ossm::{MotionLimits, MotionReceiver, MotionSender, Ossm};
-use pattern_engine::{AnyPattern, PatternInput, SharedPatternInput};
+use pattern_engine::{AnyPattern, PatternInput};
 use recorder::PatternRecorder;
 use static_cell::StaticCell;
 use wasm_bindgen::prelude::*;
 
 static RECORDER_OSSM_CELL: StaticCell<Ossm> = StaticCell::new();
-static RECORDER_INPUT: SharedPatternInput = SharedPatternInput::new();
 
 const LIMITS: MotionLimits = MotionLimits::DEFAULT;
 const RANGE_MM: f64 = LIMITS.max_position_mm - LIMITS.min_position_mm;
@@ -79,7 +78,7 @@ impl TrajectoryRecorder {
 
         let rest_position = depth * (1.0 - stroke);
 
-        let recorder = PatternRecorder::new(&self.receiver, &RECORDER_INPUT, &self.motion);
+        let recorder = PatternRecorder::new(&self.receiver, &self.motion);
         let samples = recorder.record(
             pat,
             &mut planner,
