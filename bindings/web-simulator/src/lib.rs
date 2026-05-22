@@ -2,7 +2,7 @@ extern crate alloc;
 use alloc::string::String;
 
 use embassy_time::{Delay, Duration, Ticker};
-use ossm::{MechanicalConfig, MotionLimits, MotionObserver, Ossm};
+use ossm::{EmbassyClock, MechanicalConfig, MotionLimits, MotionObserver, Ossm};
 use pattern_engine::{
     AnyPattern, PatternEngine, PatternObserver, PatternSender,
     commands,
@@ -52,7 +52,8 @@ impl Simulator {
             ..MotionLimits::default()
         };
 
-        let mut controller = receiver.into_controller(board, limits, update_interval_secs);
+        let mut controller =
+            receiver.into_controller(board, limits, update_interval_secs, EmbassyClock);
 
         let interval_us = (update_interval_secs * 1_000_000.0) as u64;
 

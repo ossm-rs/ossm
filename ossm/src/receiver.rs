@@ -1,4 +1,4 @@
-use crate::{Board, MotionController, MotionLimits, Ossm};
+use crate::{Board, Clock, MotionController, MotionLimits, Ossm};
 
 /// Receiver half of the motion channels.
 ///
@@ -34,13 +34,14 @@ impl MotionReceiver {
     /// physically powered and under the controller's command until the
     /// firmware loses power. There is no `Drop` path that disables the
     /// motor.
-    pub fn into_controller<B: Board>(
+    pub fn into_controller<B: Board, C: Clock>(
         self,
         board: B,
         limits: MotionLimits,
-        update_interval_secs: f64,
-    ) -> MotionController<'static, B> {
-        MotionController::new(board, limits, update_interval_secs, self.channels)
+        timestep_secs: f64,
+        clock: C,
+    ) -> MotionController<'static, B, C> {
+        MotionController::new(board, limits, timestep_secs, clock, self.channels)
     }
 }
 
