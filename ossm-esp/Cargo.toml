@@ -20,6 +20,7 @@ ossm = { path = "../ossm" }
 esp-hal = { version = "~1.0", default-features = false, features = ["unstable"] }
 embedded-io = "0.6.1"
 embassy-time = "0.5.1"
+critical-section = "1.2"
 
 # motor-rs485
 m57aim-motor = { path = "../drivers/m57aim", optional = true }

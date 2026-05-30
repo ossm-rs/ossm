@@ -2,6 +2,9 @@
 pub mod rs485;
 
 #[cfg(feature = "motor-stepdir")]
+pub mod pcnt;
+
+#[cfg(feature = "motor-stepdir")]
 pub mod stepdir;
 
 #[cfg(feature = "motor-sim")]
