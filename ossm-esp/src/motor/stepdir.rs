@@ -9,7 +9,7 @@ use esp_hal::{
     time::Rate,
 };
 use m57aim_motor::{Motor57AIM, Motor57AIMConfig};
-use ossm::{StepDirConfig, StepDirMotor, StepOutput};
+use ossm::{SoftwarePositionCounter, StepDirConfig, StepDirMotor, StepOutput};
 
 /// RMT clock divider. With a statically set 80 MHz base clock,
 /// divider=4 gives 20 MHz (50 ns per tick).
@@ -30,8 +30,10 @@ pub struct Config {
     pub enable: AnyPin<'static>,
 }
 
-pub type Motor =
-    Motor57AIM<StepDirMotor<RmtStepOutput, Output<'static>, Output<'static>>, Delay>;
+pub type Motor = Motor57AIM<
+    StepDirMotor<RmtStepOutput, Output<'static>, Output<'static>, SoftwarePositionCounter>,
+    Delay,
+>;
 
 pub fn build(config: Config) -> Motor {
     let rmt = Rmt::new(config.rmt, Rate::from_mhz(80)).expect("Failed to initialize RMT");
@@ -45,8 +47,13 @@ pub fn build(config: Config) -> Motor {
     let dir_pin = Output::new(config.dir, Level::Low, OutputConfig::default());
     let enable_pin = Output::new(config.enable, Level::High, OutputConfig::default());
 
-    let step_dir_motor =
-        StepDirMotor::new(step_output, dir_pin, enable_pin, StepDirConfig::default());
+    let step_dir_motor = StepDirMotor::new(
+        step_output,
+        dir_pin,
+        enable_pin,
+        SoftwarePositionCounter::new(),
+        StepDirConfig::default(),
+    );
 
     Motor57AIM::new(step_dir_motor, Motor57AIMConfig::default(), Delay)
 }
