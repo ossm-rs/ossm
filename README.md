@@ -218,6 +218,35 @@ Replace `/dev/ttyUSB0` with the actual path to your device (e.g. `/dev/ttyACM0` 
 
 > **Note:** If the UART device is disconnected and reconnected while the container is running, the container will lose access to it. You will need to restart the container for the device to become available again.
 
+#### With Nix
+
+If you have [Nix](https://nixos.org/download) with flakes enabled, the repo's `flake.nix` pins every host-side tool you need — `rustup`, `espup`, `espflash`, `just`, `jq`, `wasm-bindgen-cli`, `wasm-opt` (binaryen), `pnpm`, Node.js, and a project-local VSCode wrapper.
+
+Drop into the dev shell:
+
+```sh
+nix develop
+```
+
+Or, if you use [direnv](https://direnv.net/), the included `.envrc` (`use flake`) auto-loads the shell whenever you `cd` into the repo — run `direnv allow` once to opt in.
+
+The flake supplies the binaries but not the rustup toolchains and targets they manage, so on first entry install the ESP toolchain and the WASM target:
+
+```sh
+espup install                                       # writes ~/export-esp.sh; the flake's shellHook sources it on later entries
+rustup +stable target add wasm32-unknown-unknown    # WASM target for the web simulator
+```
+
+Exit and re-enter the shell so `~/export-esp.sh` gets picked up, then verify with:
+
+```sh
+./scripts/doctor.sh
+```
+
+From here, use the build and flash commands in step 5 of [On a host](#on-a-host) — everything else (steps 1–4) is already provided by the flake.
+
+> The `code` command inside the dev shell launches VSCode with a project-local user-data and extensions directory under `.vscode-local/`, so it stays isolated from any system-wide VSCode install.
+
 ## Shoulders of giants
 
 This work would not be possible without the open source community, we thank you. Specifically help from the following made this project possible.

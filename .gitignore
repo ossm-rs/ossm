@@ -9,3 +9,8 @@ target/
 .pnpm-store
 
 .DS_Store
+
+.direnv/
+
+# Project-local VSCode install (user data + extensions, from flake.nix)
+.vscode-local/
