@@ -3,13 +3,16 @@ use core::fmt::{self, Debug};
 use embassy_time::Delay;
 use esp_hal::{
     Blocking,
-    gpio::{AnyPin, Level, Output, OutputConfig},
-    peripherals::RMT,
+    gpio::{AnyPin, Flex, Level, Output, OutputConfig},
+    pcnt::Pcnt,
+    peripherals::{PCNT, RMT},
     rmt::{Channel, PulseCode, Rmt, Tx, TxChannelConfig, TxChannelCreator},
     time::Rate,
 };
 use m57aim_motor::{Motor57AIM, Motor57AIMConfig};
-use ossm::{SoftwarePositionCounter, StepDirConfig, StepDirMotor, StepOutput};
+use ossm::{StepDirConfig, StepDirMotor, StepOutput};
+
+use super::pcnt::PcntPositionCounter;
 
 /// RMT clock divider. With a statically set 80 MHz base clock,
 /// divider=4 gives 20 MHz (50 ns per tick).
@@ -25,33 +28,48 @@ const STEP_BATCH_SIZE: usize = 63;
 
 pub struct Config {
     pub rmt: RMT<'static>,
+    pub pcnt: PCNT<'static>,
     pub step: AnyPin<'static>,
     pub dir: AnyPin<'static>,
     pub enable: AnyPin<'static>,
 }
 
 pub type Motor = Motor57AIM<
-    StepDirMotor<RmtStepOutput, Output<'static>, Output<'static>, SoftwarePositionCounter>,
+    StepDirMotor<RmtStepOutput, Flex<'static>, Output<'static>, PcntPositionCounter>,
     Delay,
 >;
 
 pub fn build(config: Config) -> Motor {
     let rmt = Rmt::new(config.rmt, Rate::from_mhz(80)).expect("Failed to initialize RMT");
     let tx_config = TxChannelConfig::default().with_clk_divider(RMT_CLK_DIVIDER);
+
+    // Both STEP and DIR go through Flex so PCNT can tap their signals via
+    // the GPIO matrix while RMT (for STEP) and our own writes (for DIR)
+    // still drive the physical pin.
+    let step_flex = Flex::new(config.step);
+    let step_signal = step_flex.peripheral_input();
     let rmt_channel = rmt
         .channel0
-        .configure_tx(config.step, tx_config)
+        .configure_tx(step_flex, tx_config)
         .expect("Failed to configure RMT TX channel");
-
     let step_output = RmtStepOutput::new(rmt_channel);
-    let dir_pin = Output::new(config.dir, Level::Low, OutputConfig::default());
+
+    let mut dir_flex = Flex::new(config.dir);
+    let dir_signal = dir_flex.peripheral_input();
+    dir_flex.apply_output_config(&OutputConfig::default());
+    dir_flex.set_level(Level::Low);
+    dir_flex.set_output_enable(true);
+
+    let pcnt = Pcnt::new(config.pcnt);
+    let position = PcntPositionCounter::new(pcnt, step_signal, dir_signal);
+
     let enable_pin = Output::new(config.enable, Level::High, OutputConfig::default());
 
     let step_dir_motor = StepDirMotor::new(
         step_output,
-        dir_pin,
+        dir_flex,
         enable_pin,
-        SoftwarePositionCounter::new(),
+        position,
         StepDirConfig::default(),
     );
 
