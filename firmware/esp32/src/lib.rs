@@ -31,7 +31,7 @@ use esp_hal::{
 };
 use esp_rtos::embassy::InterruptExecutor;
 use log::info;
-use ossm::{MechanicalConfig, MotionController, MotionLimits, Ossm};
+use ossm::{EmbassyClock, MechanicalConfig, MotionController, MotionLimits, Ossm};
 use pattern_engine::{AnyPattern, PatternEngine, PatternSender};
 use static_cell::StaticCell;
 
@@ -68,7 +68,7 @@ pub struct Config {
 }
 
 #[embassy_executor::task]
-async fn motion_task(mut controller: MotionController<'static, board::Board>) {
+async fn motion_task(mut controller: MotionController<'static, board::Board, EmbassyClock>) {
     let interval_us = (UPDATE_INTERVAL_SECS * 1_000_000.0) as u64;
     let mut ticker = Ticker::every(Duration::from_micros(interval_us));
 
@@ -104,7 +104,8 @@ pub async fn run(spawner: Spawner, config: Config) {
     let (receiver, _observer, motion) = OSSM_CELL.init(Ossm::new()).split();
 
     let board = board::build(motor, config.board, &MECHANICAL);
-    let controller = receiver.into_controller(board, limits.clone(), UPDATE_INTERVAL_SECS);
+    let controller =
+        receiver.into_controller(board, limits.clone(), UPDATE_INTERVAL_SECS, EmbassyClock);
 
     let sw_int = SoftwareInterruptControl::new(config.sw_int);
     let app_core_stack = APP_CORE_STACK.init(Stack::new());

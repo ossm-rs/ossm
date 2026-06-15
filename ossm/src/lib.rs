@@ -1,9 +1,11 @@
 #![no_std]
+
 extern crate alloc;
 
 mod board;
 mod build_info;
 pub use build_info::BuildMeta;
+mod clock;
 mod command;
 mod limits;
 pub mod logging;
@@ -18,6 +20,7 @@ mod state;
 pub mod transport;
 
 pub use board::Board;
+pub use clock::{Clock, EmbassyClock};
 pub use command::{Cancelled, MotionCommand, StateCommand, StateResponse};
 use command::{MoveChannel, MoveResponseSignal, StateChannel, StateResponseSignal};
 pub use limits::MotionLimits;

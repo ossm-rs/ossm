@@ -1,11 +1,17 @@
 use rsruckig::prelude::*;
 
+use crate::clock::Clock;
 use crate::command::{Cancelled, MotionCommand, StateCommand, StateResponse};
 use crate::state::MotionPhase;
 use crate::{Board, MotionLimits, Ossm};
 
 // Floor applied to velocity requests to prevent degenerate Ruckig inputs.
 const MIN_VELOCITY: f64 = 0.001;
+
+// If motion_control.tick has not called frequently enough, the resulting movement
+// is stale and potentially dangeroud. We allow the controller to fall behind by
+// this many ticks before faulting. With default values this is 12mm of travel.
+const STALL_FAULT_STEPS: u32 = 2;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum MotionState {
@@ -52,9 +58,22 @@ struct MotionTarget {
 /// No upstream code (patterns, UI, remote) can cause motion that exceeds
 /// these limits. The motor's internal trajectory planner is bypassed by
 /// configuring it for maximum tracking speed.
-pub struct MotionController<'a, B: Board> {
+///
+/// # Timing
+///
+/// Ruckig advances on a *fixed* timestep, but the control loop cannot be
+/// trusted to call [`update`](Self::update) at exactly that rate. The
+/// controller therefore pulls real elapsed time from its [`Clock`] and banks it
+/// in an accumulator, running as many fixed Ruckig steps as the elapsed time has
+/// earned. This makes `update` robust to the call interval: calling it faster
+/// than the timestep is a no-op, calling it slower runs multiple
+/// steps to stay on real time. If the gap so large it would move dangerously 
+/// STALL_FAULT_STEPS * max velocity, the controller faults to a safe stop.
+/// Correctness no longer depends on a precise tick call cadence.
+pub struct MotionController<'a, B: Board, C: Clock> {
     board: B,
     channels: &'a Ossm,
+    clock: C,
     state: MotionState,
     limits: MotionLimits,
     /// The last-instructed motion target. `Some` when a move has been commanded,
@@ -63,17 +82,28 @@ pub struct MotionController<'a, B: Board> {
     ruckig: Ruckig<1, ThrowErrorHandler>,
     input: InputParameter<1>,
     output: OutputParameter<1>,
+    /// The fixed Ruckig timestep in microseconds. One accumulator drain runs this
+    /// much trajectory time.
+    timestep_us: u64,
+    /// Real elapsed time (µs) banked but not yet consumed by a Ruckig step.
+    accumulator_us: u64,
+    /// Clock reading (µs) at the previous motion tick; `None` whenever no
+    /// trajectory is active, so idle/homing/paused gaps are never banked.
+    last_micros: Option<u64>,
 }
 
-impl<'a, B: Board> MotionController<'a, B> {
+impl<'a, B: Board, C: Clock> MotionController<'a, B, C> {
     /// Create a new `MotionController` in the `Disabled` state.
     ///
-    /// `update_interval_secs` must match the ticker period the caller uses.
-    /// Ruckig uses this as its fixed time step, so timing accuracy matters.
+    /// `timestep_secs` is Ruckig's fixed integration step. The control loop no
+    /// longer has to hit it exactly — the accumulator reconciles real elapsed
+    /// time (read from `clock`) against this step — but it should be a sensible
+    /// target cadence (e.g. 0.01 for 100 Hz).
     pub(crate) fn new(
         board: B,
         limits: MotionLimits,
-        update_interval_secs: f64,
+        timestep_secs: f64,
+        clock: C,
         channels: &'a Ossm,
     ) -> Self {
         let mut input = InputParameter::new(None);
@@ -88,12 +118,16 @@ impl<'a, B: Board> MotionController<'a, B> {
         Self {
             board,
             channels,
+            clock,
             state: MotionState::Disabled,
             limits,
             target: None,
-            ruckig: Ruckig::<1, ThrowErrorHandler>::new(None, update_interval_secs),
+            ruckig: Ruckig::<1, ThrowErrorHandler>::new(None, timestep_secs),
             input,
             output: OutputParameter::new(None),
+            timestep_us: ((timestep_secs * 1_000_000.0) as u64).max(1),
+            accumulator_us: 0,
+            last_micros: None,
         }
     }
 
@@ -220,19 +254,69 @@ impl<'a, B: Board> MotionController<'a, B> {
         }
     }
 
-    /// Sample the ruckig trajectory and send the position to the board.
+    /// Advance the ruckig trajectory by however much real time has elapsed, then
+    /// send the latest sampled position to the board.
+    ///
+    /// Time is pulled from [`self.clock`](Clock), not the caller, and banked in
+    /// the accumulator. We run one fixed Ruckig step per `timestep` of banked
+    /// time, so the trajectory tracks wall-clock regardless of how often this is
+    /// called — fast calls bank too little to step (no-op), slow calls run
+    /// several. A large enough gap faults instead of dangerously lurching.
     async fn tick(&mut self) -> Result<(), B::Error> {
         if !matches!(self.state, MotionState::Moving | MotionState::Stopping(_)) {
+            // No active trajectory: stop the clock so the idle gap is never
+            // banked into the next move, and start the next one from a clean slate.
+            self.last_micros = None;
+            self.accumulator_us = 0;
             return Ok(());
         }
 
-        let Ok(result) = self.ruckig.update(&self.input, &mut self.output) else {
+        let now = self.clock.now_micros();
+        let dt_us = match self.last_micros {
+            // saturating_sub guards against a non-monotonic clock; the first tick
+            // of a trajectory has no elapsed time.
+            Some(prev) => now.saturating_sub(prev),
+            None => 0,
+        };
+        self.last_micros = Some(now);
+
+        if dt_us > STALL_FAULT_STEPS as u64 * self.timestep_us {
+            log::error!(
+                "Motion loop starved: {}ms since last tick exceeds {} steps; faulting",
+                dt_us / 1_000,
+                STALL_FAULT_STEPS
+            );
+            self.enter_fault();
+            return Ok(());
+        }
+
+        self.accumulator_us += dt_us;
+
+        // Run as many fixed steps as the banked time has earned. If less than one
+        // timestep has elapsed, the loop body never runs and tick() is a no-op.
+        let mut last_result = None;
+        while self.accumulator_us >= self.timestep_us {
+            let Ok(result) = self.ruckig.update(&self.input, &mut self.output) else {
+                self.accumulator_us = 0;
+                return Ok(());
+            };
+            self.accumulator_us -= self.timestep_us;
+            if !matches!(result, RuckigResult::Working | RuckigResult::Finished) {
+                return Ok(());
+            }
+            // Feed each sub-step's result back so the next sub-step continues
+            // from it.
+            self.output.pass_to_input(&mut self.input);
+            let finished = matches!(result, RuckigResult::Finished);
+            last_result = Some(result);
+            if finished {
+                break;
+            }
+        }
+
+        let Some(result) = last_result else {
             return Ok(());
         };
-
-        if !matches!(result, RuckigResult::Working | RuckigResult::Finished) {
-            return Ok(());
-        }
 
         let mm = self.output.new_position[0]
             .clamp(self.limits.min_position_mm, self.limits.max_position_mm);
@@ -241,10 +325,12 @@ impl<'a, B: Board> MotionController<'a, B> {
             self.enter_fault();
             return Err(e);
         }
-        self.output.pass_to_input(&mut self.input);
         self.publish_state();
 
         if result == RuckigResult::Finished {
+            // Discard any sub-timestep remainder; the resulting state decides
+            // what (if anything) moves next.
+            self.accumulator_us = 0;
             match self.state {
                 MotionState::Stopping(StopReason::Pause) => {
                     self.transition(MotionState::Paused);
