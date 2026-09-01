@@ -32,7 +32,7 @@ pub use state::{MotionPhase, MotionState};
 pub use transport::{
     Modbus, ModbusTransport, PositionFeedback, ReadNonBlocking, Rs485ModbusTransport,
     SoftwarePositionCounter, StepDirConfig, StepDirError, StepDirMotor, StepOutput,
-    TransportError,
+    TransportError, UartReconfigure,
 };
 
 /// Root container for an OSSM instance.

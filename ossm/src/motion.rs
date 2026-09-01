@@ -1,4 +1,5 @@
 use rsruckig::prelude::*;
+use num_traits::float::Float;
 
 use crate::command::{Cancelled, MotionCommand, StateCommand, StateResponse};
 use crate::state::MotionPhase;
@@ -35,6 +36,8 @@ struct MotionTarget {
     position: f64,
     /// Maximum velocity (mm/s).
     velocity: f64,
+    /// Maximum acceleration (mm/s/s)
+    jerk: f64,
     /// Torque limit as a fraction (0.0–1.0). `None` uses the motor default.
     torque: Option<f64>,
 }
@@ -212,8 +215,16 @@ impl<'a, B: Board> MotionController<'a, B> {
             }
 
             MotionState::Moving => {
-                self.set_motion_target(cmd);
-                self.apply_torque().await;
+                // Only attempt to update the current motion if
+                // A. The remaining time of the existing move is more then 1 second
+                // B. The current max velocity is 0, indicating the device isn't actually moving
+                // C. The current output time is 0, which often indicates an error state.
+                // TODO, test again without the output.time check once things are slightly more stable.
+                let remaining_time = self.output.trajectory.get_duration() - self.output.time;
+                if self.input.max_velocity[0] == 0.0 || remaining_time > 1.0 || self.output.time == 0.0{
+                    self.set_motion_target(cmd);
+                    self.apply_torque().await;
+                }
             }
 
             _ => {}
@@ -226,8 +237,13 @@ impl<'a, B: Board> MotionController<'a, B> {
             return Ok(());
         }
 
-        let Ok(result) = self.ruckig.update(&self.input, &mut self.output) else {
-            return Ok(());
+        let result = match self.ruckig.update(&self.input, &mut self.output) {
+            Ok(result) => result,
+            Err(_error) => {
+                // Testing placeholder. Uncomment to see error, but spams the log.
+                // log::info!("Ruckig Error {:?}", _error);
+                return Ok(());
+            },
         };
 
         if !matches!(result, RuckigResult::Working | RuckigResult::Finished) {
@@ -360,10 +376,37 @@ impl<'a, B: Board> MotionController<'a, B> {
         mm_s.clamp(MIN_VELOCITY, self.limits.max_velocity_mm_s)
     }
 
+    fn ramp_by_exponent(&self, value: f64, exponent: f64) -> f64 {
+        let mut ramped = 1.0 - value;
+        ramped = ramped.powf(exponent);
+        ramped = 1.0 - ramped;
+        return ramped.powf(1.0/exponent);
+    }
+
+    /// Calculates minimum and maximum jerk values
+    /// Minimum based on meeting the requested speed at least momentatirly along the full rail.
+    /// Maximum value based on 12mm of jerk distance.
+    /// Ramped by the squareroot of the input to allow fine granularity of low values.
+    /// Only 95% of the maximum value is potentially used. This seems to make ruckig more stable.
+    /// When velocity is slowing, previous jerk is used if it is greater then the new jerk to ensure time to slow down.
+    fn fraction_to_jerk(&self, fraction: f64, speed: f64) -> f64 {
+        let speed_3 = 2.0 * speed.powf(3.0);
+        let max_jerk = 0.95 * speed_3 / 12.0.powf(2.0);
+        let rail_2 = (self.limits.max_position_mm - self.limits.min_position_mm).powf(2.0);
+        let min_jerk= speed_3 / rail_2;
+        let mm_s3 = self.ramp_by_exponent(fraction, 0.5) * max_jerk + min_jerk;
+        if self.input.current_velocity[0].abs() > speed && self.input.max_jerk[0] > mm_s3{
+            return self.input.max_jerk[0];
+        }
+        mm_s3.clamp(1.0, self.limits.max_jerk_mm_s3)
+    }
+
     fn set_motion_target(&mut self, cmd: MotionCommand) {
+        let speed = self.fraction_to_velocity(cmd.speed);
         self.target = Some(MotionTarget {
             position: self.fraction_to_mm(cmd.position),
-            velocity: self.fraction_to_velocity(cmd.speed),
+            velocity: speed,
+            jerk: self.fraction_to_jerk(cmd.jerk, speed),
             torque: cmd.torque,
         });
         self.sync_ruckig();
@@ -371,10 +414,23 @@ impl<'a, B: Board> MotionController<'a, B> {
 
     /// Write the instructed target into ruckig's input parameters and reset
     /// the trajectory timer so ruckig replans.
+    /// If slowing, set current velocity to maximum so that recalculation doesn't overshoot position
+    /// This may cause some jerk, but is acceptable compared to the alternative over greatly overshooting the target.
     fn sync_ruckig(&mut self) {
         if let Some(target) = &self.target {
             self.input.target_position[0] = target.position;
+            self.input.max_jerk[0] = target.jerk;
             self.input.max_velocity[0] = target.velocity;
+            if self.input.current_velocity[0].abs() > target.velocity {
+                self.input.current_velocity[0] = target.velocity * (self.input.current_velocity[0]/self.input.current_velocity[0].abs());
+                self.input.current_acceleration[0] = 0.0;
+            }
+            let _result = match self.ruckig.validate_input(&self.input, true, true){
+                Ok(result) => result,
+                Err(error) => {
+                    log::error!("{:?}", error);
+                },
+            };
             self.output.time = 0.0;
             self.ruckig.reset();
         }

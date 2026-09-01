@@ -39,8 +39,8 @@ impl Planner for LinearPlanner {
         self.moving = false;
     }
 
-    fn set_target(&mut self, position: f64, velocity_fraction: f64) {
-        if velocity_fraction <= 0.0 {
+    fn set_target(&mut self, position: f64, velocity_fraction: f64, jerk_fraction: f64) {
+        if velocity_fraction <= 0.0 || jerk_fraction < 0.0 {
             return;
         }
 

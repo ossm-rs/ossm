@@ -26,7 +26,7 @@ pub trait Planner {
     ///
     /// `position` is in 0–1. `velocity_fraction` is a multiplier on the
     /// planner's configured max velocity (0.0–1.0).
-    fn set_target(&mut self, position: f64, velocity_fraction: f64);
+    fn set_target(&mut self, position: f64, velocity_fraction: f64, jerk_fraction: f64);
 
     /// Advance one timestep and return the current state.
     fn tick(&mut self) -> PlannerOutput;

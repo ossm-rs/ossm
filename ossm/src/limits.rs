@@ -25,7 +25,7 @@ impl MotionLimits {
         max_position_mm: 190.0,
         max_velocity_mm_s: 600.0,
         max_acceleration_mm_s2: 30_000.0,
-        max_jerk_mm_s3: 100_000.0,
+        max_jerk_mm_s3: 2_800_000.0,
     };
 }
 

@@ -1,7 +1,19 @@
 use embedded_hal_async::delay::DelayNs;
-use ossm::{Motor, Rs485Motor, SelfHoming};
+use ossm::{Motor, Rs485Motor, SelfHoming, UartReconfigure};
 
-use crate::{Modbus, ModbusTransport, Motor57AIM, RoRegister, RwRegister};
+use crate::{
+    Modbus, ModbusTransport, Motor57AIM, Motor57AIMConfig, MotorBaudRate, RoRegister, RwRegister,
+    STOCK_BAUD_RATE, TARGET_BAUD_RATE,
+};
+
+/// Time to wait after UART comes up before the first probe. Gives the
+/// motor a chance to finish its own boot and start listening.
+const MOTOR_BOOT_DELAY_MS: u32 = 500;
+
+/// Settle window after switching the host UART to the stock baud rate
+/// before issuing the baud-provisioning sequence to the motor. Lets the
+/// motor drop any garbage it saw at the wrong baud.
+const POST_DOWNSHIFT_SETTLE_MS: u32 = 100;
 
 const SET_ABSOLUTE_POSITION_FUNC: u8 = 0x7B;
 const HOME_SPEED_RPM: u16 = 80;
@@ -89,6 +101,22 @@ impl<T: ModbusTransport, D> Motor57AIM<Modbus<T>, D> {
             .await
     }
 
+    /// Provision a new persistent baud rate on the motor.
+    ///
+    /// This is a one-shot setup: after the magic sequence the motor
+    /// stores the rate to its EEPROM and will only respond at the new
+    /// rate after a power cycle. The final `ModbusEnable=506` write
+    /// triggers the apply step and never sees a response, so its
+    /// error is intentionally discarded.
+    pub async fn set_baud_rate(&mut self, baud_rate: MotorBaudRate) -> Result<(), T::Error> {
+        self.write_register(RwRegister::ModbusEnable, 1).await?;
+        self.write_register(RwRegister::MotorAcceleration, baud_rate as u16)
+            .await?;
+        self.write_register(RwRegister::WeakMagneticAngle, 129).await?;
+        let _ = self.write_register(RwRegister::ModbusEnable, 506).await;
+        Ok(())
+    }
+
     /// Configure the motor for maximum tracking performance.
     ///
     /// Sets speed, acceleration, and output to maximum so the motor acts
@@ -137,6 +165,60 @@ impl<T: ModbusTransport, D> Motor57AIM<Modbus<T>, D> {
     pub async fn read_alarm_code(&mut self) -> Result<u16, T::Error> {
         self.read_register(RoRegister::AlarmCode as u16).await
     }
+}
+
+/// Bring up a 57AIM motor from a freshly opened RS-485 transport.
+///
+/// Waits for the motor to finish booting, probes at [`TARGET_BAUD_RATE`],
+/// and on success returns a ready-to-use motor wrapper. If the motor is
+/// silent at the target rate this drops the host UART to
+/// [`STOCK_BAUD_RATE`], writes the baud-provisioning sequence, and
+/// panics - the motor needs a physical power cycle for the new rate to
+/// take effect.
+pub async fn provision<T, D>(
+    transport: T,
+    device_addr: u8,
+    motor_config: Motor57AIMConfig,
+    delay: D,
+) -> Motor57AIM<Modbus<T>, D>
+where
+    T: ModbusTransport + UartReconfigure,
+    D: DelayNs,
+{
+    let mut motor = Motor57AIM::new(Modbus::new(transport, device_addr), motor_config, delay);
+    motor.delay.delay_ms(MOTOR_BOOT_DELAY_MS).await;
+
+    if motor.read_absolute_position().await.is_ok() {
+        log::info!("Motor responsive at {} baud", TARGET_BAUD_RATE.as_int());
+        return motor;
+    }
+
+    log::error!(
+        "Motor unresponsive at {} baud; falling back to {} baud to provision",
+        TARGET_BAUD_RATE.as_int(),
+        STOCK_BAUD_RATE.as_int()
+    );
+
+    if motor
+        .interface
+        .transport
+        .reconfigure_baud(STOCK_BAUD_RATE.as_int())
+        .await
+        .is_err()
+    {
+        panic!("Failed to reconfigure UART to stock baud");
+    }
+    motor.delay.delay_ms(POST_DOWNSHIFT_SETTLE_MS).await;
+
+    if motor.set_baud_rate(TARGET_BAUD_RATE).await.is_err() {
+        panic!("Failed to write target baud to motor");
+    }
+
+    log::error!(
+        "Motor baud rate provisioned to {}. Power cycle the motor to apply.",
+        TARGET_BAUD_RATE.as_int()
+    );
+    panic!("Power cycle required after motor baud provisioning");
 }
 
 impl<T: ModbusTransport, D: DelayNs> Motor for Motor57AIM<Modbus<T>, D> {

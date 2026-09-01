@@ -4,6 +4,7 @@ mod rs485;
 mod stepdir;
 
 pub use ossm::{Modbus, ModbusTransport};
+pub use rs485::provision;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(u16)]
@@ -56,8 +57,38 @@ impl Default for Motor57AIMConfig {
 }
 
 pub const DEFAULT_DEVICE_ADDR: u8 = 0x01;
-pub const STOCK_BAUD_RATE: u32 = 19_200;
-pub const TARGET_BAUD_RATE: u32 = 115_200;
+
+/// Baud rate that the motor ships with from the factory.
+pub const STOCK_BAUD_RATE: MotorBaudRate = MotorBaudRate::Baud19200;
+
+/// Baud rate the firmware uses at runtime. Provisioned into the motor
+/// once via [`Motor57AIM::set_baud_rate`] when first encountered at the
+/// stock rate; persists across power cycles thereafter.
+pub const TARGET_BAUD_RATE: MotorBaudRate = MotorBaudRate::Baud115200;
+
+/// 57AIM baud rate. The discriminants are the motor's magic register
+/// codes used when writing the baud through the provisioning sequence,
+/// not the integer baud itself - call [`MotorBaudRate::as_int`] for
+/// the actual UART rate.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u16)]
+pub enum MotorBaudRate {
+    Baud9600 = 800,
+    Baud19200 = 801,
+    Baud38400 = 802,
+    Baud115200 = 803,
+}
+
+impl MotorBaudRate {
+    pub const fn as_int(self) -> u32 {
+        match self {
+            MotorBaudRate::Baud9600 => 9_600,
+            MotorBaudRate::Baud19200 => 19_200,
+            MotorBaudRate::Baud38400 => 38_400,
+            MotorBaudRate::Baud115200 => 115_200,
+        }
+    }
+}
 
 /// 57AIM BLDC servo motor, generic over communication interface and delay.
 pub struct Motor57AIM<I, D> {

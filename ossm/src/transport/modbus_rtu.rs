@@ -23,10 +23,25 @@ pub enum TransportError<E: core::fmt::Debug> {
 }
 
 /// Non-blocking read: returns 0 immediately when no data is available.
-/// Required for timeout support — `embedded_io::Read` on blocking UARTs
+/// Required for timeout support - `embedded_io::Read` on blocking UARTs
 /// hangs forever waiting for data, making timeouts impossible.
 pub trait ReadNonBlocking: ErrorType {
     fn read_nb(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error>;
+}
+
+/// Change the UART's baud rate in place.
+///
+/// Used for one-shot device provisioning - e.g. switching to a motor's
+/// factory baud to issue a baud-change register sequence. MCU-specific
+/// implementations live in the firmware layer; this trait lets the
+/// motor driver request a reconfigure without knowing how to do it.
+#[allow(async_fn_in_trait)]
+pub trait UartReconfigure {
+    type Error: core::fmt::Debug;
+
+    /// Set the UART baud rate. Returns once the hardware is configured
+    /// and ready to send/receive at the new rate.
+    async fn reconfigure_baud(&mut self, baud: u32) -> Result<(), Self::Error>;
 }
 
 /// ModbusTransport over RS485 UART.
@@ -234,5 +249,16 @@ where
             }
         }
         Err(TransportError::Timeout)
+    }
+}
+
+impl<UART, DELAY> UartReconfigure for Rs485ModbusTransport<UART, DELAY>
+where
+    UART: UartReconfigure,
+{
+    type Error = UART::Error;
+
+    async fn reconfigure_baud(&mut self, baud: u32) -> Result<(), Self::Error> {
+        self.uart.reconfigure_baud(baud).await
     }
 }

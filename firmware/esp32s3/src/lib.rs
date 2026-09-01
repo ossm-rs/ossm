@@ -87,7 +87,7 @@ pub async fn run(spawner: Spawner, config: Config) {
     let timg0 = TimerGroup::new(config.timg0);
     esp_rtos::start(timg0.timer0);
 
-    let motor = motor::build(config.motor);
+    let motor = motor::build(config.motor).await;
 
     static MECHANICAL: MechanicalConfig = MechanicalConfig {
         pulley_teeth: 20,

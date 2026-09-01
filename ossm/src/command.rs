@@ -13,6 +13,8 @@ pub struct MotionCommand {
     pub position: f64,
     /// Velocity as a fraction of max velocity (0.0–1.0).
     pub speed: f64,
+    /// Jerk modifies motion profile between smooth and choppy (0.0-1.0)
+    pub jerk: f64,
     /// Torque limit as a fraction (0.0–1.0). `None` uses the motor default.
     pub torque: Option<f64>,
 }
@@ -22,6 +24,7 @@ impl MotionCommand {
         Self {
             position: self.position.clamp(0.0, 1.0),
             speed: self.speed.clamp(0.0, 1.0),
+            jerk: self.jerk.clamp(0.0, 1.0),
             torque: self.torque.map(|t| t.clamp(0.0, 1.0)),
         }
     }

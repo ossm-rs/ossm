@@ -81,6 +81,7 @@ impl<'m, D: DelayNs> PatternCtx<'m, D> {
             ctx: self,
             position: NoPosition,
             speed_factor: 1.0,
+            jerk_factor: 0.5,
             torque: None,
         }
     }
@@ -113,6 +114,7 @@ pub struct MotionBuilder<'a, 'm, D: DelayNs, P> {
     ctx: &'a mut PatternCtx<'m, D>,
     position: P,
     speed_factor: f64,
+    jerk_factor: f64,
     torque: Option<f64>,
 }
 
@@ -122,6 +124,13 @@ impl<'a, 'm, D: DelayNs, P> MotionBuilder<'a, 'm, D, P> {
     /// Default is 1.0 (full input velocity). 0.5 = half speed, max is 1.0.
     pub fn speed(mut self, factor: f64) -> Self {
         self.speed_factor = factor;
+        self
+    }
+
+    /// Set the jerk
+    /// 0.0 = smooth, 1.0 = choppy 
+    pub fn jerk(mut self, factor: f64) -> Self {
+        self.jerk_factor = factor;
         self
     }
 
@@ -143,6 +152,7 @@ impl<'a, 'm, D: DelayNs> MotionBuilder<'a, 'm, D, NoPosition> {
             ctx: self.ctx,
             position: HasPosition(fraction),
             speed_factor: self.speed_factor,
+            jerk_factor: self.jerk_factor,
             torque: self.torque,
         }
     }
@@ -152,15 +162,18 @@ fn compute_command(
     input: &PatternInput,
     fraction: f64,
     speed_factor: f64,
+    jerk_factor: f64,
     torque: Option<f64>,
 ) -> MotionCommand {
     let stroke = input.depth * input.stroke.clamp(0.0, 1.0);
     let shallow = input.depth - stroke;
     let position = shallow + fraction * stroke;
     let speed = input.velocity * speed_factor.clamp(0.0, 1.0);
+    let jerk = jerk_factor.clamp(0.0, 1.0);
     MotionCommand {
         position,
         speed,
+        jerk,
         torque,
     }
 }
@@ -169,10 +182,11 @@ impl<'a, 'm, D: DelayNs> MotionBuilder<'a, 'm, D, HasPosition> {
     pub async fn send(self) -> Result<(), Cancelled> {
         let fraction = self.position.0.clamp(0.0, 1.0);
         let speed_factor = self.speed_factor;
+        let jerk_factor = self.jerk_factor;
         let torque = self.torque;
 
         let input = self.ctx.input();
-        let cmd = compute_command(&input, fraction, speed_factor, torque);
+        let cmd = compute_command(&input, fraction, speed_factor, jerk_factor, torque);
         self.ctx.motion.begin_motion(cmd);
 
         let mut move_done = core::pin::pin!(self.ctx.motion.await_motion());
@@ -193,7 +207,7 @@ impl<'a, 'm, D: DelayNs> MotionBuilder<'a, 'm, D, HasPosition> {
                 }
                 Either3::Third(()) => {
                     if let Some(input) = pending.take() {
-                        let cmd = compute_command(&input, fraction, speed_factor, torque);
+                        let cmd = compute_command(&input, fraction, speed_factor, jerk_factor, torque);
                         self.ctx.motion.update_motion(cmd);
                     }
                 }

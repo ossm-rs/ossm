@@ -1,4 +1,5 @@
 use rsruckig::prelude::*;
+use num_traits::float::Float;
 
 use super::{Planner, PlannerOutput};
 
@@ -10,6 +11,7 @@ pub struct RuckigPlanner {
     input: InputParameter<1>,
     output: OutputParameter<1>,
     max_velocity: f64,
+    max_jerk: f64,
     moving: bool,
 }
 
@@ -38,6 +40,7 @@ impl RuckigPlanner {
             input,
             output: OutputParameter::new(None),
             max_velocity,
+            max_jerk,
             moving: false,
         }
     }
@@ -56,14 +59,24 @@ impl Planner for RuckigPlanner {
         self.moving = false;
     }
 
-    fn set_target(&mut self, position: f64, velocity_fraction: f64) {
+    fn set_target(&mut self, position: f64, velocity_fraction: f64, mut jerk_fraction: f64) {
         if velocity_fraction <= 0.0 {
             return;
         }
 
         let position = position.clamp(0.0, 1.0);
-        let velocity =
-            (velocity_fraction * self.max_velocity).clamp(MIN_VELOCITY, self.max_velocity);
+        let velocity = (velocity_fraction * self.max_velocity).clamp(MIN_VELOCITY, self.max_velocity);
+
+        let speed_3 = 2.0 * velocity.powf(3.0);
+        let max_jerk = speed_3 / 0.066.powf(2.0);
+        let rail_2 = 1.0;
+        let min_jerk= speed_3 / rail_2;
+        jerk_fraction = 1.0 - jerk_fraction;
+        jerk_fraction = jerk_fraction.powf(0.5);
+        jerk_fraction = 1.0 - jerk_fraction;
+        jerk_fraction = jerk_fraction.powf(2.0);
+        let mm_s3 = jerk_fraction * max_jerk + min_jerk;
+        self.input.max_jerk[0] = mm_s3.clamp(1.0, self.max_jerk);
 
         self.input.target_position[0] = position;
         self.input.max_velocity[0] = velocity;

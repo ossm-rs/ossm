@@ -9,7 +9,7 @@ pub const CONNECTIONS_MAX: usize = 1;
 pub const L2CAP_CHANNELS_MAX: usize = 2;
 pub const MAX_COMMAND_LENGTH: usize = 64;
 pub const MAX_STATE_LENGTH: usize = 128;
-pub const MAX_PATTERN_LENGTH: usize = 256;
+pub const MAX_PATTERN_LENGTH: usize = 1024;
 
 use embassy_executor::Spawner;
 use embassy_futures::select::{Either, select};

@@ -196,7 +196,7 @@ impl<'r, 'm> PatternRecorder<'r, 'm> {
         samples: &mut Vec<Sample>,
         max_samples: usize,
     ) {
-        planner.set_target(cmd.position, cmd.speed);
+        planner.set_target(cmd.position, cmd.speed, cmd.jerk);
 
         loop {
             let out = planner.tick();

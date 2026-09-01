@@ -27,7 +27,23 @@ pub struct PatternMeta {
 
 use embedded_hal_async::delay::DelayNs;
 
-use crate::patterns::{Deeper, HalfHalf, NonePattern, Simple, StopNGo, TeasingPounding, Torque};
+use crate::patterns::{
+    Deeper,
+    HalfHalf,
+    Hammerjack,
+    Insist,
+    Jackhammer,
+    Knot,
+    NonePattern,
+    RoboStroke,
+    Pull,
+    Push,
+    Simple,
+    StopNGo,
+    Stutter,
+    TeasingPounding,
+    Torque
+};
 
 // To add a new pattern:
 // 1. Create a struct in `patterns/` that implements `Pattern`.
@@ -43,7 +59,15 @@ define_patterns! {
     Simple(Simple),
     Deeper(Deeper),
     HalfHalf(HalfHalf),
+    Hammerjack(Hammerjack),
+    Insist(Insist),
+    Jackhammer(Jackhammer),
+    Knot(Knot),
+    Pull(Pull),
+    Push(Push),
+    RoboStroke(RoboStroke),
     StopNGo(StopNGo),
+    Stutter(Stutter),
     TeasingPounding(TeasingPounding),
     Torque(Torque),
     None(NonePattern),
