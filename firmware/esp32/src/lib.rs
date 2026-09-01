@@ -51,10 +51,7 @@ static OSSM_CELL: StaticCell<Ossm> = StaticCell::new();
 static PATTERNS_CELL: StaticCell<PatternEngine> = StaticCell::new();
 
 static EXECUTOR_CORE_1: StaticCell<InterruptExecutor<2>> = StaticCell::new();
-// ESP32 DRAM is tighter than ESP32-S3. 16KB stack is needed for ruckig's
-// trajectory calculator (heavy float math). 64KB heap is needed for the BLE
-// radio stack's internal allocations. ESP-NOW was dropped to fit within
-// the ESP32's memory constraints.
+// ESP32 DRAM is tighter than ESP32-S3
 static APP_CORE_STACK: StaticCell<Stack<32768>> = StaticCell::new();
 static MOTION_READY: Signal<CriticalSectionRawMutex, bool> = Signal::new();
 
@@ -87,7 +84,8 @@ pub async fn run(spawner: Spawner, config: Config) {
 
     ossm::build_info!();
 
-    esp_alloc::heap_allocator!(size: 64 * 1024);
+    // About 50% of the 32kB heap is used
+    esp_alloc::heap_allocator!(size: 32 * 1024);
 
     let timg0 = TimerGroup::new(config.timg0);
     esp_rtos::start(timg0.timer0);
