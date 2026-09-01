@@ -1,14 +1,15 @@
 use embedded_hal::digital::OutputPin;
-use ossm::transport::step_dir::{StepDirError, StepDirMotor, StepOutput};
+use ossm::transport::step_dir::{PositionFeedback, StepDirError, StepDirMotor, StepOutput};
 use ossm::{Motor, StepDir};
 
 use crate::Motor57AIM;
 
-impl<S, Dir, En, D> Motor for Motor57AIM<StepDirMotor<S, Dir, En>, D>
+impl<S, Dir, En, F, D> Motor for Motor57AIM<StepDirMotor<S, Dir, En, F>, D>
 where
     S: StepOutput,
     Dir: OutputPin,
     En: OutputPin<Error = Dir::Error>,
+    F: PositionFeedback,
 {
     type Error = StepDirError<S::Error, Dir::Error>;
 
@@ -41,11 +42,12 @@ where
     }
 }
 
-impl<S, Dir, En, D> StepDir for Motor57AIM<StepDirMotor<S, Dir, En>, D>
+impl<S, Dir, En, F, D> StepDir for Motor57AIM<StepDirMotor<S, Dir, En, F>, D>
 where
     S: StepOutput,
     Dir: OutputPin,
     En: OutputPin<Error = Dir::Error>,
+    F: PositionFeedback,
 {
     fn reset_position(&mut self, position: i32) {
         self.interface.reset_position(position);

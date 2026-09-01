@@ -15,6 +15,51 @@ pub trait StepOutput {
     async fn step(&mut self, count: u32) -> Result<(), Self::Error>;
 }
 
+/// Reports the current step position.
+///
+/// Software implementations rely on [`applied`](Self::applied) being called
+/// after every step batch. Hardware implementations (e.g. ESP32 PCNT) observe
+/// pulses directly and treat `applied` as a no-op.
+pub trait PositionFeedback {
+    /// Current absolute position in steps.
+    fn position(&self) -> i32;
+
+    /// Establish a new absolute position. Called after homing.
+    fn reset(&mut self, value: i32);
+
+    /// Record that `delta` steps were just emitted. Signed so that direction
+    /// reversals decrement the counter. Hardware-counted implementations
+    /// leave this as a no-op.
+    fn applied(&mut self, delta: i32);
+}
+
+/// In-memory position counter. The default for boards that do not have a
+/// hardware pulse counter; trusts every commanded step to land.
+#[derive(Debug, Default)]
+pub struct SoftwarePositionCounter {
+    position: i32,
+}
+
+impl SoftwarePositionCounter {
+    pub const fn new() -> Self {
+        Self { position: 0 }
+    }
+}
+
+impl PositionFeedback for SoftwarePositionCounter {
+    fn position(&self) -> i32 {
+        self.position
+    }
+
+    fn reset(&mut self, value: i32) {
+        self.position = value;
+    }
+
+    fn applied(&mut self, delta: i32) {
+        self.position = self.position.wrapping_add(delta);
+    }
+}
+
 pub struct StepDirConfig {
     pub steps_per_rev: u32,
     /// Maximum output value for the Motor trait. Step/dir drivers handle
@@ -37,31 +82,32 @@ pub enum StepDirError<S: Debug, P: Debug> {
     Pin(P),
 }
 
-pub struct StepDirMotor<S: StepOutput, D: OutputPin, E: OutputPin> {
+pub struct StepDirMotor<S: StepOutput, D: OutputPin, E: OutputPin, F: PositionFeedback> {
     step: S,
     dir: D,
     enable: E,
-    position: i32,
+    feedback: F,
     config: StepDirConfig,
 }
 
-impl<S: StepOutput, D: OutputPin, E: OutputPin> StepDirMotor<S, D, E> {
-    pub fn new(step: S, dir: D, enable: E, config: StepDirConfig) -> Self {
+impl<S: StepOutput, D: OutputPin, E: OutputPin, F: PositionFeedback> StepDirMotor<S, D, E, F> {
+    pub fn new(step: S, dir: D, enable: E, feedback: F, config: StepDirConfig) -> Self {
         Self {
             step,
             dir,
             enable,
-            position: 0,
+            feedback,
             config,
         }
     }
 }
 
-impl<S, D, E> Motor for StepDirMotor<S, D, E>
+impl<S, D, E, F> Motor for StepDirMotor<S, D, E, F>
 where
     S: StepOutput,
     D: OutputPin,
     E: OutputPin<Error = D::Error>,
+    F: PositionFeedback,
 {
     type Error = StepDirError<S::Error, D::Error>;
 
@@ -85,7 +131,7 @@ where
     }
 
     async fn set_absolute_position(&mut self, steps: i32) -> Result<(), Self::Error> {
-        let delta = steps - self.position;
+        let delta = steps - self.feedback.position();
         if delta == 0 {
             return Ok(());
         }
@@ -101,12 +147,12 @@ where
             .await
             .map_err(StepDirError::Step)?;
 
-        self.position = steps;
+        self.feedback.applied(delta);
         Ok(())
     }
 
     async fn read_absolute_position(&mut self) -> Result<i32, Self::Error> {
-        Ok(self.position)
+        Ok(self.feedback.position())
     }
 
     async fn set_max_output(&mut self, _output: u16) -> Result<(), Self::Error> {
@@ -115,13 +161,14 @@ where
     }
 }
 
-impl<S, D, E> StepDirTrait for StepDirMotor<S, D, E>
+impl<S, D, E, F> StepDirTrait for StepDirMotor<S, D, E, F>
 where
     S: StepOutput,
     D: OutputPin,
     E: OutputPin<Error = D::Error>,
+    F: PositionFeedback,
 {
     fn reset_position(&mut self, position: i32) {
-        self.position = position;
+        self.feedback.reset(position);
     }
 }

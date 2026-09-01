@@ -30,8 +30,9 @@ pub use sender::MotionSender;
 use state::MotionStateChannels;
 pub use state::{MotionPhase, MotionState};
 pub use transport::{
-    Modbus, ModbusTransport, ReadNonBlocking, Rs485ModbusTransport, StepDirConfig, StepDirError,
-    StepDirMotor, StepOutput, TransportError, UartReconfigure,
+    Modbus, ModbusTransport, PositionFeedback, ReadNonBlocking, Rs485ModbusTransport,
+    SoftwarePositionCounter, StepDirConfig, StepDirError, StepDirMotor, StepOutput,
+    TransportError, UartReconfigure,
 };
 
 /// Root container for an OSSM instance.
