@@ -11,6 +11,7 @@ async fn main(spawner: embassy_executor::Spawner) {
 
     let config = esp32::Config {
         motor: esp32::MotorConfig {
+            pcnt: p.PCNT,
             rmt: p.RMT,
             step: p.GPIO14.into(),
             dir: p.GPIO27.into(),
