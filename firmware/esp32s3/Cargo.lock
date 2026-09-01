@@ -1334,6 +1334,7 @@ dependencies = [
 name = "ossm-esp"
 version = "0.1.0"
 dependencies = [
+ "critical-section",
  "embassy-time",
  "embedded-io 0.6.1",
  "esp-hal",
