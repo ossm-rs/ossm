@@ -17,6 +17,9 @@ pub struct MotionCommand {
     pub jerk: f64,
     /// Torque limit as a fraction (0.0–1.0). `None` uses the motor default.
     pub torque: Option<f64>,
+    /// Real-time servo-style stream. Uses the controller's full acceleration/jerk
+    /// envelope while `speed` remains the requested velocity ceiling.
+    pub direct_stream: bool,
 }
 
 impl MotionCommand {
@@ -26,6 +29,7 @@ impl MotionCommand {
             speed: self.speed.clamp(0.0, 1.0),
             jerk: self.jerk.clamp(0.0, 1.0),
             torque: self.torque.map(|t| t.clamp(0.0, 1.0)),
+            direct_stream: self.direct_stream,
         }
     }
 }

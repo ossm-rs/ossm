@@ -14,23 +14,24 @@ compile_error!(
 
 mod board;
 mod motor;
+mod owner_control;
+mod owner_auth;
+mod owner_web;
+mod owner_settings;
 mod radio;
+mod wifi_settings;
 
 pub use motor::Config as MotorConfig;
 
 use embassy_executor::Spawner;
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
-use embassy_sync::signal::Signal;
 use embassy_time::{Delay, Duration, Ticker};
 use esp_hal::{
-    interrupt::{Priority, software::SoftwareInterruptControl},
-    peripherals::{BT, CPU_CTRL, SW_INTERRUPT, TIMG0, WIFI},
-    system::Stack,
+    peripherals::{BT, CPU_CTRL, FLASH, SW_INTERRUPT, TIMG0, USB_DEVICE, WIFI},
     timer::timg::TimerGroup,
 };
-use esp_rtos::embassy::InterruptExecutor;
 use log::info;
 use ossm::{MechanicalConfig, MotionController, MotionLimits, Ossm};
+use esp_hal::usb_serial_jtag::UsbSerialJtag;
 use pattern_engine::{AnyPattern, PatternEngine, PatternSender};
 use static_cell::StaticCell;
 
@@ -49,17 +50,15 @@ const UPDATE_INTERVAL_SECS: f64 = 0.01;
 static OSSM_CELL: StaticCell<Ossm> = StaticCell::new();
 static PATTERNS_CELL: StaticCell<PatternEngine> = StaticCell::new();
 
-static EXECUTOR_CORE_1: StaticCell<InterruptExecutor<2>> = StaticCell::new();
-static APP_CORE_STACK: StaticCell<Stack<32768>> = StaticCell::new();
-static MOTION_READY: Signal<CriticalSectionRawMutex, bool> = Signal::new();
-
 pub struct Config {
     pub motor: motor::Config,
     pub wifi: WIFI<'static>,
     pub bt: BT<'static>,
+    pub flash: FLASH<'static>,
     pub timg0: TIMG0<'static>,
     pub sw_int: SW_INTERRUPT<'static>,
     pub cpu_ctrl: CPU_CTRL<'static>,
+    pub usb_device: USB_DEVICE<'static>,
 }
 
 #[embassy_executor::task]
@@ -76,13 +75,9 @@ async fn motion_task(mut controller: MotionController<'static, board::Board>) {
 }
 
 pub async fn run(spawner: Spawner, config: Config) {
-    ossm::logging::init(log::LevelFilter::Info, |line| {
-        esp_println::println!("{}", line);
-    });
-
     ossm::build_info!();
 
-    esp_alloc::heap_allocator!(size: 128 * 1024);
+    esp_alloc::heap_allocator!(size: 168 * 1024);
 
     let timg0 = TimerGroup::new(config.timg0);
     esp_rtos::start(timg0.timer0);
@@ -92,49 +87,55 @@ pub async fn run(spawner: Spawner, config: Config) {
     static MECHANICAL: MechanicalConfig = MechanicalConfig {
         pulley_teeth: 20,
         belt_pitch_mm: 2.0,
-        reverse_direction: false,
+        reverse_direction: false, // verified direction for this machine
     };
-    let limits = MotionLimits::default();
+    let mut limits = MotionLimits::default();
+    pattern_engine::owner_limits::configure_machine(
+        limits.max_velocity_mm_s,
+        limits.max_position_mm - limits.min_position_mm,
+    );
 
-    let (receiver, _observer, motion) = OSSM_CELL.init(Ossm::new()).split();
+    let settings_flash: &'static wifi_settings::WifiFlash = mk_static!(
+        wifi_settings::WifiFlash,
+        embassy_sync::mutex::Mutex::new(esp_storage::FlashStorage::new(config.flash))
+    );
+    owner_settings::load_and_apply(settings_flash).await;
+    // Machine settings are reboot-applied to the actual low-level controller,
+    // not merely to owner/XToys scaling. The compiled min position remains the
+    // home-side safety offset; configurable length changes the usable span.
+    limits.max_velocity_mm_s = pattern_engine::owner_limits::machine_max_speed_mm_s();
+    limits.max_position_mm = limits.min_position_mm + pattern_engine::owner_limits::machine_travel_mm();
+    owner_auth::load(settings_flash).await;
+
+    let (receiver, _motion_observer, motion) = OSSM_CELL.init(Ossm::new()).split();
 
     let board = board::build(motor, &MECHANICAL);
     let controller = receiver.into_controller(board, limits.clone(), UPDATE_INTERVAL_SECS);
 
-    let sw_int = SoftwareInterruptControl::new(config.sw_int);
-    let app_core_stack = APP_CORE_STACK.init(Stack::new());
+    // Run the 10 ms motion task on the main/ProCpu Embassy executor.
+    // The dedicated AppCpu executor is intentionally not used in this baseline.
+    spawner.must_spawn(motion_task(controller));
 
-    let second_core = move || {
-        let executor = InterruptExecutor::new(sw_int.software_interrupt2);
-        let executor = EXECUTOR_CORE_1.init(executor);
-        let spawner = executor.start(Priority::Priority2);
-
-        spawner.spawn(motion_task(controller)).unwrap();
-
-        MOTION_READY.signal(true);
-
-        loop {}
-    };
-
-    esp_rtos::start_second_core(
-        config.cpu_ctrl,
-        sw_int.software_interrupt0,
-        sw_int.software_interrupt1,
-        app_core_stack,
-        second_core,
-    );
-
-    MOTION_READY.wait().await;
+    // These peripherals are unused because the dedicated AppCpu executor is disabled.
+    let _sw_int_unused = config.sw_int;
+    let _cpu_ctrl_unused = config.cpu_ctrl;
 
     info!(
-        "Motion task started on core 1 at {}ms interval",
+        "Motion task started on ProCpu/main executor at {}ms interval",
         UPDATE_INTERVAL_SECS * 1000.0
     );
 
-    let (runner, _observer, patterns) = PATTERNS_CELL.init(PatternEngine::new()).split();
+    let (runner, observer, patterns) = PATTERNS_CELL.init(PatternEngine::new()).split();
+    let observer: &'static pattern_engine::PatternObserver = mk_static!(pattern_engine::PatternObserver, observer);
     let patterns: &'static PatternSender = mk_static!(PatternSender, patterns);
 
-    radio::start(&spawner, config.wifi, config.bt, patterns, &limits);
+    // Local owner USB RX remains available alongside the Wi-Fi owner page.
+    let owner_usb = UsbSerialJtag::new(config.usb_device);
+    spawner.must_spawn(owner_control::owner_usb_task(owner_usb, patterns));
+    spawner.must_spawn(owner_control::owner_supervisor_task(patterns));
+    spawner.must_spawn(owner_web::bpm_control_task(patterns));
+
+    radio::start(&spawner, config.wifi, config.bt, patterns, &limits, settings_flash).await;
 
     runner.run(&motion, AnyPattern::all_builtin(), Delay).await
 }

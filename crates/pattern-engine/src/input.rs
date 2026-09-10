@@ -5,8 +5,8 @@ use embassy_sync::watch::Watch;
 pub struct PatternInput {
     /// Maximum depth as a fraction of the machine range (0.0–1.0).
     pub depth: f64,
-    /// Stroke as a fraction of depth (0.0–1.0).
-    /// Shallowest point = `depth * (1.0 - stroke)`.
+    /// Stroke length as a fraction of the full machine travel (0.0–1.0).
+    /// Shallowest point = `depth - stroke`.
     pub stroke: f64,
     /// Velocity as a fraction of max velocity (0.0–1.0).
     pub velocity: f64,

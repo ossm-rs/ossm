@@ -40,6 +40,8 @@ struct MotionTarget {
     jerk: f64,
     /// Torque limit as a fraction (0.0–1.0). `None` uses the motor default.
     torque: Option<f64>,
+    /// True for the low-latency direct streaming servo path.
+    direct_stream: bool,
 }
 
 /// Drives the motion state machine and enforces safe motion profiles.
@@ -66,6 +68,8 @@ pub struct MotionController<'a, B: Board> {
     ruckig: Ruckig<1, ThrowErrorHandler>,
     input: InputParameter<1>,
     output: OutputParameter<1>,
+    /// Fixed motion-loop period used by both Ruckig and the direct streaming servo.
+    update_interval_secs: f64,
 }
 
 impl<'a, B: Board> MotionController<'a, B> {
@@ -97,6 +101,7 @@ impl<'a, B: Board> MotionController<'a, B> {
             ruckig: Ruckig::<1, ThrowErrorHandler>::new(None, update_interval_secs),
             input,
             output: OutputParameter::new(None),
+            update_interval_secs,
         }
     }
 
@@ -215,15 +220,32 @@ impl<'a, B: Board> MotionController<'a, B> {
             }
 
             MotionState::Moving => {
-                // Only attempt to update the current motion if
-                // A. The remaining time of the existing move is more then 1 second
-                // B. The current max velocity is 0, indicating the device isn't actually moving
-                // C. The current output time is 0, which often indicates an error state.
-                // TODO, test again without the output.time check once things are slightly more stable.
-                let remaining_time = self.output.trajectory.get_duration() - self.output.time;
-                if self.input.max_velocity[0] == 0.0 || remaining_time > 1.0 || self.output.time == 0.0{
+                // The direct stream is a live position servo.  The legacy pattern update gate
+                // intentionally ignores retargets near the end of a point-to-point
+                // move, but that causes slow slider motion to accumulate position
+                // error and then catch up in a sudden high-speed run.  direct-stream
+                // proportional speed law already bounds the catch-up velocity, so
+                // accept its live retargets immediately.
+                let leaving_direct_stream = self.target.as_ref()
+                    .map(|t| t.direct_stream)
+                    .unwrap_or(false) && !cmd.direct_stream;
+
+                if cmd.direct_stream || leaving_direct_stream {
+                    // Live direct-stream targets are always accepted immediately. Also
+                    // accept the first normal XToys/pattern command immediately
+                    // when leaving direct-stream mode so a stale direct-servo target can
+                    // never keep control of the motion loop.
                     self.set_motion_target(cmd);
                     self.apply_torque().await;
+                } else {
+                    // Legacy XToys/pattern behaviour: only attempt to update when
+                    // the existing move has enough time remaining, the current
+                    // velocity limit is zero, or Ruckig is at time zero.
+                    let remaining_time = self.output.trajectory.get_duration() - self.output.time;
+                    if self.input.max_velocity[0] == 0.0 || remaining_time > 1.0 || self.output.time == 0.0 {
+                        self.set_motion_target(cmd);
+                        self.apply_torque().await;
+                    }
                 }
             }
 
@@ -231,17 +253,47 @@ impl<'a, B: Board> MotionController<'a, B> {
         }
     }
 
-    /// Sample the ruckig trajectory and send the position to the board.
+    /// Advance the active motion source by one controller tick.
     async fn tick(&mut self) -> Result<(), B::Error> {
         if !matches!(self.state, MotionState::Moving | MotionState::Stopping(_)) {
             return Ok(());
         }
 
+        // The direct stream is a continuously streamed position servo, not a sequence of
+        // point-to-point trajectories. Sample the latest target at the native
+        // 10 ms motion-loop rate and move toward it directly. This avoids the
+        // repeated 5-15 ms Ruckig replans that caused visible micro-stutter.
+        if matches!(self.state, MotionState::Moving)
+            && self.target.as_ref().map(|t| t.direct_stream).unwrap_or(false)
+        {
+            return self.tick_direct_stream().await;
+        }
+
         let result = match self.ruckig.update(&self.input, &mut self.output) {
             Ok(result) => result,
-            Err(_error) => {
-                // Testing placeholder. Uncomment to see error, but spams the log.
-                // log::info!("Ruckig Error {:?}", _error);
+            Err(error) => {
+                log::error!(
+                    "Ruckig update error: {:?} state={:?} pos={:.3} vel={:.3} acc={:.3} target={:.3} vmax={:.3} amax={:.3} jmax={:.3}",
+                    error,
+                    self.state,
+                    self.input.current_position[0],
+                    self.input.current_velocity[0],
+                    self.input.current_acceleration[0],
+                    self.input.target_position[0],
+                    self.input.max_velocity[0],
+                    self.input.max_acceleration[0],
+                    self.input.max_jerk[0],
+                );
+
+                // Never leave callers blocked forever on await_motion(). For an
+                // ordinary point-to-point move, cancel the failed trajectory and
+                // return to Ready so XToys streaming can consume the next queued
+                // position command. Direct streaming does not use Ruckig.
+                if matches!(self.state, MotionState::Moving) {
+                    self.target = None;
+                    self.channels.move_resp.signal(Err(Cancelled));
+                    self.transition(MotionState::Ready);
+                }
                 return Ok(());
             },
         };
@@ -284,6 +336,94 @@ impl<'a, B: Board> MotionController<'a, B> {
             }
         }
 
+        Ok(())
+    }
+
+    /// Dedicated direct streaming servo. The latest target is sampled every
+    /// motion tick (10 ms on ESP32-S3). Position is advanced directly through
+    /// the normal board abstraction, with a conservative acceleration slew so
+    /// hand-controlled slider motion remains responsive without becoming harsh.
+    async fn tick_direct_stream(&mut self) -> Result<(), B::Error> {
+        let Some(target) = self.target else { return Ok(()); };
+
+        let dt = self.update_interval_secs;
+        let current = self.input.current_position[0]
+            .clamp(self.limits.min_position_mm, self.limits.max_position_mm);
+
+        // A zero-speed direct-stream target means release/hold:
+        // stop advancing immediately at the current commanded position.
+        if target.velocity <= 0.0 {
+            if let Err(e) = self.board.set_position(current).await {
+                log::error!("Board hold failed in direct-stream servo: {:?}", e);
+                self.enter_fault();
+                return Err(e);
+            }
+            self.input.current_velocity[0] = 0.0;
+            self.input.current_acceleration[0] = 0.0;
+            self.input.target_position[0] = current;
+            self.output.new_position[0] = current;
+            self.output.new_velocity[0] = 0.0;
+            self.output.new_acceleration[0] = 0.0;
+            self.publish_state();
+            return Ok(());
+        }
+
+        let error = target.position - current;
+
+        // Prevent overshoot: never command more velocity than required to land
+        // exactly on the current target in one tick.
+        let max_for_error = if dt > 0.0 { error.abs() / dt } else { 0.0 };
+        let desired_mag = target.velocity.min(max_for_error);
+        let desired_velocity = if error > 0.0 {
+            desired_mag
+        } else if error < 0.0 {
+            -desired_mag
+        } else {
+            0.0
+        };
+
+        // First conservative servo tune: 3000 mm/s^2. At 10 ms this changes
+        // velocity by at most 30 mm/s per tick. This is independent of Ruckig
+        // and remains below the controller's configured acceleration ceiling.
+        const DIRECT_STREAM_SERVO_ACCEL_MM_S2: f64 = 3000.0;
+        let accel_limit = DIRECT_STREAM_SERVO_ACCEL_MM_S2.min(self.limits.max_acceleration_mm_s2);
+        let max_dv = accel_limit * dt;
+        let previous_velocity = self.input.current_velocity[0];
+        let dv = desired_velocity - previous_velocity;
+        let velocity = if dv > max_dv {
+            previous_velocity + max_dv
+        } else if dv < -max_dv {
+            previous_velocity - max_dv
+        } else {
+            desired_velocity
+        };
+
+        let mut next = current + velocity * dt;
+        if (error >= 0.0 && next > target.position) || (error <= 0.0 && next < target.position) {
+            next = target.position;
+        }
+        next = next.clamp(self.limits.min_position_mm, self.limits.max_position_mm);
+
+        if let Err(e) = self.board.set_position(next).await {
+            log::error!("Board set_position failed in direct-stream servo: {:?}", e);
+            self.enter_fault();
+            return Err(e);
+        }
+
+        let actual_velocity = if dt > 0.0 { (next - current) / dt } else { 0.0 };
+        let acceleration = if dt > 0.0 { (actual_velocity - previous_velocity) / dt } else { 0.0 };
+
+        self.input.control_interface = ControlInterface::Position;
+        self.input.current_position[0] = next;
+        self.input.current_velocity[0] = actual_velocity;
+        self.input.current_acceleration[0] = acceleration;
+        self.input.target_position[0] = target.position;
+        self.input.max_velocity[0] = target.velocity.max(MIN_VELOCITY);
+
+        self.output.new_position[0] = next;
+        self.output.new_velocity[0] = actual_velocity;
+        self.output.new_acceleration[0] = acceleration;
+        self.publish_state();
         Ok(())
     }
 
@@ -402,14 +542,28 @@ impl<'a, B: Board> MotionController<'a, B> {
     }
 
     fn set_motion_target(&mut self, cmd: MotionCommand) {
-        let speed = self.fraction_to_velocity(cmd.speed);
+        let speed = if cmd.speed <= 0.0 {
+            0.0
+        } else {
+            self.fraction_to_velocity(cmd.speed)
+        };
         self.target = Some(MotionTarget {
             position: self.fraction_to_mm(cmd.position),
             velocity: speed,
-            jerk: self.fraction_to_jerk(cmd.jerk, speed),
+            jerk: if cmd.direct_stream {
+                self.limits.max_jerk_mm_s3
+            } else {
+                self.fraction_to_jerk(cmd.jerk, speed)
+            },
             torque: cmd.torque,
+            direct_stream: cmd.direct_stream,
         });
-        self.sync_ruckig();
+
+        // The dedicated direct-stream servo is sampled directly by tick() every
+        // 10 ms, so there is intentionally no Ruckig validation/reset here.
+        if !cmd.direct_stream {
+            self.sync_ruckig();
+        }
     }
 
     /// Write the instructed target into ruckig's input parameters and reset
