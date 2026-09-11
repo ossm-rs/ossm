@@ -10,81 +10,17 @@ use crate::runner::PatternRunner;
 use crate::sender::PatternSender;
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct StreamMove {
-    pub position: f64,
-    pub time_ms: u32,
-    pub replace: bool,
-}
-
-
-
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct RoutineConfig {
-    pub head: f64,
-    pub suck: f64,
-    pub dt: f64,
-    pub vdt: f64,
-    pub speed: f64,
-    pub count_min: u32,
-    pub count_max: u32,
-    pub dt_chance: u32,
-    pub vdt_chance: u32,
-    pub dt_every: u32,
-    pub hold_min_ms: u32,
-    pub hold_max_ms: u32,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub(crate) enum RoutineField {
-    Head,
-    Suck,
-    Dt,
-    Vdt,
-    Speed,
-    CountMin,
-    CountMax,
-    DtChance,
-    VdtChance,
-    DtEvery,
-    HoldMin,
-    HoldMax,
-}
-
-impl RoutineConfig {
-    pub const DEFAULT: Self = Self {
-        head: 0.10,
-        suck: 0.50,
-        dt: 0.75,
-        vdt: 0.90,
-        speed: 0.50,
-        count_min: 50,
-        count_max: 100,
-        dt_chance: 10,
-        vdt_chance: 5,
-        dt_every: 15,
-        hold_min_ms: 2_000,
-        hold_max_ms: 5_000,
-    };
-}
-
-#[derive(Debug, Clone, Copy)]
 pub(crate) enum EngineCommand {
     Play(usize),
     Stop,
     Home,
     Pause,
     Resume,
-    StartStreaming,
-    StreamMove(StreamMove),
-    XToysStop,
-    RoutineConfigure(RoutineConfig),
-    RoutineSetField(RoutineField, f64),
-    RoutineStart,
-    RoutineStop,
-    RoutineGate(bool),
+    /// Relinquish pattern motion authority while preserving the homed Ready state.
+    Yield,
 }
 
-pub(crate) type EngineCommandChannel = Channel<CriticalSectionRawMutex, EngineCommand, 32>;
+pub(crate) type EngineCommandChannel = Channel<CriticalSectionRawMutex, EngineCommand, 4>;
 
 /// Observable state of the pattern engine.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

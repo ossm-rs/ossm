@@ -4,7 +4,7 @@ use portable_atomic::AtomicU64;
 use embassy_time::{Duration, Instant, Timer};
 use esp_hal::{Blocking, usb_serial_jtag::UsbSerialJtag};
 use log::{info, warn};
-use pattern_engine::{PatternSender, owner_limits};
+use control_interface::{ControlSender, policy};
 
 pub const OWNER_HEARTBEAT_INTERVAL_MS: u64 = 250;
 pub const OWNER_TIMEOUT_MS: u64 = 750;
@@ -38,7 +38,7 @@ fn parse_f64(value: Option<&str>) -> Option<f64> {
     value?.parse::<f64>().ok()
 }
 
-pub(crate) fn process_line(line: &str, patterns: &'static PatternSender) {
+pub(crate) fn process_line(line: &str, control: &'static ControlSender) {
     let line = line.trim();
     if !line.starts_with(PREFIX) {
         return;
@@ -51,28 +51,28 @@ pub(crate) fn process_line(line: &str, patterns: &'static PatternSender) {
         "HB" => heartbeat(),
         "ESTOP" => match parts.next().unwrap_or("") {
             "RESET" => {
-                owner_limits::set_estop_active(false);
-                patterns.reapply_owner_limits();
+                policy::set_estop_active(false);
+                control.reapply_policy();
                 info!("Software E-stop reset; motion remains stopped until a new remote speed command");
             }
             "" => {
-                owner_limits::set_estop_active(true);
-                patterns.stop();
-                patterns.reapply_owner_limits();
+                policy::set_estop_active(true);
+                control.stop();
+                control.reapply_policy();
                 warn!("SOFTWARE E-STOP LATCHED");
             }
             _ => warn!("Unknown OWNER ESTOP command"),
         },
         "MASTER" => match parts.next().unwrap_or("") {
             "ENABLE" => {
-                owner_limits::deactivate_owner_session();
-                owner_limits::set_master_enabled(true);
-                patterns.reapply_owner_limits();
+                policy::deactivate_owner_session();
+                policy::set_master_enabled(true);
+                control.reapply_policy();
                 info!("Owner master enabled - persisted owner limits active");
             }
             "DISABLE" => {
-                owner_limits::set_master_enabled(false);
-                patterns.reapply_owner_limits();
+                policy::set_master_enabled(false);
+                control.reapply_policy();
                 info!("Owner master disabled - stock motion envelope active");
             }
             _ => warn!("Unknown OWNER MASTER command"),
@@ -81,9 +81,9 @@ pub(crate) fn process_line(line: &str, patterns: &'static PatternSender) {
             // ENABLE is itself proof of a live local owner connection.
             // Future heartbeats only track the page session; persisted limits remain active after timeout.
             heartbeat();
-            if owner_limits::master_enabled() {
-                if owner_limits::activate_owner_session() {
-                    patterns.reapply_owner_limits();
+            if policy::master_enabled() {
+                if policy::activate_owner_session() {
+                    control.reapply_policy();
                     info!("Owner limits active");
                 }
             } else {
@@ -91,8 +91,8 @@ pub(crate) fn process_line(line: &str, patterns: &'static PatternSender) {
             }
         }
         "DISABLE" => {
-            owner_limits::deactivate_owner_session();
-            patterns.reapply_owner_limits();
+            policy::deactivate_owner_session();
+            control.reapply_policy();
             info!("Owner page session disabled - persisted owner limits remain active if master enabled");
         }
         "LIMITS" => {
@@ -105,8 +105,8 @@ pub(crate) fn process_line(line: &str, patterns: &'static PatternSender) {
             );
             if let (Some(max_speed), Some(min_stroke), Some(max_stroke), Some(min_depth), Some(max_depth)) = values {
                 heartbeat();
-                owner_limits::set_owner_limits(max_speed, min_stroke, max_stroke, min_depth, max_depth);
-                patterns.reapply_owner_limits();
+                policy::set_owner_limits(max_speed, min_stroke, max_stroke, min_depth, max_depth);
+                control.reapply_policy();
                 info!(
                     "Owner limits updated speed={:.1} stroke={:.1}..{:.1} depth={:.1}..{:.1}",
                     max_speed, min_stroke, max_stroke, min_depth, max_depth
@@ -127,7 +127,7 @@ pub(crate) fn process_line(line: &str, patterns: &'static PatternSender) {
 #[embassy_executor::task]
 pub async fn owner_usb_task(
     mut usb: UsbSerialJtag<'static, Blocking>,
-    patterns: &'static PatternSender,
+    control: &'static ControlSender,
 ) {
     info!("Owner USB RX task started");
     let mut command = [0u8; MAX_COMMAND_LEN];
@@ -140,7 +140,7 @@ pub async fn owner_usb_task(
                 b'\n' => {
                     if len > 0 {
                         if let Ok(line) = core::str::from_utf8(&command[..len]) {
-                            process_line(line, patterns);
+                            process_line(line, control);
                         }
                         len = 0;
                     }
@@ -162,11 +162,11 @@ pub async fn owner_usb_task(
 }
 
 #[embassy_executor::task]
-pub async fn owner_supervisor_task(patterns: &'static PatternSender) {
+pub async fn owner_supervisor_task(control: &'static ControlSender) {
     loop {
-        if owner_limits::owner_session_active() && !heartbeat_fresh() {
-            owner_limits::deactivate_owner_session();
-            patterns.reapply_owner_limits();
+        if policy::owner_session_active() && !heartbeat_fresh() {
+            policy::deactivate_owner_session();
+            control.reapply_policy();
             warn!("Owner heartbeat timeout - page session closed; persisted owner limits remain active");
         }
         Timer::after(Duration::from_millis(50)).await;

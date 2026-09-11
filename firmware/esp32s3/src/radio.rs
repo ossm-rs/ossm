@@ -18,7 +18,7 @@ use esp_radio::wifi::{AccessPointConfig, ClientConfig, ModeConfig, WifiControlle
 use log::{info, warn};
 use ossm::MotionLimits;
 use ossm_m5_remote::RemoteConfig;
-use pattern_engine::PatternSender;
+use control_interface::ControlSender;
 
 use crate::{
     mk_static,
@@ -74,7 +74,7 @@ pub async fn start(
     spawner: &Spawner,
     wifi: WIFI<'static>,
     bt: BT<'static>,
-    patterns: &'static PatternSender,
+    control: &'static ControlSender,
     limits: &MotionLimits,
     wifi_flash: &'static WifiFlash,
 ) {
@@ -139,7 +139,7 @@ pub async fn start(
         // same radio controller.
         let connector = BleConnector::new(radio, bt, Default::default())
             .expect("Could not create BleConnector in setup mode");
-        ble_remote::start(spawner, connector, patterns);
+        ble_remote::start(spawner, connector, control);
 
         info!("Wi-Fi setup/recovery mode active; BLE also available");
         info!("Connect to '{}' then open http://192.168.4.1/", SETUP_AP_SSID);
@@ -193,7 +193,7 @@ pub async fn start(
 
     info!("Owner radio mode: Wi-Fi -> BLE");
     spawner.must_spawn(net_task(net_runner));
-    spawner.must_spawn(owner_web_task(net_stack, patterns, wifi_flash));
+    spawner.must_spawn(owner_web_task(net_stack, control, wifi_flash));
 
     let connect_started = Instant::now();
     loop {
@@ -223,7 +223,7 @@ pub async fn start(
 
     let connector = BleConnector::new(radio, bt, Default::default())
         .expect("Could not create BleConnector");
-    ble_remote::start(spawner, connector, patterns);
+    ble_remote::start(spawner, connector, control);
     info!("BLE started; Wi-Fi remains associated");
 
     spawner.must_spawn(wifi_reconnect_task(wifi_controller));

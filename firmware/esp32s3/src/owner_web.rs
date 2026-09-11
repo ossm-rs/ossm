@@ -5,7 +5,7 @@ use embassy_time::{Duration, Instant, Timer};
 use embedded_io_async::Write;
 use heapless::{String, Vec};
 use log::{info, warn};
-use pattern_engine::{PatternSender, owner_limits};
+use control_interface::{ControlSender, policy};
 use portable_atomic::AtomicU64;
 
 use crate::owner_control::{
@@ -24,66 +24,66 @@ static BPM_ACTIVE: AtomicBool = AtomicBool::new(false);
 static BPM_VALUE: AtomicU16 = AtomicU16::new(30);
 static BPM_END_MS: AtomicU64 = AtomicU64::new(0);
 
-fn apply_bpm_speed(patterns: &'static PatternSender, bpm: u16) {
-    let input = patterns.input();
-    let travel_mm = owner_limits::machine_travel_mm();
-    let machine_max_speed = owner_limits::machine_max_speed_mm_s();
+fn apply_bpm_speed(control: &'static ControlSender, bpm: u16) {
+    let input = control.input();
+    let travel_mm = policy::machine_travel_mm();
+    let machine_max_speed = policy::machine_max_speed_mm_s();
     let stroke_mm = input.stroke.clamp(0.0, 1.0) * travel_mm;
     // One BPM beat is one complete out-and-back cycle, so the commanded
     // path length per beat is twice the current effective stroke length.
     let required_mm_s = 2.0 * stroke_mm * bpm as f64 / 60.0;
-    patterns.set_speed((required_mm_s / machine_max_speed).clamp(0.0, 1.0));
+    control.set_speed((required_mm_s / machine_max_speed).clamp(0.0, 1.0));
 }
 
-fn start_bpm(patterns: &'static PatternSender, bpm: u16, seconds: u32) -> Result<(), ()> {
+fn start_bpm(control: &'static ControlSender, bpm: u16, seconds: u32) -> Result<(), ()> {
     if !(BPM_MIN..=BPM_MAX).contains(&bpm) || seconds == 0 || seconds > BPM_TIMER_MAX_SECONDS {
         return Err(());
     }
-    if owner_limits::estop_active() {
+    if policy::estop_active() {
         return Err(());
     }
 
     // BPM is an owner-web run mode. Enable the existing owner envelope so
     // its configured limits remain authoritative during the timed run.
-    owner_limits::set_master_enabled(true);
-    let _ = owner_limits::activate_owner_session();
+    policy::set_master_enabled(true);
+    let _ = policy::activate_owner_session();
     set_wifi_local_limits_latched(true);
-    patterns.reapply_owner_limits();
+    control.reapply_policy();
 
     BPM_VALUE.store(bpm, Ordering::Release);
     BPM_END_MS.store(Instant::now().as_millis().saturating_add(seconds as u64 * 1000), Ordering::Release);
     BPM_ACTIVE.store(true, Ordering::Release);
-    apply_bpm_speed(patterns, bpm);
-    patterns.play(0);
+    apply_bpm_speed(control, bpm);
+    control.play(0);
     info!("BPM run started: {} BPM for {} s", bpm, seconds);
     Ok(())
 }
 
-fn stop_bpm(patterns: &'static PatternSender) {
+fn stop_bpm(control: &'static ControlSender) {
     BPM_ACTIVE.store(false, Ordering::Release);
     BPM_END_MS.store(0, Ordering::Release);
-    patterns.stop();
-    patterns.set_speed(0.0);
+    control.stop();
+    control.set_speed(0.0);
     info!("BPM run stopped");
 }
 
 #[embassy_executor::task]
-pub async fn bpm_control_task(patterns: &'static PatternSender) {
+pub async fn bpm_control_task(control: &'static ControlSender) {
     loop {
         if BPM_ACTIVE.load(Ordering::Acquire) {
-            if owner_limits::estop_active() {
+            if policy::estop_active() {
                 BPM_ACTIVE.store(false, Ordering::Release);
                 BPM_END_MS.store(0, Ordering::Release);
             } else {
                 let now = Instant::now().as_millis();
                 let end = BPM_END_MS.load(Ordering::Acquire);
                 if end == 0 || now >= end {
-                    stop_bpm(patterns);
+                    stop_bpm(control);
                     info!("BPM timer complete");
                 } else {
                     // Recalculate periodically so BLE/web stroke changes do not
                     // change the requested BPM. Owner speed limits still clamp it.
-                    apply_bpm_speed(patterns, BPM_VALUE.load(Ordering::Acquire));
+                    apply_bpm_speed(control, BPM_VALUE.load(Ordering::Acquire));
                 }
             }
         }
@@ -307,8 +307,8 @@ async fn send_response(socket: &mut TcpSocket<'_>, status: &str, content_type: &
 }
 
 async fn send_state(socket: &mut TcpSocket<'_>) {
-    let owner = owner_limits::owner_limits();
-    let fb = owner_limits::fallback_limits();
+    let owner = policy::owner_limits();
+    let fb = policy::fallback_limits();
     let mut body = String::<640>::new();
     let _ = write!(
         body,
@@ -318,10 +318,10 @@ async fn send_state(socket: &mut TcpSocket<'_>) {
             "\"fallback_max_speed\":{:.1},\"fallback_min_stroke\":{:.1},\"fallback_max_stroke\":{:.1},\"fallback_min_depth\":{:.1},\"fallback_max_depth\":{:.1},",
             "\"machine_max_speed\":{:.1},\"machine_max_travel\":{:.1},\"heartbeat_ms\":{},\"timeout_ms\":{}}}"
         ),
-        owner_limits::master_enabled(), owner_limits::owner_session_active(), owner_limits::estop_active(), heartbeat_fresh(),
+        policy::master_enabled(), policy::owner_session_active(), policy::estop_active(), heartbeat_fresh(),
         owner.max_speed, owner.min_stroke, owner.max_stroke, owner.min_depth, owner.max_depth,
         fb.max_speed, fb.min_stroke, fb.max_stroke, fb.min_depth, fb.max_depth,
-        owner_limits::machine_max_speed_mm_s(), owner_limits::machine_travel_mm(), OWNER_HEARTBEAT_INTERVAL_MS, OWNER_TIMEOUT_MS
+        policy::machine_max_speed_mm_s(), policy::machine_travel_mm(), OWNER_HEARTBEAT_INTERVAL_MS, OWNER_TIMEOUT_MS
     );
     send_response(socket, "200 OK", "application/json", body.as_bytes()).await;
 }
@@ -332,9 +332,9 @@ async fn send_bpm_state(socket: &mut TcpSocket<'_>) {
     let end = BPM_END_MS.load(Ordering::Acquire);
     let now = Instant::now().as_millis();
     let remaining_ms = if active { end.saturating_sub(now) } else { 0 };
-    let input = owner_limits::clamp_input(pattern_engine::owner_limits::requested_input());
-    let stroke_mm = input.stroke * owner_limits::machine_travel_mm();
-    let effective_speed = input.velocity * owner_limits::machine_max_speed_mm_s();
+    let input = policy::clamp_pattern(policy::requested());
+    let stroke_mm = input.stroke * policy::machine_travel_mm();
+    let effective_speed = input.velocity * policy::machine_max_speed_mm_s();
     let actual_bpm = if stroke_mm > 0.001 { effective_speed * 60.0 / (2.0 * stroke_mm) } else { 0.0 };
     let mut body = String::<256>::new();
     let _ = write!(body, "{{\"active\":{},\"bpm\":{},\"remaining_ms\":{},\"actual_bpm\":{:.1}}}", active, bpm, remaining_ms, actual_bpm);
@@ -454,7 +454,7 @@ pub async fn wifi_setup_web_task(stack: Stack<'static>, flash: &'static WifiFlas
 #[embassy_executor::task]
 pub async fn owner_web_task(
     stack: Stack<'static>,
-    patterns: &'static PatternSender,
+    control: &'static ControlSender,
     flash: &'static WifiFlash,
 ) {
     stack.wait_config_up().await;
@@ -474,11 +474,11 @@ pub async fn owner_web_task(
 
         // E-stop remains intentionally available without authentication.
         if request.starts_with("POST /api/estop/reset ") {
-            process_line("@OWNER:ESTOP:RESET", patterns);
+            process_line("@OWNER:ESTOP:RESET", control);
             send_response(&mut socket,"200 OK","text/plain",b"OK").await;
         }
         else if request.starts_with("POST /api/estop ") {
-            process_line("@OWNER:ESTOP", patterns);
+            process_line("@OWNER:ESTOP", control);
             send_response(&mut socket,"200 OK","text/plain",b"OK").await;
         }
         else if request.starts_with("POST /api/auth/setup?") {
@@ -508,29 +508,29 @@ pub async fn owner_web_task(
         else if !request_authorized(request, flash).await {
             send_auth_required(&mut socket).await;
         }
-        else if request.starts_with("POST /api/heartbeat ") { process_line("@OWNER:HB", patterns); send_response(&mut socket,"200 OK","text/plain",b"OK").await }
+        else if request.starts_with("POST /api/heartbeat ") { process_line("@OWNER:HB", control); send_response(&mut socket,"200 OK","text/plain",b"OK").await }
         else if request.starts_with("POST /api/master/enable ") {
-            process_line("@OWNER:MASTER:ENABLE", patterns);
+            process_line("@OWNER:MASTER:ENABLE", control);
             match owner_settings::save_current(flash).await {
                 Ok(()) => send_response(&mut socket,"200 OK","text/plain",b"OK").await,
                 Err(()) => send_response(&mut socket,"500 Internal Server Error","text/plain",b"Limits applied but flash save failed").await,
             }
         }
         else if request.starts_with("POST /api/master/disable ") {
-            process_line("@OWNER:MASTER:DISABLE", patterns);
+            process_line("@OWNER:MASTER:DISABLE", control);
             match owner_settings::save_current(flash).await {
                 Ok(()) => send_response(&mut socket,"200 OK","text/plain",b"OK").await,
                 Err(()) => send_response(&mut socket,"500 Internal Server Error","text/plain",b"Limits applied but flash save failed").await,
             }
         }
-        else if request.starts_with("POST /api/enable ") { process_line("@OWNER:ENABLE", patterns); send_response(&mut socket,"200 OK","text/plain",b"OK").await }
-        else if request.starts_with("POST /api/disable ") { process_line("@OWNER:DISABLE", patterns); send_response(&mut socket,"200 OK","text/plain",b"OK").await }
+        else if request.starts_with("POST /api/enable ") { process_line("@OWNER:ENABLE", control); send_response(&mut socket,"200 OK","text/plain",b"OK").await }
+        else if request.starts_with("POST /api/disable ") { process_line("@OWNER:DISABLE", control); send_response(&mut socket,"200 OK","text/plain",b"OK").await }
         else if request.starts_with("POST /api/machine?") {
             let vals = (query_f64(request,"max_speed"), query_f64(request,"length"));
             if let (Some(max_speed), Some(length)) = vals {
                 // Stop motion before persisting a machine-envelope change. The
                 // new values take effect only after the immediate reboot.
-                patterns.stop();
+                control.stop();
                 match owner_settings::save_machine(flash, max_speed, length).await {
                     Ok(()) => {
                         send_response(&mut socket,"200 OK","text/plain",b"Saved; rebooting").await;
@@ -543,12 +543,12 @@ pub async fn owner_web_task(
         else if request.starts_with("POST /api/limits?") {
             let vals = (query_f64(request,"max_speed"),query_f64(request,"min_stroke"),query_f64(request,"max_stroke"),query_f64(request,"min_depth"),query_f64(request,"max_depth"));
             if let (Some(a),Some(b),Some(c),Some(d),Some(e)) = vals {
-                process_line("@OWNER:MASTER:ENABLE", patterns);
-                process_line("@OWNER:ENABLE", patterns);
+                process_line("@OWNER:MASTER:ENABLE", control);
+                process_line("@OWNER:ENABLE", control);
                 set_wifi_local_limits_latched(true);
                 let mut line = String::<160>::new();
                 let _ = write!(line,"@OWNER:LIMITS:{}:{}:{}:{}:{}",a,b,c,d,e);
-                process_line(&line, patterns);
+                process_line(&line, control);
                 match owner_settings::save_current(flash).await {
                     Ok(()) => send_response(&mut socket,"200 OK","text/plain",b"OK").await,
                     Err(()) => send_response(&mut socket,"500 Internal Server Error","text/plain",b"Limits applied but flash save failed").await,
@@ -559,13 +559,13 @@ pub async fn owner_web_task(
             let bpm = query_value(request, "bpm").and_then(|v| v.parse::<u16>().ok());
             let seconds = query_value(request, "seconds").and_then(|v| v.parse::<u32>().ok());
             if let (Some(bpm), Some(seconds)) = (bpm, seconds) {
-                match start_bpm(patterns, bpm, seconds) {
+                match start_bpm(control, bpm, seconds) {
                     Ok(()) => send_response(&mut socket,"200 OK","text/plain",b"OK").await,
                     Err(()) => send_response(&mut socket,"400 Bad Request","text/plain",b"Invalid BPM/timer or E-stop active").await,
                 }
             } else { send_response(&mut socket,"400 Bad Request","text/plain",b"Bad BPM request").await }
         }
-        else if request.starts_with("POST /api/bpm/stop ") { stop_bpm(patterns); send_response(&mut socket,"200 OK","text/plain",b"OK").await }
+        else if request.starts_with("POST /api/bpm/stop ") { stop_bpm(control); send_response(&mut socket,"200 OK","text/plain",b"OK").await }
         else if request.starts_with("GET /api/bpm ") { send_bpm_state(&mut socket).await }
         else if request.starts_with("POST /api/wifi/save?") { reboot = handle_wifi_save(&mut socket, request, flash).await; }
         else if request.starts_with("POST /api/wifi/clear ") {

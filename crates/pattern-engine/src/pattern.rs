@@ -165,7 +165,7 @@ fn compute_command(
     jerk_factor: f64,
     torque: Option<f64>,
 ) -> MotionCommand {
-    let stroke = input.stroke.clamp(0.0, input.depth);
+    let stroke = input.depth * input.stroke.clamp(0.0, 1.0);
     let shallow = input.depth - stroke;
     let position = shallow + fraction * stroke;
     let speed = input.velocity * speed_factor.clamp(0.0, 1.0);
@@ -175,7 +175,6 @@ fn compute_command(
         speed,
         jerk,
         torque,
-        direct_stream: false,
     }
 }
 
@@ -186,32 +185,13 @@ impl<'a, 'm, D: DelayNs> MotionBuilder<'a, 'm, D, HasPosition> {
         let jerk_factor = self.jerk_factor;
         let torque = self.torque;
 
-        let mut input = self.ctx.input();
-        let mut cmd = compute_command(&input, fraction, speed_factor, jerk_factor, torque);
-
-        // Some legacy BLE clients issue Play while their speed is still zero,
-        // then ramp speed up with later set:speed commands. Do not start a
-        // zero-velocity Ruckig trajectory; wait here until the first positive
-        // speed arrives. Dropping this future still cancels normally when the
-        // runner receives Stop/Pause/another Play command.
-        while cmd.speed <= 0.0001 {
-            input = self.ctx.input_receiver.changed().await;
-            cmd = compute_command(&input, fraction, speed_factor, jerk_factor, torque);
-        }
-
+        let input = self.ctx.input();
+        let cmd = compute_command(&input, fraction, speed_factor, jerk_factor, torque);
         self.ctx.motion.begin_motion(cmd);
 
         let mut move_done = core::pin::pin!(self.ctx.motion.await_motion());
         let mut throttle = Ticker::every(INPUT_UPDATE_THROTTLE);
         let mut pending: Option<PatternInput> = None;
-        // Legacy BLE clients such as Possum implement pause by ramping
-        // set:speed down to exactly zero, then ramping it back up on resume.
-        // Never feed velocity=0 into an active point-to-point Ruckig move:
-        // that can invalidate/cancel the trajectory and terminate the pattern,
-        // leaving later nonzero speed updates with nothing left to resume.
-        // Instead pause the low-level motion while keeping this pattern future
-        // alive, then resume the same pending stroke when speed becomes > 0.
-        let mut zero_speed_paused = false;
 
         loop {
             match select::select3(
@@ -228,35 +208,6 @@ impl<'a, 'm, D: DelayNs> MotionBuilder<'a, 'm, D, HasPosition> {
                 Either3::Third(()) => {
                     if let Some(input) = pending.take() {
                         let cmd = compute_command(&input, fraction, speed_factor, jerk_factor, torque);
-
-                        if cmd.speed <= 0.0001 {
-                            if !zero_speed_paused {
-                                match self.ctx.motion.pause().await {
-                                    ossm::StateResponse::Completed => {
-                                        zero_speed_paused = true;
-                                        log::info!("Pattern input speed reached zero; motion soft-paused");
-                                    }
-                                    response => {
-                                        log::warn!("Pattern zero-speed pause failed: {:?}", response);
-                                    }
-                                }
-                            }
-                            continue;
-                        }
-
-                        if zero_speed_paused {
-                            match self.ctx.motion.resume().await {
-                                ossm::StateResponse::Completed => {
-                                    zero_speed_paused = false;
-                                    log::info!("Pattern input speed positive; motion resumed");
-                                }
-                                response => {
-                                    log::warn!("Pattern zero-speed resume failed: {:?}", response);
-                                    continue;
-                                }
-                            }
-                        }
-
                         self.ctx.motion.update_motion(cmd);
                     }
                 }

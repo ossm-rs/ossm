@@ -1,0 +1,11 @@
+[package]
+name = "control-interface"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ossm = { path = "../../ossm" }
+pattern-engine = { path = "../pattern-engine" }
+portable-atomic = { version = "1", default-features = false }
+log = "0.4"
+embassy-time = { version = "0.5.1" }

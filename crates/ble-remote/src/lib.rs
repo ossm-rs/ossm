@@ -18,7 +18,9 @@ use embassy_time::{Duration, Ticker, Timer};
 use esp_radio::ble::controller::BleConnector;
 use heapless::String;
 use log::{error, info, warn};
+use control_interface::ControlSender;
 use pattern_engine::{EngineState, PatternInput, PatternSender, commands};
+use xtoys::{ObjectIter, Reply as XToysReply};
 use static_cell::StaticCell;
 use trouble_host::prelude::*;
 
@@ -127,7 +129,7 @@ fn get_pattern_description(index: usize) -> String<MAX_PATTERN_LENGTH> {
 pub fn start(
     spawner: &Spawner,
     connector: BleConnector<'static>,
-    patterns: &'static PatternSender,
+    control: &'static ControlSender,
 ) {
     let bt_controller: ExternalController<_, 20> = ExternalController::new(connector);
 
@@ -146,7 +148,7 @@ pub fn start(
     } = stack.build();
 
     spawner.must_spawn(ble_runner_task(runner));
-    spawner.must_spawn(ble_events_task(stack, peripheral, patterns));
+    spawner.must_spawn(ble_events_task(stack, peripheral, control));
 
     info!("BLE remote tasks started, waiting for connection...");
 }
@@ -163,8 +165,9 @@ pub async fn ble_events_task(
         ExternalController<BleConnector<'static>, 20>,
         DefaultPacketPool,
     >,
-    patterns: &'static PatternSender,
+    control: &'static ControlSender,
 ) {
+    let patterns = control.pattern_sender();
     info!("Starting advertising and GATT service");
     let server = Server::new_with_config(GapConfig::Peripheral(PeripheralConfig {
         name: "OSSM",
@@ -233,7 +236,7 @@ pub async fn ble_events_task(
                     .with_attribute_server(&server)
                     .expect("Could not transform connection into GATT connection");
 
-                let events = gatt_events_task(&server, &gatt_connection, patterns);
+                let events = gatt_events_task(&server, &gatt_connection, patterns, control);
                 let notify = state_notifications(&server, &gatt_connection, patterns);
 
                 match select(events, notify).await {
@@ -249,7 +252,7 @@ pub async fn ble_events_task(
                 }
 
                 XTOYS_HOME_PENDING.store(false, Ordering::Release);
-                patterns.stop();
+                control.stop();
                 info!("BLE session ended, stopping engine");
             }
             Err(err) => {
@@ -274,6 +277,7 @@ async fn gatt_events_task<P: PacketPool>(
     server: &Server<'_>,
     connection: &GattConnection<'_, '_, P>,
     patterns: &'static PatternSender,
+    control: &'static ControlSender,
 ) -> Result<(), Error> {
     let reason = loop {
         match connection.next().await {
@@ -326,11 +330,11 @@ async fn gatt_events_task<P: PacketPool>(
                     if event_handle == server.ossm_service.primary_command.handle {
                         let command: String<MAX_COMMAND_LENGTH> =
                             server.get(&server.ossm_service.primary_command)?;
-                        process_command(&command, server, patterns);
+                        process_command(&command, server, control);
                     }
                     if event_handle == server.xtoys_service.control.handle {
                         let command: String<MAX_XTOYS_LENGTH> = server.get(&server.xtoys_service.control)?;
-                        process_xtoys_message(command.as_str(), server, connection, patterns).await;
+                        process_xtoys_message(command.as_str(), server, connection, control).await;
                     }
                     if event_handle == server.ossm_service.pattern_description.handle {
                         let command: String<MAX_PATTERN_LENGTH> =
@@ -482,115 +486,43 @@ fn state_to_json(state: EngineState, input: &PatternInput) -> String<MAX_STATE_L
 }
 
 
-fn json_find_value<'a>(object: &'a str, key: &str) -> Option<&'a str> {
-    let mut key_buf: String<48> = String::new();
-    let _ = write!(key_buf, "\"{}\"", key);
-    let start = object.find(key_buf.as_str())?;
-    let after = &object[start + key_buf.len()..];
-    let colon = after.find(':')?;
-    Some(after[colon + 1..].trim_start())
-}
-fn json_string<'a>(object: &'a str, key: &str) -> Option<&'a str> {
-    let value = json_find_value(object, key)?.strip_prefix('"')?;
-    let end = value.find('"')?;
-    Some(&value[..end])
-}
-fn json_number(object: &str, key: &str) -> Option<f64> {
-    let value = json_find_value(object, key)?;
-    let end = value.find(|c: char| !(c.is_ascii_digit() || c == '-' || c == '+' || c == '.')).unwrap_or(value.len());
-    value[..end].parse::<f64>().ok()
-}
-fn json_bool(object: &str, key: &str) -> bool {
-    json_find_value(object, key).map(|v| v.starts_with("true")).unwrap_or(false)
-}
-async fn xtoys_notify<P: PacketPool>(server: &Server<'_>, connection: &GattConnection<'_, '_, P>, value: &str) {
+async fn xtoys_notify<P: PacketPool>(
+    server: &Server<'_>,
+    connection: &GattConnection<'_, '_, P>,
+    value: &str,
+) {
     let mut response: String<MAX_XTOYS_LENGTH> = String::new();
-    if response.push_str(value).is_err() { return; }
+    if response.push_str(value).is_err() {
+        return;
+    }
     let _ = server.set(&server.xtoys_service.control, &response);
     if let Err(err) = server.xtoys_service.control.notify(connection, &response).await {
         warn!("XToys notify skipped/failed: {:?}", err);
     }
 }
-async fn process_xtoys_object<P: PacketPool>(object: &str, server: &Server<'_>, connection: &GattConnection<'_, '_, P>, patterns: &'static PatternSender) {
-    let Some(action) = json_string(object, "action") else { return; };
-    info!("XToys action {}", action);
-    match action {
-        "connected" => patterns.stop(),
-        "home" => {
-            XTOYS_HOME_PENDING.store(true, Ordering::Release);
-            patterns.home();
-        },
-        "setConfig" => {
-            let head = json_number(object, "head").unwrap_or(10.0).clamp(0.0, 100.0) / 100.0;
-            let suck = json_number(object, "suck").unwrap_or(50.0).clamp(0.0, 100.0) / 100.0;
-            let dt = json_number(object, "dt").unwrap_or(75.0).clamp(0.0, 100.0) / 100.0;
-            let speed = json_number(object, "speed").unwrap_or(50.0).clamp(0.0, 100.0) / 100.0;
-            let count = json_number(object, "count").unwrap_or(20.0).clamp(1.0, 10_000.0) as u32;
-            let dt_every = json_number(object, "dtEvery").unwrap_or(5.0).clamp(0.0, 10_000.0) as u32;
-            let dt_hold_ms = (json_number(object, "dtHold").unwrap_or(2.0).clamp(0.0, 60.0) * 1000.0) as u32;
-            patterns.routine_configure(head, suck, dt, speed, count, dt_every, dt_hold_ms);
-            xtoys_notify(server, connection, r#"[{"action":"setConfig","success":true}]"#).await;
-        },
-        "startRoutine" => {
-            patterns.routine_start();
-            xtoys_notify(server, connection, r#"[{"action":"startRoutine","success":true}]"#).await;
-        },
-        "stopRoutine" => {
-            patterns.routine_stop();
-            xtoys_notify(server, connection, r#"[{"action":"stopRoutine","success":true}]"#).await;
-        },
-        "setPattern" => patterns.play(json_number(object, "pattern").unwrap_or(0.0).max(0.0) as usize),
-        "pause" => patterns.pause(),
-        "resume" => patterns.resume(),
-        "stop" => patterns.xtoys_stop(),
-        "setSpeed" => patterns.set_speed(json_number(object, "speed").unwrap_or(0.0).clamp(0.0,100.0)/100.0),
-        "setDepth" => patterns.set_depth(json_number(object, "depth").unwrap_or(0.0).clamp(0.0,100.0)/100.0),
-        "setStroke" => patterns.set_stroke(json_number(object, "stroke").unwrap_or(0.0).clamp(0.0,100.0)/100.0),
-        "setSensation" => patterns.set_sensation(json_number(object, "sensation").unwrap_or(0.0).clamp(-100.0,100.0)/100.0),
-        "startStreaming" => patterns.start_streaming(),
-        "move" => {
-            // XToys emits an initialization packet when entering Position mode
-            // with `"time":null`.  This is not a real timed move.  Treating it
-            // as 0 ms feeds a full-speed Ruckig point-to-point command into the
-            // streaming runner and can leave the runner waiting forever while
-            // BLE itself remains connected.
-            //
-            // Keep legitimate numeric 0 ms commands intact (notably the
-            // explicit retract/extend helpers below); only JSON null is ignored.
-            let time_value = json_find_value(object, "time");
-            if time_value.map(|v| v.starts_with("null")).unwrap_or(false) {
-                info!("XToys Position-mode seed move ignored (time=null)");
-            } else {
-                patterns.stream_move(
-                    json_number(object, "position").unwrap_or(0.0).clamp(0.0,100.0)/100.0,
-                    json_number(object, "time").unwrap_or(0.0).clamp(0.0,u32::MAX as f64) as u32,
-                    json_bool(object, "replace")
-                );
-            }
-        },
-        "disable" => {
-            XTOYS_HOME_PENDING.store(false, Ordering::Release);
-            patterns.stop();
-        },
-        "version" => xtoys_notify(server, connection, r#"[{"action":"version","api":"2.0","firmware":"2.0-ossm-rs"}]"#).await,
-        "configureBluetooth" => xtoys_notify(server, connection, r#"[{"action":"configureBluetooth","success":true}]"#).await,
-        "getPatternList" => xtoys_notify(server, connection, r#"[{"action":"getPatternList","patterns":[{"name":"Simple","idx":0}]}]"#).await,
-        "setup" => patterns.stop(),
-        "retract" => { patterns.start_streaming(); patterns.stream_move(0.0, 0, true); },
-        "extend" => { patterns.start_streaming(); patterns.stream_move(1.0, 0, true); },
-        "configureWebsocket" => warn!("XToys configureWebsocket ignored in Bluetooth build"),
-        other => warn!("Unsupported XToys action {}", other),
-    }
-}
-async fn process_xtoys_message<P: PacketPool>(message: &str, server: &Server<'_>, connection: &GattConnection<'_, '_, P>, patterns: &'static PatternSender) {
+
+async fn process_xtoys_message<P: PacketPool>(
+    message: &str,
+    server: &Server<'_>,
+    connection: &GattConnection<'_, '_, P>,
+    control: &'static ControlSender,
+) {
     info!("XToys JSON {}", message);
-    let mut depth = 0usize;
-    let mut start = None;
-    for (idx, ch) in message.char_indices() {
-        match ch {
-            '{' => { if depth == 0 { start = Some(idx); } depth += 1; }
-            '}' => { if depth > 0 { depth -= 1; if depth == 0 { if let Some(begin) = start.take() { process_xtoys_object(&message[begin..=idx], server, connection, patterns).await; } } } }
-            _ => {}
+    for object in ObjectIter::new(message) {
+        let Some(action) = xtoys::parse_object(object) else { continue };
+        let reply = xtoys::apply(action, control).await;
+        match reply {
+            XToysReply::None => {}
+            XToysReply::HomePending => XTOYS_HOME_PENDING.store(true, Ordering::Release),
+            XToysReply::Version => {
+                xtoys_notify(server, connection, r#"[{"action":"version","api":"2.0","firmware":"2.0-ossm-rs"}]"#).await;
+            }
+            XToysReply::ConfigureBluetoothOk => {
+                xtoys_notify(server, connection, r#"[{"action":"configureBluetooth","success":true}]"#).await;
+            }
+            XToysReply::PatternList => {
+                xtoys_notify(server, connection, r#"[{"action":"getPatternList","patterns":[{"name":"Simple","idx":0}]}]"#).await;
+            }
         }
     }
 }
@@ -598,7 +530,7 @@ async fn process_xtoys_message<P: PacketPool>(message: &str, server: &Server<'_>
 fn process_command(
     command: &String<MAX_COMMAND_LENGTH>,
     server: &Server<'_>,
-    patterns: &'static PatternSender,
+    control: &'static ControlSender,
 ) {
     info!("BLE Command {}", command);
 
@@ -614,12 +546,12 @@ fn process_command(
                         if let Ok(value) = value.parse::<u32>() {
                             let normalized = value as f64 / 100.0;
                             match action {
-                                "speed" => patterns.set_speed(normalized),
-                                "stroke" => patterns.set_stroke(normalized),
-                                "depth" => patterns.set_depth(normalized),
+                                "speed" => control.set_speed(normalized),
+                                "stroke" => control.set_stroke(normalized),
+                                "depth" => control.set_depth(normalized),
                                 // BLE sends 0–100; internal range is -1.0..1.0.
-                                "sensation" => patterns.set_sensation(normalized * 2.0 - 1.0),
-                                "pattern" => patterns.play(value as usize),
+                                "sensation" => control.set_sensation(normalized * 2.0 - 1.0),
+                                "pattern" => control.play(value as usize),
                                 _ => {
                                     error!("Invalid set command {}", action);
                                     fail = true;
@@ -635,10 +567,10 @@ fn process_command(
                     }
                 }
                 "go" => match action {
-                    "simplePenetration" | "strokeEngine" => patterns.play(0),
-                    "pause" => patterns.pause(),
-                    "resume" => patterns.resume(),
-                    "menu" => patterns.stop(),
+                    "simplePenetration" | "strokeEngine" => control.play(0),
+                    "pause" => control.pause(),
+                    "resume" => control.resume(),
+                    "menu" => control.stop(),
                     _ => {
                         error!("Unknown go action: {}", action);
                         fail = true;

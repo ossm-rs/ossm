@@ -1,6 +1,6 @@
 use embedded_storage::nor_flash::{NorFlash, ReadNorFlash};
 use log::{info, warn};
-use pattern_engine::owner_limits;
+use control_interface::{policy, HARD_MAX_MACHINE_SPEED_MM_S, HARD_MAX_MACHINE_TRAVEL_MM};
 
 use crate::wifi_settings::WifiFlash;
 
@@ -83,19 +83,19 @@ pub async fn load_and_apply(flash: &'static WifiFlash) -> bool {
         let machine_speed = get_f64(&record[56..64]);
         let machine_travel = get_f64(&record[64..72]);
         if !machine_speed.is_finite() || !machine_travel.is_finite()
-            || machine_speed < 1.0 || machine_speed > owner_limits::HARD_MAX_MACHINE_SPEED_MM_S
-            || machine_travel < 1.0 || machine_travel > owner_limits::HARD_MAX_MACHINE_TRAVEL_MM
+            || machine_speed < 1.0 || machine_speed > HARD_MAX_MACHINE_SPEED_MM_S
+            || machine_travel < 1.0 || machine_travel > HARD_MAX_MACHINE_TRAVEL_MM
         {
             warn!("Saved machine settings contain invalid values");
             return false;
         }
-        owner_limits::configure_machine(machine_speed, machine_travel);
+        policy::configure_machine(machine_speed, machine_travel);
         info!("Restored machine limits from flash: speed={:.1} mm/s length={:.1} mm", machine_speed, machine_travel);
     }
 
-    owner_limits::set_owner_limits(max_speed, min_stroke, max_stroke, min_depth, max_depth);
-    owner_limits::set_master_enabled(master_enabled);
-    let applied = owner_limits::owner_limits();
+    policy::set_owner_limits(max_speed, min_stroke, max_stroke, min_depth, max_depth);
+    policy::set_master_enabled(master_enabled);
+    let applied = policy::owner_limits();
     info!(
         "Restored owner limits from flash: master={} speed={:.1} stroke={:.1}..{:.1} depth={:.1}..{:.1}",
         master_enabled, applied.max_speed, applied.min_stroke, applied.max_stroke, applied.min_depth, applied.max_depth
@@ -104,11 +104,11 @@ pub async fn load_and_apply(flash: &'static WifiFlash) -> bool {
 }
 
 fn build_record(machine_speed: f64, machine_travel: f64) -> [u8; RECORD_SIZE] {
-    let limits = owner_limits::owner_limits();
+    let limits = policy::owner_limits();
     let mut record = [0xffu8; RECORD_SIZE];
     record[..8].copy_from_slice(MAGIC);
     record[8] = VERSION_V2;
-    record[9] = owner_limits::master_enabled() as u8;
+    record[9] = policy::master_enabled() as u8;
     // Bytes 10..16 reserved for future settings.
     put_f64(&mut record[16..24], limits.max_speed.min(machine_speed));
     put_f64(&mut record[24..32], limits.min_stroke.min(machine_travel));
@@ -130,7 +130,7 @@ async fn write_record(flash: &'static WifiFlash, record: &[u8; RECORD_SIZE]) -> 
 }
 
 pub async fn save_current(flash: &'static WifiFlash) -> Result<(), ()> {
-    let record = build_record(owner_limits::machine_max_speed_mm_s(), owner_limits::machine_travel_mm());
+    let record = build_record(policy::machine_max_speed_mm_s(), policy::machine_travel_mm());
     write_record(flash, &record).await?;
     info!("Owner/machine settings saved to flash");
     Ok(())
@@ -141,8 +141,8 @@ pub async fn save_current(flash: &'static WifiFlash) -> Result<(), ()> {
 /// web-side scaling before reboot would create an unsafe mismatch.
 pub async fn save_machine(flash: &'static WifiFlash, max_speed_mm_s: f64, travel_mm: f64) -> Result<(), ()> {
     if !max_speed_mm_s.is_finite() || !travel_mm.is_finite()
-        || max_speed_mm_s < 1.0 || max_speed_mm_s > owner_limits::HARD_MAX_MACHINE_SPEED_MM_S
-        || travel_mm < 1.0 || travel_mm > owner_limits::HARD_MAX_MACHINE_TRAVEL_MM
+        || max_speed_mm_s < 1.0 || max_speed_mm_s > HARD_MAX_MACHINE_SPEED_MM_S
+        || travel_mm < 1.0 || travel_mm > HARD_MAX_MACHINE_TRAVEL_MM
     {
         return Err(());
     }
