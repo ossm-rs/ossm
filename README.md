@@ -7,6 +7,7 @@ An alternative firmware for OSSM written in rust.
 - [Why](#why)
 - [Supported hardware](#supported-hardware)
 - [Installing firmware](#installing-firmware)
+- [Status LED colors](#status-led-colors)
 - [Safety and disclaimers](#safety-and-disclaimers)
 - [Features](#features)
   - [Under the hood](#under-the-hood)
@@ -55,6 +56,19 @@ Motors:
 For now, firmware must be built and flashed manually from source. See [Set up your environment](#set-up-your-environment) for instructions.
 
 For the v1 release, pre-built binaries will be published on each tagged release. Longer term, a web flasher is planned so you can flash directly from your browser without any toolchain setup.
+
+## Status LED colors
+
+On boards with a configured RGB status LED, such as the OSSM Alt Edition, the LED shows a steady color:
+
+| Color | Meaning |
+| --- | --- |
+| Dim white | Idle — the motion controller is disabled or enabled but not ready, or the pattern engine is idle. |
+| Yellow | Homing — establishing the home reference. |
+| Orange | Stopping — decelerating, including while fulfilling a pause request. |
+| Green | Ready, moving, or playing a pattern. Playback stays green during pattern delays and zero-speed holds. |
+| Blue | Paused — motion has stopped with the intent to resume preserved. |
+| Red | Application panic — firmware has halted; the indication remains until manual reset. |
 
 ## Safety and disclaimers
 
@@ -187,16 +201,19 @@ Features are optional higher-level capabilities built on top of the core motion 
 
 This project targets multiple architectures (ESP32-S3, ESP32, WASM), each with its own Rust target triple and toolchain settings. Since rust-analyzer can only analyze one target at a time, it needs to be told which one to use - otherwise it defaults to your host platform and will report false errors for embedded or WASM code.
 
-The `just focus` command links a firmware's config tomls to the workspace root to configure the correct target and features:
+The `just focus` command updates the VS Code and Zed rust-analyzer settings to select a firmware workspace and its features:
 
 ```sh
-just focus ossm-alt
-just focus ossm-reference
+just focus esp32s3
+just focus esp32
 ```
+
+The ESP32-S3 focus enables the RS485 motor and WS2812B status-indicator modules used by the
+default OSSM Alt build.
 
 After running this, you may need to restart rust-analyzer (or reload your editor) to pick up the new settings. You only need to re-run it when switching to a different target.
 
-> Note: In unix this uses a symlink, meaning if either file changes, both kept in sync. Windows has permission issues with symlinks, and so it performs a full copy instead. Edits to the root level configs will not be persisted, and can fall out of sync.
+The command regenerates editor settings from their templates. Put persistent customizations in the templates.
 
 #### In a dev container
 

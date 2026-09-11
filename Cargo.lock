@@ -1522,6 +1522,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "status-indicator"
+version = "0.1.0"
+dependencies = [
+ "ossm",
+ "pattern-engine",
+]
+
+[[package]]
 name = "stepdir-board"
 version = "0.1.0"
 dependencies = [
@@ -1804,6 +1812,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09dac053f1cd375980747450bfc7250c264eaae0583872e845c0c7cd578872b5"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "ws2812b-indicator"
+version = "0.1.0"
+dependencies = [
+ "status-indicator",
 ]
 
 [[package]]

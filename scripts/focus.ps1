@@ -18,15 +18,19 @@ if ([string]::IsNullOrEmpty($Motor)) {
     $Motor = $defaults[$Crate]
 }
 $feature = "motor-$Motor"
+$features = @($feature)
+if ($Crate -eq "esp32s3") {
+    $features += "indicator-ws2812b"
+}
 
 $vscode = Get-Content ".vscode/settings.template.json" | ConvertFrom-Json
 $vscode | Add-Member -Force "rust-analyzer.linkedProjects" @("firmware/$Crate/Cargo.toml")
-$vscode | Add-Member -Force "rust-analyzer.cargo.features" @($feature)
+$vscode | Add-Member -Force "rust-analyzer.cargo.features" $features
 $vscode | ConvertTo-Json -Depth 10 | Set-Content ".vscode/settings.json"
 
 $zed = Get-Content ".zed/settings.template.json" | ConvertFrom-Json
 $zed.lsp.'rust-analyzer'.initialization_options | Add-Member -Force "linkedProjects" @("firmware/$Crate/Cargo.toml")
-$zed.lsp.'rust-analyzer'.initialization_options | Add-Member -Force "cargo" ([pscustomobject]@{ features = @($feature) })
+$zed.lsp.'rust-analyzer'.initialization_options | Add-Member -Force "cargo" ([pscustomobject]@{ features = $features })
 $zed | ConvertTo-Json -Depth 10 | Set-Content ".zed/settings.json"
 
-Write-Host "rust-analyzer focused on $Crate with --features $feature"
+Write-Host "rust-analyzer focused on $Crate with --features $($features -join ',')"

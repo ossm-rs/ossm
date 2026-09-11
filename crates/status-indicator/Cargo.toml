@@ -1,0 +1,11 @@
+[package]
+name = "status-indicator"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+policy = ["dep:ossm", "dep:pattern-engine"]
+
+[dependencies]
+ossm = { path = "../../ossm", optional = true }
+pattern-engine = { path = "../pattern-engine", optional = true }

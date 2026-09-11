@@ -1,0 +1,7 @@
+[package]
+name = "ws2812b-indicator"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+status-indicator = { path = "../../crates/status-indicator" }

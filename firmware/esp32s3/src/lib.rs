@@ -13,9 +13,11 @@ compile_error!(
 );
 
 mod board;
+mod indicator;
 mod motor;
 mod radio;
 
+pub use indicator::Config as IndicatorConfig;
 pub use motor::Config as MotorConfig;
 
 use embassy_executor::Spawner;
@@ -55,6 +57,7 @@ static MOTION_READY: Signal<CriticalSectionRawMutex, bool> = Signal::new();
 
 pub struct Config {
     pub motor: motor::Config,
+    pub indicator: IndicatorConfig,
     pub wifi: WIFI<'static>,
     pub bt: BT<'static>,
     pub timg0: TIMG0<'static>,
@@ -87,6 +90,7 @@ pub async fn run(spawner: Spawner, config: Config) {
     let timg0 = TimerGroup::new(config.timg0);
     esp_rtos::start(timg0.timer0);
 
+    let indicator = indicator::build(config.indicator).await;
     let motor = motor::build(config.motor).await;
 
     static MECHANICAL: MechanicalConfig = MechanicalConfig {
@@ -96,7 +100,7 @@ pub async fn run(spawner: Spawner, config: Config) {
     };
     let limits = MotionLimits::default();
 
-    let (receiver, _observer, motion) = OSSM_CELL.init(Ossm::new()).split();
+    let (receiver, motion_observer, motion) = OSSM_CELL.init(Ossm::new()).split();
 
     let board = board::build(motor, &MECHANICAL);
     let controller = receiver.into_controller(board, limits.clone(), UPDATE_INTERVAL_SECS);
@@ -131,8 +135,10 @@ pub async fn run(spawner: Spawner, config: Config) {
         UPDATE_INTERVAL_SECS * 1000.0
     );
 
-    let (runner, _observer, patterns) = PATTERNS_CELL.init(PatternEngine::new()).split();
+    let (runner, pattern_observer, patterns) = PATTERNS_CELL.init(PatternEngine::new()).split();
     let patterns: &'static PatternSender = mk_static!(PatternSender, patterns);
+
+    indicator::start(&spawner, indicator, motion_observer, pattern_observer);
 
     radio::start(&spawner, config.wifi, config.bt, patterns, &limits);
 

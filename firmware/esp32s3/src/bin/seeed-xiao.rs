@@ -10,6 +10,7 @@ async fn main(spawner: embassy_executor::Spawner) {
     let p = esp_hal::init(esp_hal::Config::default());
 
     let config = esp32s3::Config {
+        indicator: esp32s3::IndicatorConfig::default(),
         motor: esp32s3::MotorConfig {
             uart1: p.UART1,
             uart_tx: p.GPIO5.into(),

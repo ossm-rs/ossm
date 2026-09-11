@@ -14,6 +14,7 @@ esp32s3 = ["esp-hal/esp32s3"]
 motor-rs485 = ["dep:m57aim-motor", "dep:rs485-board"]
 motor-stepdir = ["dep:m57aim-motor", "dep:stepdir-board", "dep:embedded-hal-async", "dep:nb"]
 motor-sim = ["dep:sim-motor", "dep:sim-board"]
+indicator-ws2812b = ["dep:status-indicator", "dep:ws2812b-indicator"]
 
 [dependencies]
 ossm = { path = "../ossm" }
@@ -34,3 +35,7 @@ nb = { version = "1.1", optional = true }
 # motor-sim
 sim-motor = { path = "../drivers/sim-motor", optional = true }
 sim-board = { path = "../boards/sim-board", optional = true }
+
+# indicator-ws2812b
+status-indicator = { path = "../crates/status-indicator", optional = true }
+ws2812b-indicator = { path = "../drivers/ws2812b", optional = true }
