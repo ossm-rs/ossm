@@ -1,73 +1,31 @@
 #![no_std]
 
-//! Hardware capabilities for status indication, independent of status policy.
-//!
-//! Primitive indicators implement [`Indicator`]; color-capable indicators also
-//! implement [`ColorIndicator`]. This crate has no hardware dependencies.
+//! Immediate indicator capabilities, steady status policy, and portable runtime.
 
 use core::fmt::Debug;
+pub use smart_leds::RGB8;
 
-/// Maximum channel intensity.
-pub const MAX_BRIGHTNESS: u8 = 255;
-/// Persistent panic output for color indicators.
-pub const PANIC_COLOR: Rgb = Rgb::new(MAX_BRIGHTNESS, 0, 0);
+mod smartled;
+pub use smartled::SmartLed;
 
-#[cfg(feature = "policy")]
+#[cfg(feature = "runtime")]
 pub mod policy;
+#[cfg(feature = "runtime")]
+pub mod runtime;
 
-/// Raw, linear RGB channel values. Zero is dark; 255 is full intensity.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct Rgb {
-    pub red: u8,
-    pub green: u8,
-    pub blue: u8,
-}
+/// Brightness applied uniformly to normal colors and panic red.
+pub const MAX_BRIGHTNESS: u8 = 255;
+pub const PANIC_COLOR: RGB8 = RGB8::new(MAX_BRIGHTNESS, 0, 0);
 
-impl Rgb {
-    pub const BLACK: Self = Self::new(0, 0, 0);
-    pub const BLUE: Self = Self::new(0, 0, 255);
-    pub const DIM_WHITE: Self = Self::new(10, 10, 10);
-    pub const GREEN: Self = Self::new(0, 255, 0);
-    pub const ORANGE: Self = Self::new(255, 80, 0);
-    pub const YELLOW: Self = Self::new(255, 255, 0);
-
-    pub const fn new(red: u8, green: u8, blue: u8) -> Self {
-        Self { red, green, blue }
-    }
-}
-
-/// An immediate on/off output, such as a light or an active buzzer.
-#[allow(async_fn_in_trait)]
+/// Immediate on/off output. Turning off preserves the selected color, if any.
 pub trait Indicator {
     type Error: Debug;
-    type Panic: PanicIndicator;
 
-    /// Extract the independent panic output once, for registration with the
-    /// application's panic handler. Subsequent calls return `None`.
-    fn take_panic_indicator(&mut self) -> Option<Self::Panic>;
-
-    /// Apply the requested output and wait for the hardware update to complete.
-    /// Turning off preserves any configured color. No timing pattern is started.
-    async fn set_on(&mut self, on: bool) -> Result<(), Self::Error>;
+    fn set_on(&mut self, on: bool) -> Result<(), Self::Error>;
 }
 
-/// Independent output used during a terminal application panic.
-///
-/// Implementations must make a bounded, synchronous attempt, without allocation,
-/// task scheduling, or locks that interrupted application code might hold. The
-/// signal overrides normal output and persists until reset. Failure must return
-/// so the caller can continue diagnostics and halt. Concrete signals depend on
-/// hardware capabilities.
-pub trait PanicIndicator {
-    type Error: Debug;
-
-    fn indicate_panic(&mut self) -> Result<(), Self::Error>;
-}
-
-/// An indicator that remembers a color independently of its on/off state.
-#[allow(async_fn_in_trait)]
+/// Color capability for indicators that remember their color while off.
 pub trait ColorIndicator: Indicator {
-    /// Remember a color. If on, also apply it immediately; if off, stay dark.
-    /// Black is a valid color, so an indicator that is on may still emit no light.
-    async fn set_color(&mut self, color: Rgb) -> Result<(), Self::Error>;
+    /// Apply immediately when on; otherwise remember without lighting up.
+    fn set_color(&mut self, color: RGB8) -> Result<(), Self::Error>;
 }

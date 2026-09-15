@@ -1,14 +1,23 @@
 //! Steady status policy, independent of indicator hardware and scheduling.
 
-use crate::{ColorIndicator, Rgb};
+use crate::{ColorIndicator, RGB8};
 use ossm::MotionPhase;
 use pattern_engine::EngineState;
+use smart_leds::brightness;
 
 pub const POLL_INTERVAL_MS: u64 = 50;
 pub use crate::MAX_BRIGHTNESS;
 
+pub const BLUE: RGB8 = RGB8::new(0, 0, 255);
+pub const DIM_WHITE: RGB8 = RGB8::new(10, 10, 10);
+pub const GREEN: RGB8 = RGB8::new(0, 255, 0);
+pub const ORANGE: RGB8 = RGB8::new(255, 80, 0);
+pub const PURPLE: RGB8 = RGB8::new(128, 0, 255);
+pub const YELLOW: RGB8 = RGB8::new(255, 255, 0);
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Status {
+    Booting,
     Idle,
     Homing,
     Stopping,
@@ -17,24 +26,19 @@ pub enum Status {
     Ready,
 }
 
-/// Cap brightness while preserving each palette color's channel proportions.
-pub fn color(status: Status) -> Rgb {
+/// Apply the shared brightness level without changing the palette's hues.
+pub fn color(status: Status) -> RGB8 {
     let rgb = match status {
-        Status::Idle => Rgb::DIM_WHITE,
-        Status::Homing => Rgb::YELLOW,
-        Status::Stopping => Rgb::ORANGE,
-        Status::Playing => Rgb::GREEN,
-        Status::Paused => Rgb::BLUE,
-        Status::Ready => Rgb::GREEN,
+        Status::Booting => DIM_WHITE,
+        Status::Idle => BLUE,
+        Status::Homing => PURPLE,
+        Status::Stopping => ORANGE,
+        Status::Playing | Status::Ready => GREEN,
+        Status::Paused => YELLOW,
     };
-    let peak = rgb.red.max(rgb.green).max(rgb.blue);
-    // Keep the cap configurable, including its current full-intensity setting.
-    #[allow(clippy::absurd_extreme_comparisons)]
-    if peak <= MAX_BRIGHTNESS {
-        return rgb;
-    }
-    let scale = |channel: u8| (channel as u16 * MAX_BRIGHTNESS as u16 / peak as u16) as u8;
-    Rgb::new(scale(rgb.red), scale(rgb.green), scale(rgb.blue))
+    brightness([rgb].into_iter(), MAX_BRIGHTNESS)
+        .next()
+        .unwrap()
 }
 
 /// Resolve independently sampled observers in priority order. Engine playing
@@ -55,7 +59,7 @@ pub fn select(engine: EngineState, motion: MotionPhase) -> Status {
 /// The caller schedules retries: errors never mark output as applied.
 pub struct Output<I> {
     indicator: I,
-    applied: Option<Rgb>,
+    applied: Option<RGB8>,
     on: bool,
 }
 
@@ -68,17 +72,17 @@ impl<I: ColorIndicator> Output<I> {
         }
     }
 
-    pub async fn apply(&mut self, status: Status) -> Result<(), I::Error> {
+    pub fn apply(&mut self, status: Status) -> Result<(), I::Error> {
         let desired = color(status);
         if self.applied == Some(desired) {
             return Ok(());
         }
-        // Invalidate before awaiting: a failed or cancelled write may have
-        // changed physical output, even if the next request is the old color.
+        // A failed write may change physical output, even if the next request
+        // returns to the previous color.
         self.applied = None;
-        self.indicator.set_color(desired).await?;
+        self.indicator.set_color(desired)?;
         if !self.on {
-            self.indicator.set_on(true).await?;
+            self.indicator.set_on(true)?;
             self.on = true;
         }
         self.applied = Some(desired);

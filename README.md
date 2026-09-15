@@ -63,12 +63,13 @@ On boards with a configured RGB status LED, such as the OSSM Alt Edition, the LE
 
 | Color | Meaning |
 | --- | --- |
-| Dim white | Idle — the motion controller is disabled or enabled but not ready, or the pattern engine is idle. |
-| Yellow | Homing — establishing the home reference. |
-| Orange | Stopping — decelerating, including while fulfilling a pause request. |
-| Green | Ready, moving, or playing a pattern. Playback stays green during pattern delays and zero-speed holds. |
-| Blue | Paused — motion has stopped with the intent to resume preserved. |
-| Red | Application panic — firmware has halted; the indication remains until manual reset. |
+| Dim white | Booting — initial indication while the machine is starting up. |
+| Blue | Idle — stopped and waiting for a command. |
+| Purple | Homing |
+| Orange | Stopping — decelerating the machine. |
+| Green | Ready, moving, or playing a pattern. |
+| Yellow | Paused |
+| Red | An error has stopped the machine. Restart it to try again. |
 
 ## Safety and disclaimers
 

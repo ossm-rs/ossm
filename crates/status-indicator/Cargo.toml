@@ -4,8 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-policy = ["dep:ossm", "dep:pattern-engine"]
+default = ["runtime"]
+runtime = ["dep:ossm", "dep:pattern-engine", "dep:embassy-time", "dep:log"]
 
 [dependencies]
+smart-leds = "0.4"
 ossm = { path = "../../ossm", optional = true }
 pattern-engine = { path = "../pattern-engine", optional = true }
+embassy-time = { version = "0.5.1", optional = true }
+log = { version = "0.4", optional = true }

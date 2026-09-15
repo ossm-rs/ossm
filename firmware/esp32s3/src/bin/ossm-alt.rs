@@ -9,16 +9,15 @@ esp_bootloader_esp_idf::esp_app_desc!();
 async fn main(spawner: embassy_executor::Spawner) {
     let p = esp_hal::init(esp_hal::Config::default());
 
-    #[cfg(feature = "indicator-ws2812b")]
-    let indicator = Some(ossm_esp::indicator::Config {
-        rmt: p.RMT,
-        data: p.GPIO38.into(),
-    });
-    #[cfg(not(feature = "indicator-ws2812b"))]
-    let indicator = esp32s3::IndicatorConfig::default();
+    let rmt = esp_hal::rmt::Rmt::new(p.RMT, esp_hal::time::Rate::from_mhz(80))
+        .expect("Failed to initialize RMT");
 
     let config = esp32s3::Config {
-        indicator,
+        indicator: Some(ossm_esp::indicator::ws2812b::Config {
+            channel: rmt.channel0,
+            panic_channel: rmt.channel1,
+            data: p.GPIO38.into(),
+        }),
         motor: esp32s3::MotorConfig {
             uart1: p.UART1,
             uart_tx: p.GPIO10.into(),

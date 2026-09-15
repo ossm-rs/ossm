@@ -57,7 +57,7 @@ static MOTION_READY: Signal<CriticalSectionRawMutex, bool> = Signal::new();
 
 pub struct Config {
     pub motor: motor::Config,
-    pub indicator: IndicatorConfig,
+    pub indicator: Option<indicator::Config>,
     pub wifi: WIFI<'static>,
     pub bt: BT<'static>,
     pub timg0: TIMG0<'static>,
@@ -90,7 +90,7 @@ pub async fn run(spawner: Spawner, config: Config) {
     let timg0 = TimerGroup::new(config.timg0);
     esp_rtos::start(timg0.timer0);
 
-    let indicator = indicator::build(config.indicator).await;
+    let indicator = indicator::build(config.indicator);
     let motor = motor::build(config.motor).await;
 
     static MECHANICAL: MechanicalConfig = MechanicalConfig {

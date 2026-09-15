@@ -24,8 +24,10 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
 use embassy_time::{Delay, Duration, Ticker};
 use esp_hal::{
+    Blocking,
     interrupt::{Priority, software::SoftwareInterruptControl},
     peripherals::{BT, CPU_CTRL, SW_INTERRUPT, TIMG0},
+    rmt::{ChannelCreator, TxChannelCreator},
     system::Stack,
     timer::timg::TimerGroup,
 };
@@ -55,8 +57,8 @@ static EXECUTOR_CORE_1: StaticCell<InterruptExecutor<2>> = StaticCell::new();
 static APP_CORE_STACK: StaticCell<Stack<32768>> = StaticCell::new();
 static MOTION_READY: Signal<CriticalSectionRawMutex, bool> = Signal::new();
 
-pub struct Config {
-    pub motor: motor::Config,
+pub struct Config<const CHANNEL: u8> {
+    pub motor: motor::Config<'static, CHANNEL>,
     pub board: board::Config,
     pub bt: BT<'static>,
     pub timg0: TIMG0<'static>,
@@ -77,7 +79,10 @@ async fn motion_task(mut controller: MotionController<'static, board::Board>) {
     }
 }
 
-pub async fn run(spawner: Spawner, config: Config) {
+pub async fn run<const CHANNEL: u8>(spawner: Spawner, config: Config<CHANNEL>)
+where
+    ChannelCreator<'static, Blocking, CHANNEL>: TxChannelCreator<'static, Blocking>,
+{
     ossm::logging::init(log::LevelFilter::Info, |line| {
         esp_println::println!("{}", line);
     });

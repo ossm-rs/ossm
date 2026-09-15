@@ -10,17 +10,17 @@ rust-version = "1.88"
 
 [features]
 default = []
+indicator-ws2812b = ["ossm-esp/indicator-ws2812b", "dep:status-indicator", "esp-backtrace/custom-pre-backtrace"]
 motor-rs485 = ["ossm-esp/motor-rs485"]
 # motor-sim pulls in motor-rs485 so the `Config` types (pin names etc.) stay
 # visible - the sim layer drops the fields inside `build` so bin-file call
 # sites don't change between real and sim builds.
 motor-sim = ["ossm-esp/motor-sim", "motor-rs485"]
-# Opt in explicitly; selecting a board binary alone must not enable drivers.
-indicator-ws2812b = ["ossm-esp/indicator-ws2812b", "dep:status-indicator", "esp-backtrace/custom-pre-backtrace"]
 
 [[bin]]
 name = "ossm-alt"
 path = "src/bin/ossm-alt.rs"
+required-features = ["indicator-ws2812b"]
 
 [[bin]]
 name = "waveshare"
@@ -31,7 +31,7 @@ name = "seeed-xiao"
 path = "src/bin/seeed-xiao.rs"
 
 [dependencies]
-status-indicator = { path = "../../crates/status-indicator", features = ["policy"], optional = true }
+status-indicator = { path = "../../crates/status-indicator", optional = true }
 ossm = { path = "../../ossm" }
 ossm-esp = { path = "../../ossm-esp", features = ["esp32s3"] }
 pattern-engine = { path = "../../crates/pattern-engine" }

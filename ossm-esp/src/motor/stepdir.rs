@@ -5,9 +5,8 @@ use esp_hal::{
     Blocking,
     gpio::{AnyPin, Flex, Level, Output, OutputConfig},
     pcnt::Pcnt,
-    peripherals::{PCNT, RMT},
-    rmt::{Channel, PulseCode, Rmt, Tx, TxChannelConfig, TxChannelCreator},
-    time::Rate,
+    peripherals::PCNT,
+    rmt::{Channel, ChannelCreator, PulseCode, Tx, TxChannelConfig, TxChannelCreator},
 };
 use m57aim_motor::{Motor57AIM, Motor57AIMConfig};
 use ossm::{StepDirConfig, StepDirMotor, StepOutput};
@@ -26,12 +25,12 @@ const STEP_PULSE_TICKS: u16 = 20;
 /// The ESP32 has 64 entries per channel. We use 63 pulses + 1 end marker.
 const STEP_BATCH_SIZE: usize = 63;
 
-pub struct Config {
-    pub rmt: RMT<'static>,
-    pub pcnt: PCNT<'static>,
-    pub step: AnyPin<'static>,
-    pub dir: AnyPin<'static>,
-    pub enable: AnyPin<'static>,
+pub struct Config<'d, const CHANNEL: u8> {
+    pub channel: ChannelCreator<'d, Blocking, CHANNEL>,
+    pub pcnt: PCNT<'d>,
+    pub step: AnyPin<'d>,
+    pub dir: AnyPin<'d>,
+    pub enable: AnyPin<'d>,
 }
 
 pub type Motor = Motor57AIM<
@@ -39,15 +38,17 @@ pub type Motor = Motor57AIM<
     Delay,
 >;
 
-pub fn build(config: Config) -> Motor {
-    let rmt = Rmt::new(config.rmt, Rate::from_mhz(80)).expect("Failed to initialize RMT");
+pub fn build<const CHANNEL: u8>(config: Config<'static, CHANNEL>) -> Motor
+where
+    ChannelCreator<'static, Blocking, CHANNEL>: TxChannelCreator<'static, Blocking>,
+{
     let pcnt = Pcnt::new(config.pcnt);
     let tx_config = TxChannelConfig::default().with_clk_divider(RMT_CLK_DIVIDER);
 
     let step = Flex::new(config.step);
     let (step_in, step_out) = step.split();
-    let rmt_channel = rmt
-        .channel0
+    let rmt_channel = config
+        .channel
         .configure_tx(step_out, tx_config)
         .expect("Failed to configure RMT TX channel");
 

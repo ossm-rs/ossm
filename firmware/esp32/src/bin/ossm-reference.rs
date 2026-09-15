@@ -9,10 +9,13 @@ esp_bootloader_esp_idf::esp_app_desc!();
 async fn main(spawner: embassy_executor::Spawner) {
     let p = esp_hal::init(esp_hal::Config::default());
 
+    let rmt = esp_hal::rmt::Rmt::new(p.RMT, esp_hal::time::Rate::from_mhz(80))
+        .expect("Failed to initialize RMT");
+
     let config = esp32::Config {
         motor: esp32::MotorConfig {
             pcnt: p.PCNT,
-            rmt: p.RMT,
+            channel: rmt.channel0,
             step: p.GPIO14.into(),
             dir: p.GPIO27.into(),
             enable: p.GPIO26.into(),
