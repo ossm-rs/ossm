@@ -19,9 +19,7 @@ if ([string]::IsNullOrEmpty($Motor)) {
 }
 $feature = "motor-$Motor"
 $features = @($feature)
-if ($Crate -eq "esp32s3") {
-    $features += "indicator-ws2812b"
-}
+$features += "indicator-ws2812b"
 
 $vscode = Get-Content ".vscode/settings.template.json" | ConvertFrom-Json
 $vscode | Add-Member -Force "rust-analyzer.linkedProjects" @("firmware/$Crate/Cargo.toml")

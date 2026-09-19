@@ -94,7 +94,7 @@ impl Variant {
                 bin: "ossm-reference",
                 target: "xtensa-esp32-none-elf",
                 motor: Motor::Stepdir,
-                indicator: Indicator::None,
+                indicator: Indicator::Ws2812b,
             },
         }
     }

@@ -25,8 +25,8 @@ const STEP_PULSE_TICKS: u16 = 20;
 /// The ESP32 has 64 entries per channel. We use 63 pulses + 1 end marker.
 const STEP_BATCH_SIZE: usize = 63;
 
-pub struct Config<'d, const CHANNEL: u8> {
-    pub channel: ChannelCreator<'d, Blocking, CHANNEL>,
+pub struct Config<'d, const RMT_CHANNEL: u8> {
+    pub channel: ChannelCreator<'d, Blocking, RMT_CHANNEL>,
     pub pcnt: PCNT<'d>,
     pub step: AnyPin<'d>,
     pub dir: AnyPin<'d>,
@@ -38,9 +38,9 @@ pub type Motor = Motor57AIM<
     Delay,
 >;
 
-pub fn build<const CHANNEL: u8>(config: Config<'static, CHANNEL>) -> Motor
+pub fn build<const RMT_CHANNEL: u8>(config: Config<'static, RMT_CHANNEL>) -> Motor
 where
-    ChannelCreator<'static, Blocking, CHANNEL>: TxChannelCreator<'static, Blocking>,
+    ChannelCreator<'static, Blocking, RMT_CHANNEL>: TxChannelCreator<'static, Blocking>,
 {
     let pcnt = Pcnt::new(config.pcnt);
     let tx_config = TxChannelConfig::default().with_clk_divider(RMT_CLK_DIVIDER);

@@ -10,6 +10,7 @@ rust-version = "1.88"
 
 [features]
 default = []
+indicator-ws2812b = ["ossm-esp/indicator-ws2812b", "dep:status-indicator", "esp-backtrace/custom-pre-backtrace"]
 motor-stepdir = ["ossm-esp/motor-stepdir"]
 # motor-sim pulls in motor-stepdir so the `Config` types (pin names etc.) stay
 # visible - the sim layer drops the fields inside `build` so bin-file call
@@ -21,6 +22,7 @@ name = "ossm-reference"
 path = "src/bin/ossm-reference.rs"
 
 [dependencies]
+status-indicator = { path = "../../crates/status-indicator", optional = true }
 ossm = { path = "../../ossm" }
 ossm-esp = { path = "../../ossm-esp", features = ["esp32"] }
 pattern-engine = { path = "../../crates/pattern-engine" }

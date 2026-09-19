@@ -11,7 +11,7 @@ case "$crate" in
         ;;
     esp32)
         default_motor="stepdir"
-        indicator_feature=""
+        indicator_feature="indicator-ws2812b"
         ;;
     *)
         echo "Error: unknown arch '$crate'" >&2

@@ -13,9 +13,14 @@ async fn main(spawner: embassy_executor::Spawner) {
         .expect("Failed to initialize RMT");
 
     let config = esp32::Config {
+        indicator: Some(ossm_esp::indicator::ws2812b::Config {
+            channel: rmt.channel0,
+            panic_channel: rmt.channel1,
+            data: p.GPIO25.into(),
+        }),
         motor: esp32::MotorConfig {
             pcnt: p.PCNT,
-            channel: rmt.channel0,
+            channel: rmt.channel2,
             step: p.GPIO14.into(),
             dir: p.GPIO27.into(),
             enable: p.GPIO26.into(),
