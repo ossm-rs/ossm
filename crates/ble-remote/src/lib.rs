@@ -236,6 +236,7 @@ async fn gatt_events_task<P: PacketPool>(
                             let engine_state = patterns.state();
                             let input = patterns.input();
                             let state_json = state_to_json(engine_state, &input);
+                            info!("Read State: {}", state_json);
                             server.set(&server.ossm_service.current_state, &state_json)?;
                         }
                         if event.handle() == server.ossm_service.pattern_list.handle {
@@ -338,7 +339,7 @@ async fn state_notifications<P: PacketPool>(
         .subscribe()
         .expect("No state subscriber slots available");
     let mut heartbeat = Ticker::every(Duration::from_secs(1));
-
+    let mut old_state: String<MAX_STATE_LENGTH> = String::new();
     loop {
         let engine_state = match select(sub.next_message_pure(), heartbeat.next()).await {
             Either::First(state) => state,
@@ -347,11 +348,15 @@ async fn state_notifications<P: PacketPool>(
 
         let input = patterns.input();
         let state_json = state_to_json(engine_state, &input);
-        server
-            .ossm_service
-            .current_state
-            .notify(connection, &state_json)
-            .await?;
+        if old_state != state_json {
+            info!("Notify State: {}", state_json);
+            server
+                .ossm_service
+                .current_state
+                .notify(connection, &state_json)
+                .await?;
+            old_state = state_json;
+        }
     }
 }
 
