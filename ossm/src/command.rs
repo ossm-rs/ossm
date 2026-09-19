@@ -37,6 +37,8 @@ pub enum StateCommand {
     Home,
     Pause,
     Resume,
+    /// Smoothly cancel active motion while preserving the homed Ready state.
+    Cancel,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

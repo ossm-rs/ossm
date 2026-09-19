@@ -16,6 +16,8 @@ pub(crate) enum EngineCommand {
     Home,
     Pause,
     Resume,
+    /// Relinquish pattern motion authority while preserving the homed Ready state.
+    Yield,
 }
 
 pub(crate) type EngineCommandChannel = Channel<CriticalSectionRawMutex, EngineCommand, 4>;

@@ -10,6 +10,7 @@ pub const L2CAP_CHANNELS_MAX: usize = 2;
 pub const MAX_COMMAND_LENGTH: usize = 64;
 pub const MAX_STATE_LENGTH: usize = 128;
 pub const MAX_PATTERN_LENGTH: usize = 1024;
+pub const MAX_XTOYS_LENGTH: usize = 240;
 
 use embassy_executor::Spawner;
 use embassy_futures::select::{Either, select};
@@ -17,7 +18,9 @@ use embassy_time::{Duration, Ticker, Timer};
 use esp_radio::ble::controller::BleConnector;
 use heapless::String;
 use log::{error, info, warn};
+use control_interface::ControlSender;
 use pattern_engine::{EngineState, PatternInput, PatternSender, commands};
+use xtoys::{ObjectIter, Reply as XToysReply};
 use static_cell::StaticCell;
 use trouble_host::prelude::*;
 
@@ -27,8 +30,18 @@ const SPEED_KNOB_UUID: Uuid = uuid!("522b443a-4f53-534d-1010-420badbabe69");
 const CURRENT_STATE_UUID: Uuid = uuid!("522b443a-4f53-534d-2000-420badbabe69");
 const PATTERN_LIST_UUID: Uuid = uuid!("522b443a-4f53-534d-3000-420badbabe69");
 const PATTERN_DESCRIPTION_UUID: Uuid = uuid!("522b443a-4f53-534d-3010-420badbabe69");
+const XTOYS_SERVICE_UUID: Uuid = uuid!("e5560000-6a2d-436f-a43d-82eab88dcefd");
+const XTOYS_CONTROL_UUID: Uuid = uuid!("e5560001-6a2d-436f-a43d-82eab88dcefd");
+
+// Standard Device Information Service used by XToys Custom Firmware.
+// denialtek firmware exposes both values as "2.0".
+const DEVICE_INFO_SERVICE_UUID: Uuid = uuid!("0000180a-0000-1000-8000-00805f9b34fb");
+const SOFTWARE_REVISION_UUID: Uuid = uuid!("00002a28-0000-1000-8000-00805f9b34fb");
+const FIRMWARE_REVISION_UUID: Uuid = uuid!("00002a26-0000-1000-8000-00805f9b34fb");
 
 static CONNECTED: AtomicBool = AtomicBool::new(false);
+// XToys waits for an explicit home-result notification.
+static XTOYS_HOME_PENDING: AtomicBool = AtomicBool::new(false);
 
 macro_rules! mk_static {
     ($t:ty, $val:expr) => {{
@@ -40,6 +53,8 @@ macro_rules! mk_static {
 #[gatt_server]
 struct Server {
     ossm_service: OssmService,
+    xtoys_service: XToysService,
+    device_info_service: DeviceInfoService,
 }
 
 #[gatt_service(uuid = SERVICE_UUID)]
@@ -58,6 +73,25 @@ struct OssmService {
 
     #[characteristic(uuid = PATTERN_DESCRIPTION_UUID, read, write)]
     pattern_description: String<MAX_PATTERN_LENGTH>,
+}
+
+#[gatt_service(uuid = DEVICE_INFO_SERVICE_UUID)]
+struct DeviceInfoService {
+    // denialtek/XToys-OSSM-Firmware:
+    // 0x2A28 = API_VERSION "2.0"
+    #[characteristic(uuid = SOFTWARE_REVISION_UUID, read)]
+    software_revision: String<8>,
+
+    // denialtek/XToys-OSSM-Firmware:
+    // 0x2A26 = FIRMWARE_VERSION "2.0"
+    #[characteristic(uuid = FIRMWARE_REVISION_UUID, read)]
+    firmware_revision: String<8>,
+}
+
+#[gatt_service(uuid = XTOYS_SERVICE_UUID)]
+struct XToysService {
+    #[characteristic(uuid = XTOYS_CONTROL_UUID, read, write, notify)]
+    control: String<MAX_XTOYS_LENGTH>,
 }
 
 fn get_all_patterns_json() -> String<MAX_PATTERN_LENGTH> {
@@ -95,7 +129,7 @@ fn get_pattern_description(index: usize) -> String<MAX_PATTERN_LENGTH> {
 pub fn start(
     spawner: &Spawner,
     connector: BleConnector<'static>,
-    patterns: &'static PatternSender,
+    control: &'static ControlSender,
 ) {
     let bt_controller: ExternalController<_, 20> = ExternalController::new(connector);
 
@@ -114,7 +148,7 @@ pub fn start(
     } = stack.build();
 
     spawner.must_spawn(ble_runner_task(runner));
-    spawner.must_spawn(ble_events_task(stack, peripheral, patterns));
+    spawner.must_spawn(ble_events_task(stack, peripheral, control));
 
     info!("BLE remote tasks started, waiting for connection...");
 }
@@ -131,8 +165,9 @@ pub async fn ble_events_task(
         ExternalController<BleConnector<'static>, 20>,
         DefaultPacketPool,
     >,
-    patterns: &'static PatternSender,
+    control: &'static ControlSender,
 ) {
+    let patterns = control.pattern_sender();
     info!("Starting advertising and GATT service");
     let server = Server::new_with_config(GapConfig::Peripheral(PeripheralConfig {
         name: "OSSM",
@@ -140,8 +175,26 @@ pub async fn ble_events_task(
     }))
     .unwrap();
 
+    // Match denialtek XToys Custom Firmware's BLE Device Information Service.
+    let mut api_version: String<8> = String::new();
+    api_version.push_str("2.0").expect("2.0 fits");
+    server
+        .set(&server.device_info_service.software_revision, &api_version)
+        .expect("set XToys API version");
+
+    let mut firmware_version: String<8> = String::new();
+    firmware_version.push_str("2.0").expect("2.0 fits");
+    server
+        .set(
+            &server.device_info_service.firmware_revision,
+            &firmware_version,
+        )
+        .expect("set XToys firmware version");
+
+    info!("XToys Device Information: API 2.0, firmware 2.0");
+
     loop {
-        match advertise("OSSM-rs", &mut peripheral).await {
+        match advertise("OSSM", &mut peripheral).await {
             Ok(connection) => {
                 CONNECTED.store(true, Ordering::Release);
                 info!("BLE Connected");
@@ -183,7 +236,7 @@ pub async fn ble_events_task(
                     .with_attribute_server(&server)
                     .expect("Could not transform connection into GATT connection");
 
-                let events = gatt_events_task(&server, &gatt_connection, patterns);
+                let events = gatt_events_task(&server, &gatt_connection, patterns, control);
                 let notify = state_notifications(&server, &gatt_connection, patterns);
 
                 match select(events, notify).await {
@@ -198,7 +251,8 @@ pub async fn ble_events_task(
                     },
                 }
 
-                patterns.stop();
+                XTOYS_HOME_PENDING.store(false, Ordering::Release);
+                control.stop();
                 info!("BLE session ended, stopping engine");
             }
             Err(err) => {
@@ -223,6 +277,7 @@ async fn gatt_events_task<P: PacketPool>(
     server: &Server<'_>,
     connection: &GattConnection<'_, '_, P>,
     patterns: &'static PatternSender,
+    control: &'static ControlSender,
 ) -> Result<(), Error> {
     let reason = loop {
         match connection.next().await {
@@ -232,6 +287,18 @@ async fn gatt_events_task<P: PacketPool>(
                 let mut event_handle = 0;
                 match &event {
                     GattEvent::Read(event) => {
+                        if event.handle()
+                            == server.device_info_service.software_revision.handle
+                        {
+                            info!("XToys read API version -> 2.0");
+                        }
+
+                        if event.handle()
+                            == server.device_info_service.firmware_revision.handle
+                        {
+                            info!("XToys read firmware version -> 2.0");
+                        }
+
                         if event.handle() == server.ossm_service.current_state.handle {
                             let engine_state = patterns.state();
                             let input = patterns.input();
@@ -263,8 +330,11 @@ async fn gatt_events_task<P: PacketPool>(
                     if event_handle == server.ossm_service.primary_command.handle {
                         let command: String<MAX_COMMAND_LENGTH> =
                             server.get(&server.ossm_service.primary_command)?;
-
-                        process_command(&command, server, patterns);
+                        process_command(&command, server, control);
+                    }
+                    if event_handle == server.xtoys_service.control.handle {
+                        let command: String<MAX_XTOYS_LENGTH> = server.get(&server.xtoys_service.control)?;
+                        process_xtoys_message(command.as_str(), server, connection, control).await;
                     }
                     if event_handle == server.ossm_service.pattern_description.handle {
                         let command: String<MAX_PATTERN_LENGTH> =
@@ -300,26 +370,29 @@ async fn advertise<'values, 'server, C: Controller>(
     name: &'values str,
     peripheral: &mut Peripheral<'values, C, DefaultPacketPool>,
 ) -> Result<Connection<'values, DefaultPacketPool>, BleHostError<C::Error>> {
-    let uuid: [u8; 16] = SERVICE_UUID
-        .as_raw()
-        .try_into()
-        .expect("Service UUID incorrect");
+    let ossm_uuid: [u8; 16] = SERVICE_UUID.as_raw().try_into().expect("OSSM service UUID incorrect");
+    let xtoys_uuid: [u8; 16] = XTOYS_SERVICE_UUID.as_raw().try_into().expect("XToys service UUID incorrect");
 
     let mut advertiser_data = [0; 31];
     let len = AdStructure::encode_slice(
         &[
             AdStructure::Flags(LE_GENERAL_DISCOVERABLE | BR_EDR_NOT_SUPPORTED),
-            AdStructure::ServiceUuids128(&[uuid]),
+            AdStructure::ServiceUuids128(&[xtoys_uuid]),
             AdStructure::CompleteLocalName(name.as_bytes()),
         ],
         &mut advertiser_data[..],
+    )?;
+    let mut scan_data = [0; 31];
+    let scan_len = AdStructure::encode_slice(
+        &[AdStructure::ServiceUuids128(&[ossm_uuid])],
+        &mut scan_data[..],
     )?;
     let advertiser = peripheral
         .advertise(
             &Default::default(),
             Advertisement::ConnectableScannableUndirected {
                 adv_data: &advertiser_data[..len],
-                scan_data: &[],
+                scan_data: &scan_data[..scan_len],
             },
         )
         .await?;
@@ -347,11 +420,36 @@ async fn state_notifications<P: PacketPool>(
 
         let input = patterns.input();
         let state_json = state_to_json(engine_state, &input);
-        server
+        // XToys Custom clients do not necessarily subscribe to the stock
+        // OSSM-rs current-state characteristic. Failure to notify that
+        // characteristic must not terminate the shared BLE notification task.
+        if let Err(err) = server
             .ossm_service
             .current_state
             .notify(connection, &state_json)
-            .await?;
+            .await
+        {
+            warn!("OSSM state notify skipped/failed: {:?}", err);
+        }
+
+        // denialtek XToys firmware reports homing completion with exactly:
+        // [{"action":"home","success":true}]
+        //
+        // Use a pending request flag rather than relying on observing the
+        // exact Homing -> Ready transition, because state messages can be
+        // coalesced while the physical homing sequence still succeeds.
+        if XTOYS_HOME_PENDING.load(Ordering::Acquire)
+            && engine_state == EngineState::Ready
+        {
+            info!("XToys home complete -> sending success notification");
+            xtoys_notify(
+                server,
+                connection,
+                r#"[{"action":"home","success":true}]"#,
+            )
+            .await;
+            XTOYS_HOME_PENDING.store(false, Ordering::Release);
+        }
     }
 }
 
@@ -387,10 +485,52 @@ fn state_to_json(state: EngineState, input: &PatternInput) -> String<MAX_STATE_L
     out
 }
 
+
+async fn xtoys_notify<P: PacketPool>(
+    server: &Server<'_>,
+    connection: &GattConnection<'_, '_, P>,
+    value: &str,
+) {
+    let mut response: String<MAX_XTOYS_LENGTH> = String::new();
+    if response.push_str(value).is_err() {
+        return;
+    }
+    let _ = server.set(&server.xtoys_service.control, &response);
+    if let Err(err) = server.xtoys_service.control.notify(connection, &response).await {
+        warn!("XToys notify skipped/failed: {:?}", err);
+    }
+}
+
+async fn process_xtoys_message<P: PacketPool>(
+    message: &str,
+    server: &Server<'_>,
+    connection: &GattConnection<'_, '_, P>,
+    control: &'static ControlSender,
+) {
+    info!("XToys JSON {}", message);
+    for object in ObjectIter::new(message) {
+        let Some(action) = xtoys::parse_object(object) else { continue };
+        let reply = xtoys::apply(action, control).await;
+        match reply {
+            XToysReply::None => {}
+            XToysReply::HomePending => XTOYS_HOME_PENDING.store(true, Ordering::Release),
+            XToysReply::Version => {
+                xtoys_notify(server, connection, r#"[{"action":"version","api":"2.0","firmware":"2.0-ossm-rs"}]"#).await;
+            }
+            XToysReply::ConfigureBluetoothOk => {
+                xtoys_notify(server, connection, r#"[{"action":"configureBluetooth","success":true}]"#).await;
+            }
+            XToysReply::PatternList => {
+                xtoys_notify(server, connection, r#"[{"action":"getPatternList","patterns":[{"name":"Simple","idx":0}]}]"#).await;
+            }
+        }
+    }
+}
+
 fn process_command(
     command: &String<MAX_COMMAND_LENGTH>,
     server: &Server<'_>,
-    patterns: &'static PatternSender,
+    control: &'static ControlSender,
 ) {
     info!("BLE Command {}", command);
 
@@ -406,12 +546,12 @@ fn process_command(
                         if let Ok(value) = value.parse::<u32>() {
                             let normalized = value as f64 / 100.0;
                             match action {
-                                "speed" => patterns.set_speed(normalized),
-                                "stroke" => patterns.set_stroke(normalized),
-                                "depth" => patterns.set_depth(normalized),
+                                "speed" => control.set_speed(normalized),
+                                "stroke" => control.set_stroke(normalized),
+                                "depth" => control.set_depth(normalized),
                                 // BLE sends 0–100; internal range is -1.0..1.0.
-                                "sensation" => patterns.set_sensation(normalized * 2.0 - 1.0),
-                                "pattern" => patterns.play(value as usize),
+                                "sensation" => control.set_sensation(normalized * 2.0 - 1.0),
+                                "pattern" => control.play(value as usize),
                                 _ => {
                                     error!("Invalid set command {}", action);
                                     fail = true;
@@ -427,8 +567,10 @@ fn process_command(
                     }
                 }
                 "go" => match action {
-                    "simplePenetration" | "strokeEngine" => patterns.play(0),
-                    "menu" => patterns.stop(),
+                    "simplePenetration" | "strokeEngine" => control.play(0),
+                    "pause" => control.pause(),
+                    "resume" => control.resume(),
+                    "menu" => control.stop(),
                     _ => {
                         error!("Unknown go action: {}", action);
                         fail = true;

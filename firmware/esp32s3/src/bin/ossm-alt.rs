@@ -18,9 +18,11 @@ async fn main(spawner: embassy_executor::Spawner) {
         },
         wifi: p.WIFI,
         bt: p.BT,
+        flash: p.FLASH,
         timg0: p.TIMG0,
         sw_int: p.SW_INTERRUPT,
         cpu_ctrl: p.CPU_CTRL,
+        usb_device: p.USB_DEVICE,
     };
 
     esp32s3::run(spawner, config).await;

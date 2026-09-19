@@ -71,6 +71,12 @@ impl MotionSender {
         self.send_state(StateCommand::Resume).await
     }
 
+    /// Smoothly cancel the current move and remain homed/Ready.
+    /// Intended for protocol-neutral control ownership handoff.
+    pub async fn cancel(&self) -> StateResponse {
+        self.send_state(StateCommand::Cancel).await
+    }
+
     /// Start a motion without waiting for completion.
     ///
     /// Resets the move response signal, so a subsequent

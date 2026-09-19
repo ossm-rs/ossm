@@ -43,6 +43,22 @@ impl PatternSender {
         let _ = self.engine.commands.try_send(EngineCommand::Resume);
     }
 
+    /// Ask the active pattern to relinquish motion authority without un-homing.
+    /// This is protocol-neutral and is used when another controller needs the
+    /// underlying motion sender.
+    pub async fn yield_motion(&self) {
+        if matches!(self.state(), EngineState::Ready | EngineState::Idle) {
+            return;
+        }
+        let mut sub = self.subscribe().ok();
+        let _ = self.engine.commands.try_send(EngineCommand::Yield);
+        if let Some(ref mut sub) = sub {
+            while !matches!(self.state(), EngineState::Ready | EngineState::Idle) {
+                let _ = sub.next_message_pure().await;
+            }
+        }
+    }
+
     pub fn stop(&self) {
         let _ = self.engine.commands.try_send(EngineCommand::Stop);
         self.engine.input.sender().send_modify(|opt| {

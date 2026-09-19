@@ -163,6 +163,17 @@ impl PatternRunner {
                                     store_and_publish(engine, EngineState::Idle);
                                     break;
                                 }
+                                EngineCommand::Yield => {
+                                    if motion.cancel().await != StateResponse::Completed {
+                                        log::error!("Motion yield failed, stopping engine");
+                                        state = RunnerState::Idle;
+                                        store_and_publish(engine, EngineState::Idle);
+                                    } else {
+                                        state = RunnerState::Ready;
+                                        store_and_publish(engine, EngineState::Ready);
+                                    }
+                                    break;
+                                }
                                 _ => {}
                             },
                         }
@@ -211,6 +222,9 @@ async fn handle_command<const N: usize>(
             if let RunnerState::Idle = *state {
                 set_state(engine, state, RunnerState::Homing(None));
             }
+        }
+        EngineCommand::Yield => {
+            // Idle/Ready already have no active pattern to relinquish.
         }
         EngineCommand::Pause | EngineCommand::Resume => {
             // Only handled inside the Playing inner loop.

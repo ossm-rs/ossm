@@ -1,0 +1,9 @@
+[package]
+name = "xtoys"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+control-interface = { path = "../control-interface" }
+heapless = "0.9.2"
+log = "0.4"

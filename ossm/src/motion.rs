@@ -25,6 +25,7 @@ enum StopReason {
     Pause,
     Disable,
     Home,
+    Cancel,
 }
 
 /// The last-commanded motion intent, independent of what ruckig is currently
@@ -198,6 +199,22 @@ impl<'a, B: Board> MotionController<'a, B> {
                 self.respond(StateResponse::Completed);
             }
 
+            (MotionState::Ready, StateCommand::Cancel) => {
+                self.respond(StateResponse::Completed);
+            }
+            (MotionState::Moving, StateCommand::Cancel) => {
+                self.stop(StopReason::Cancel);
+            }
+            (MotionState::Paused, StateCommand::Cancel) => {
+                self.target = None;
+                self.input.control_interface = ControlInterface::Position;
+                self.transition(MotionState::Ready);
+                self.respond(StateResponse::Completed);
+            }
+            (MotionState::Stopping(_), StateCommand::Cancel) => {
+                self.state = MotionState::Stopping(StopReason::Cancel);
+            }
+
             _ => {
                 self.respond(StateResponse::InvalidTransition);
             }
@@ -276,6 +293,12 @@ impl<'a, B: Board> MotionController<'a, B> {
                         return Err(e);
                     }
                 },
+                MotionState::Stopping(StopReason::Cancel) => {
+                    self.target = None;
+                    self.input.control_interface = ControlInterface::Position;
+                    self.transition(MotionState::Ready);
+                    self.respond(StateResponse::Completed);
+                }
                 _ => {
                     self.target = None;
                     self.channels.move_resp.signal(Ok(()));
@@ -352,7 +375,7 @@ impl<'a, B: Board> MotionController<'a, B> {
             MotionState::Stopping(StopReason::Pause) => {
                 self.channels.move_resp.signal(Err(Cancelled));
             }
-            MotionState::Stopping(StopReason::Disable | StopReason::Home) => {
+            MotionState::Stopping(StopReason::Disable | StopReason::Home | StopReason::Cancel) => {
                 self.respond(StateResponse::Fault);
             }
             _ => {}
