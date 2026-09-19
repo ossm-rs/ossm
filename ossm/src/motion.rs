@@ -302,9 +302,18 @@ impl<'a, B: Board> MotionController<'a, B> {
         self.input.current_velocity[0] = 0.0;
         self.input.current_acceleration[0] = 0.0;
 
-        if let Err(e) = self.board.set_position(self.limits.min_position_mm).await {
-            log::error!("Board set_position after home failed: {:?}", e);
-            return Err(e);
+        //slowly extend to min_position
+        let mut mm = 0.0;
+        loop {
+            mm += 0.1;
+            if let Err(e) = self.board.set_position(mm).await {
+                log::error!("Board set_position failed: {:?}", e);
+                self.enter_fault();
+                return Err(e);
+            }
+            if mm >= self.limits.min_position_mm {
+                break;
+            }
         }
 
         self.target = None;
