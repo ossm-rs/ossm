@@ -17,9 +17,9 @@ use status_indicator::{Indicator as _, PANIC_COLOR, RGB8, SmartLed};
 
 const RESET_INTERVAL_US: u32 = 600;
 
-pub struct Config<'d, const CHANNEL: u8, const PANIC_CHANNEL: u8> {
-    pub channel: ChannelCreator<'d, Blocking, CHANNEL>,
-    pub panic_channel: ChannelCreator<'d, Blocking, PANIC_CHANNEL>,
+pub struct Config<'d, const RMT_CHANNEL: u8, const PANIC_RMT_CHANNEL: u8> {
+    pub channel: ChannelCreator<'d, Blocking, RMT_CHANNEL>,
+    pub panic_channel: ChannelCreator<'d, Blocking, PANIC_RMT_CHANNEL>,
     pub data: AnyPin<'d>,
 }
 
@@ -63,12 +63,12 @@ impl PanicIndicator {
 /// Firmware using this adapter enables `esp-backtrace/custom-pre-backtrace`.
 /// Channel-configuration failures follow the upstream constructor's panic
 /// behavior; returned clear/write errors remain recoverable by the caller.
-pub fn build<const CHANNEL: u8, const PANIC_CHANNEL: u8>(
-    config: Config<'static, CHANNEL, PANIC_CHANNEL>,
+pub fn build<const RMT_CHANNEL: u8, const PANIC_RMT_CHANNEL: u8>(
+    config: Config<'static, RMT_CHANNEL, PANIC_RMT_CHANNEL>,
 ) -> Result<Indicator, LedAdapterError>
 where
-    ChannelCreator<'static, Blocking, CHANNEL>: TxChannelCreator<'static, Blocking>,
-    ChannelCreator<'static, Blocking, PANIC_CHANNEL>: TxChannelCreator<'static, Blocking>,
+    ChannelCreator<'static, Blocking, RMT_CHANNEL>: TxChannelCreator<'static, Blocking>,
+    ChannelCreator<'static, Blocking, PANIC_RMT_CHANNEL>: TxChannelCreator<'static, Blocking>,
 {
     static NORMAL_BUFFER: StaticCell<[PulseCode; buffer_size(1)]> = StaticCell::new();
     static PANIC_BUFFER: StaticCell<[PulseCode; buffer_size(1)]> = StaticCell::new();
@@ -87,7 +87,7 @@ where
     );
     let panic = SmartLed::new(panic, PANIC_COLOR)?;
     let data = Output::new(config.data, Level::Low, OutputConfig::default());
-    output_signal(CHANNEL).connect_to(&data);
+    output_signal(RMT_CHANNEL).connect_to(&data);
     let delay = Delay::new();
     delay.delay_micros(RESET_INTERVAL_US);
     let normal = SmartLed::new(normal, RGB8::default())?;
@@ -97,7 +97,7 @@ where
     let panic = PANIC_STORAGE.init(PanicIndicator {
         indicator: panic,
         data,
-        signal: output_signal(PANIC_CHANNEL),
+        signal: output_signal(PANIC_RMT_CHANNEL),
     });
     PANIC_OUTPUT.store(panic, Ordering::Release);
     Ok(normal)

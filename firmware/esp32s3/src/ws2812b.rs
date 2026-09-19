@@ -12,12 +12,12 @@ use status_indicator::{policy::Output, runtime};
 
 pub type StatusOutput = Output<ws2812b::Indicator>;
 
-pub fn build<const CHANNEL: u8, const PANIC_CHANNEL: u8>(
-    config: Option<ws2812b::Config<'static, CHANNEL, PANIC_CHANNEL>>,
+pub fn build<const RMT_CHANNEL: u8, const PANIC_RMT_CHANNEL: u8>(
+    config: Option<ws2812b::Config<'static, RMT_CHANNEL, PANIC_RMT_CHANNEL>>,
 ) -> Option<StatusOutput>
 where
-    ChannelCreator<'static, Blocking, CHANNEL>: TxChannelCreator<'static, Blocking>,
-    ChannelCreator<'static, Blocking, PANIC_CHANNEL>: TxChannelCreator<'static, Blocking>,
+    ChannelCreator<'static, Blocking, RMT_CHANNEL>: TxChannelCreator<'static, Blocking>,
+    ChannelCreator<'static, Blocking, PANIC_RMT_CHANNEL>: TxChannelCreator<'static, Blocking>,
 {
     match ws2812b::build(config?) {
         Ok(indicator) => Some(runtime::initialize(indicator)),

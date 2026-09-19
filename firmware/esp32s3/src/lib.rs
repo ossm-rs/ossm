@@ -56,8 +56,8 @@ static APP_CORE_STACK: StaticCell<Stack<32768>> = StaticCell::new();
 static MOTION_READY: Signal<CriticalSectionRawMutex, bool> = Signal::new();
 
 pub struct Config {
-    pub motor: motor::Config,
-    pub indicator: Option<indicator::Config>,
+    pub motor: MotorConfig,
+    pub indicator: Option<IndicatorConfig>,
     pub wifi: WIFI<'static>,
     pub bt: BT<'static>,
     pub timg0: TIMG0<'static>,
@@ -90,7 +90,7 @@ pub async fn run(spawner: Spawner, config: Config) {
     let timg0 = TimerGroup::new(config.timg0);
     esp_rtos::start(timg0.timer0);
 
-    let indicator = indicator::build(config.indicator);
+    let indicator = indicator::build::<0, 1>(config.indicator);
     let motor = motor::build(config.motor).await;
 
     static MECHANICAL: MechanicalConfig = MechanicalConfig {
