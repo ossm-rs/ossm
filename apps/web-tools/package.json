@@ -45,7 +45,7 @@
     "three-stdlib": "^2.36.1",
     "tsx": "^4.22.0",
     "typescript": "~6.0.2",
-    "vite": "^8.0.8",
+    "vite": "^8.0.13",
     "vite-plugin-top-level-await": "^1.4.0",
     "vite-plugin-wasm": "^3.6.0",
     "wrangler": "^4.80.0"
