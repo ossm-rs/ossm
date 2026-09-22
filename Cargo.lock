@@ -112,7 +112,7 @@ dependencies = [
  "embassy-sync 0.7.2",
  "embassy-time",
  "esp-radio",
- "heapless 0.9.2",
+ "heapless 0.9.3",
  "log",
  "pattern-engine",
  "portable-atomic",
@@ -140,7 +140,7 @@ dependencies = [
  "embedded-io 0.6.1",
  "embedded-io-async 0.6.1",
  "futures-intrusive",
- "heapless 0.9.2",
+ "heapless 0.8.0",
 ]
 
 [[package]]
@@ -485,7 +485,7 @@ dependencies = [
  "embedded-io-async 0.7.0",
  "futures-core",
  "futures-sink",
- "heapless 0.9.2",
+ "heapless 0.9.3",
 ]
 
 [[package]]
@@ -731,7 +731,7 @@ dependencies = [
  "esp-radio-rtos-driver",
  "esp-sync",
  "esp-wifi-sys",
- "heapless 0.9.2",
+ "heapless 0.9.3",
  "instability",
  "num-derive",
  "num-traits",
@@ -993,9 +993,9 @@ dependencies = [
 
 [[package]]
 name = "heapless"
-version = "0.9.2"
+version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2af2455f757db2b292a9b1768c4b70186d443bcb3b316252d6b540aec1cd89ed"
+checksum = "25ba4bd83f9415b58b4ed8dc5714c76e626a105be4646c02630ad730ad3b5aa4"
 dependencies = [
  "hash32",
  "stable_deref_trait",
@@ -1189,7 +1189,7 @@ dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-async",
  "embedded-io 0.6.1",
- "heapless 0.9.2",
+ "heapless 0.9.3",
  "log",
  "num-traits",
  "rmodbus",
@@ -1373,7 +1373,7 @@ version = "0.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae086fe401655097112f1bd988012c0334d19b0c495128b256f1506873c6ba8f"
 dependencies = [
- "heapless 0.9.2",
+ "heapless 0.9.3",
  "ieee754",
 ]
 
@@ -1639,7 +1639,7 @@ dependencies = [
  "embassy-time",
  "embedded-io 0.6.1",
  "futures",
- "heapless 0.9.2",
+ "heapless 0.9.3",
  "rand_core",
  "static_cell",
  "trouble-host-macros",
