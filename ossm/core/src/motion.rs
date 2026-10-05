@@ -308,7 +308,7 @@ impl<'a, B: Board> MotionController<'a, B> {
         self.input.target_position[0] = self.limits.min_position_mm;
         self.input.current_velocity[0] = 0.0;
         self.input.current_acceleration[0] = 0.0;
-        self.input.max_velocity[0] = 10.0;
+        self.input.max_velocity[0] = 5.0;
         self.ruckig.reset();
 
         self.transition(MotionState::PostHome);
