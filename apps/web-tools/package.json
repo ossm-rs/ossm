@@ -28,7 +28,7 @@
     "react-markdown": "^10.1.0",
     "react-router": "^7.18.4",
     "remark-gfm": "^4.0.1",
-    "three": "^0.184.0",
+    "three": "^0.186.1",
     "vaul": "^1.1.2"
   },
   "devDependencies": {
