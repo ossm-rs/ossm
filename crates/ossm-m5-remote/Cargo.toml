@@ -10,7 +10,7 @@ embassy-sync = { version = "0.7", default-features = false }
 embassy-time = { version = "0.5.1" }
 embassy-executor = { version = "0.9.1" }
 
-esp-radio = { version = "0.17.0", default-features = false, features = [
+esp-radio = { version = "0.18.0", default-features = false, features = [
     "esp-now",
     "unstable",
     "wifi",
