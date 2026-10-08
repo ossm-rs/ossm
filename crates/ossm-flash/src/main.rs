@@ -49,6 +49,7 @@ enum Motor {
 enum Indicator {
     None,
     Ws2812b,
+    Led,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -87,7 +88,7 @@ impl Variant {
                 bin: "seeed-xiao",
                 target: "xtensa-esp32s3-none-elf",
                 motor: Motor::Rs485,
-                indicator: Indicator::None,
+                indicator: Indicator::Led,
             },
             Variant::OssmReference => VariantSpec {
                 workspace: "firmware/esp32",
@@ -115,6 +116,7 @@ impl Indicator {
         match self {
             Indicator::None => None,
             Indicator::Ws2812b => Some("indicator-ws2812b"),
+            Indicator::Led => Some("indicator-led"),
         }
     }
 }

@@ -11,6 +11,7 @@ rust-version = "1.88"
 [features]
 default = []
 indicator-ws2812b = ["ossm-esp/indicator-ws2812b", "dep:status-indicator", "esp-backtrace/custom-pre-backtrace"]
+indicator-led = ["ossm-esp/indicator-led", "dep:status-indicator", "esp-backtrace/custom-pre-backtrace"]
 motor-rs485 = ["ossm-esp/motor-rs485"]
 # motor-sim pulls in motor-rs485 so the `Config` types (pin names etc.) stay
 # visible - the sim layer drops the fields inside `build` so bin-file call
@@ -29,6 +30,7 @@ path = "src/bin/waveshare.rs"
 [[bin]]
 name = "seeed-xiao"
 path = "src/bin/seeed-xiao.rs"
+required-features = ["indicator-led"]
 
 [dependencies]
 status-indicator = { path = "../../crates/status-indicator", optional = true }

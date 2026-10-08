@@ -19,6 +19,7 @@ indicator-ws2812b = [
     "dep:esp-hal-smartled",
     "dep:static_cell",
 ]
+indicator-led = ["dep:status-indicator"]
 
 [dependencies]
 ossm = { path = "../ossm" }

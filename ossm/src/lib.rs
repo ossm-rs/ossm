@@ -5,6 +5,7 @@ mod board;
 mod build_info;
 pub use build_info::BuildMeta;
 mod command;
+pub mod fault;
 mod limits;
 pub mod logging;
 mod mechanical;

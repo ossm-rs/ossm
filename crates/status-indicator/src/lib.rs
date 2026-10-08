@@ -1,6 +1,7 @@
 #![no_std]
 
-//! Immediate indicator capabilities, steady status policy, and portable runtime.
+//! Immediate indicator capabilities, steady status policy, diagnostic blink
+//! codes, and portable runtime.
 
 use core::fmt::Debug;
 pub use smart_leds::RGB8;
@@ -8,6 +9,8 @@ pub use smart_leds::RGB8;
 mod smartled;
 pub use smartled::SmartLed;
 
+#[cfg(feature = "runtime")]
+pub mod diagnostic;
 #[cfg(feature = "runtime")]
 pub mod policy;
 #[cfg(feature = "runtime")]

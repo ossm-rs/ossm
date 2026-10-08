@@ -43,5 +43,5 @@ pub fn start(
 
 #[embassy_executor::task]
 async fn status_task(output: StatusOutput, motion: MotionObserver, engine: PatternObserver) {
-    runtime::run(output, motion, engine).await;
+    runtime::run_status(output, motion, engine).await;
 }

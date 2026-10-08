@@ -5,6 +5,7 @@ use esp_hal::uart::{Config as UartConfig, Uart};
 use m57aim_motor::{
     provision, Modbus, Motor57AIM, Motor57AIMConfig, DEFAULT_DEVICE_ADDR, TARGET_BAUD_RATE,
 };
+use ossm::fault::Fault;
 use rs485_board::Rs485ModbusTransport;
 
 use crate::uart::NonBlockingUart;
@@ -19,10 +20,10 @@ pub struct Config {
 pub type Transport = Rs485ModbusTransport<NonBlockingUart<'static>, Delay>;
 pub type Motor = Motor57AIM<Modbus<Transport>, Delay>;
 
-pub async fn build(config: Config) -> Motor {
+pub async fn build(config: Config) -> Result<Motor, Fault> {
     let uart_config = UartConfig::default().with_baudrate(TARGET_BAUD_RATE.as_int());
     let uart = Uart::new(config.uart1, uart_config)
-        .expect("Failed to initialize UART")
+        .map_err(|_| Fault::BoardSetup)?
         .with_tx(config.uart_tx)
         .with_rx(config.uart_rx);
 

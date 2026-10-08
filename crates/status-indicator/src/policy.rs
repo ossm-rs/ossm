@@ -72,6 +72,11 @@ impl<I: ColorIndicator> Output<I> {
         }
     }
 
+    /// Release the indicator, for example to show a diagnostic code.
+    pub fn into_inner(self) -> I {
+        self.indicator
+    }
+
     pub fn apply(&mut self, status: Status) -> Result<(), I::Error> {
         let desired = color(status);
         if self.applied == Some(desired) {

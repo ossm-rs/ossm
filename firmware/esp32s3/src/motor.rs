@@ -7,8 +7,8 @@ pub use ossm_esp::motor::rs485::Config;
 pub use ossm_esp::motor::sim::Motor;
 
 #[cfg(feature = "motor-sim")]
-pub async fn build(config: Config) -> Motor {
-    ossm_esp::motor::sim::build(config)
+pub async fn build(config: Config) -> Result<Motor, ossm::fault::Fault> {
+    Ok(ossm_esp::motor::sim::build(config))
 }
 
 #[cfg(all(feature = "motor-rs485", not(feature = "motor-sim")))]

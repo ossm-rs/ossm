@@ -1,5 +1,5 @@
 use embedded_hal_async::delay::DelayNs;
-use ossm::{Motor, Rs485Motor, SelfHoming, UartReconfigure};
+use ossm::{Motor, Rs485Motor, SelfHoming, UartReconfigure, fault::Fault};
 
 use crate::{
     Modbus, ModbusTransport, Motor57AIM, Motor57AIMConfig, MotorBaudRate, RoRegister, RwRegister,
@@ -173,14 +173,16 @@ impl<T: ModbusTransport, D> Motor57AIM<Modbus<T>, D> {
 /// and on success returns a ready-to-use motor wrapper. If the motor is
 /// silent at the target rate this drops the host UART to
 /// [`STOCK_BAUD_RATE`], writes the baud-provisioning sequence, and
-/// panics - the motor needs a physical power cycle for the new rate to
-/// take effect.
+/// returns [`Fault::MotorPowerCycle`] - the motor needs a physical power
+/// cycle for the new rate to take effect. A motor that answers at neither
+/// rate yields [`Fault::MotorUnresponsive`], and a UART that cannot switch
+/// rates yields [`Fault::BoardSetup`]. The caller raises the fault.
 pub async fn provision<T, D>(
     transport: T,
     device_addr: u8,
     motor_config: Motor57AIMConfig,
     delay: D,
-) -> Motor57AIM<Modbus<T>, D>
+) -> Result<Motor57AIM<Modbus<T>, D>, Fault>
 where
     T: ModbusTransport + UartReconfigure,
     D: DelayNs,
@@ -190,7 +192,7 @@ where
 
     if motor.read_absolute_position().await.is_ok() {
         log::info!("Motor responsive at {} baud", TARGET_BAUD_RATE.as_int());
-        return motor;
+        return Ok(motor);
     }
 
     log::error!(
@@ -206,19 +208,21 @@ where
         .await
         .is_err()
     {
-        panic!("Failed to reconfigure UART to stock baud");
+        log::error!("Failed to reconfigure UART to stock baud");
+        return Err(Fault::BoardSetup);
     }
     motor.delay.delay_ms(POST_DOWNSHIFT_SETTLE_MS).await;
 
     if motor.set_baud_rate(TARGET_BAUD_RATE).await.is_err() {
-        panic!("Failed to write target baud to motor");
+        log::error!("Failed to write target baud to motor");
+        return Err(Fault::MotorUnresponsive);
     }
 
     log::error!(
         "Motor baud rate provisioned to {}. Power cycle the motor to apply.",
         TARGET_BAUD_RATE.as_int()
     );
-    panic!("Power cycle required after motor baud provisioning");
+    Err(Fault::MotorPowerCycle)
 }
 
 impl<T: ModbusTransport, D: DelayNs> Motor for Motor57AIM<Modbus<T>, D> {

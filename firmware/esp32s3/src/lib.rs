@@ -32,7 +32,7 @@ use esp_hal::{
 };
 use esp_rtos::embassy::InterruptExecutor;
 use log::info;
-use ossm::{MechanicalConfig, MotionController, MotionLimits, Ossm};
+use ossm::{MechanicalConfig, MotionController, MotionLimits, Ossm, fault};
 use pattern_engine::{AnyPattern, PatternEngine, PatternSender};
 use static_cell::StaticCell;
 
@@ -90,8 +90,17 @@ pub async fn run(spawner: Spawner, config: Config) {
     let timg0 = TimerGroup::new(config.timg0);
     esp_rtos::start(timg0.timer0);
 
-    let indicator = indicator::build::<0, 1>(config.indicator);
-    let motor = motor::build(config.motor).await;
+    let indicator = indicator::build(config.indicator);
+    let (receiver, motion_observer, motion) = OSSM_CELL.init(Ossm::new()).split();
+    let (runner, pattern_observer, patterns) = PATTERNS_CELL.init(PatternEngine::new()).split();
+
+    let motor = match motor::build(config.motor).await {
+        Ok(motor) => motor,
+        Err(error) => {
+            indicator::start(&spawner, indicator, motion_observer, pattern_observer);
+            fault::halt(error).await
+        }
+    };
 
     static MECHANICAL: MechanicalConfig = MechanicalConfig {
         pulley_teeth: 20,
@@ -99,8 +108,6 @@ pub async fn run(spawner: Spawner, config: Config) {
         reverse_direction: false,
     };
     let limits = MotionLimits::default();
-
-    let (receiver, motion_observer, motion) = OSSM_CELL.init(Ossm::new()).split();
 
     let board = board::build(motor, &MECHANICAL);
     let controller = receiver.into_controller(board, limits.clone(), UPDATE_INTERVAL_SECS);
@@ -135,7 +142,6 @@ pub async fn run(spawner: Spawner, config: Config) {
         UPDATE_INTERVAL_SECS * 1000.0
     );
 
-    let (runner, pattern_observer, patterns) = PATTERNS_CELL.init(PatternEngine::new()).split();
     let patterns: &'static PatternSender = mk_static!(PatternSender, patterns);
 
     indicator::start(&spawner, indicator, motion_observer, pattern_observer);
