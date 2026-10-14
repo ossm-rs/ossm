@@ -14,6 +14,7 @@ enum MotionState {
     Enabled,
     Ready,
     Moving,
+    PostHome,
     /// Ruckig is decelerating to a smooth stop for the given reason.
     Stopping(StopReason),
     /// Motor is stationary; the instructed target is preserved for resume.
@@ -233,7 +234,7 @@ impl<'a, B: Board> MotionController<'a, B> {
 
     /// Sample the ruckig trajectory and send the position to the board.
     async fn tick(&mut self) -> Result<(), B::Error> {
-        if !matches!(self.state, MotionState::Moving | MotionState::Stopping(_)) {
+        if !matches!(self.state, MotionState::Moving | MotionState::PostHome | MotionState::Stopping(_)) {
             return Ok(());
         }
 
@@ -250,8 +251,14 @@ impl<'a, B: Board> MotionController<'a, B> {
             return Ok(());
         }
 
-        let mm = self.output.new_position[0]
-            .clamp(self.limits.min_position_mm, self.limits.max_position_mm);
+        let mm;
+        if self.state != MotionState::PostHome {
+            mm =self.output.new_position[0]
+                    .clamp(self.limits.min_position_mm, self.limits.max_position_mm);
+        } else {
+            mm = self.output.new_position[0]; //Unclamped to move from home position to min
+        }
+        
         if let Err(e) = self.board.set_position(mm).await {
             log::error!("Board set_position failed: {:?}", e);
             self.enter_fault();
@@ -297,27 +304,14 @@ impl<'a, B: Board> MotionController<'a, B> {
         }
 
         self.input.control_interface = ControlInterface::Position;
-        self.input.current_position[0] = self.limits.min_position_mm;
+        self.input.current_position[0] = 0.0;
         self.input.target_position[0] = self.limits.min_position_mm;
         self.input.current_velocity[0] = 0.0;
         self.input.current_acceleration[0] = 0.0;
+        self.input.max_velocity[0] = 5.0;
+        self.ruckig.reset();
 
-        //slowly extend to min_position
-        let mut mm = 0.0;
-        loop {
-            mm += 0.1;
-            if let Err(e) = self.board.set_position(mm).await {
-                log::error!("Board set_position failed: {:?}", e);
-                self.enter_fault();
-                return Err(e);
-            }
-            if mm >= self.limits.min_position_mm {
-                break;
-            }
-        }
-
-        self.target = None;
-        self.transition(MotionState::Ready);
+        self.transition(MotionState::PostHome);
         Ok(())
     }
 
@@ -461,6 +455,7 @@ impl<'a, B: Board> MotionController<'a, B> {
             MotionState::Moving => MotionPhase::Moving,
             MotionState::Stopping(_) => MotionPhase::Stopping,
             MotionState::Paused => MotionPhase::Paused,
+            MotionState::PostHome => MotionPhase::Moving,
         }
     }
 
