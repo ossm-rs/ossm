@@ -3,6 +3,7 @@ use core::ops::Deref;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::pubsub::{self, Subscriber};
 use ossm::{MotionPhase, MotionSender, MotionState};
+use pattern_engine::PatternRunner;
 
 use crate::ModeCtx;
 use crate::sealed;
@@ -74,5 +75,28 @@ impl Extract for MotionStatus<'static> {
 
     fn extract(ctx: &ModeCtx) -> MotionStatus<'_> {
         MotionStatus(&ctx.motion)
+    }
+}
+
+/// Permission to drive the pattern engine.
+///
+/// Derefs to [`PatternRunner`]. Running it also needs a [`Motion`].
+pub struct Patterns<'a>(&'a PatternRunner);
+
+impl Deref for Patterns<'_> {
+    type Target = PatternRunner;
+
+    fn deref(&self) -> &PatternRunner {
+        self.0
+    }
+}
+
+impl sealed::Sealed for Patterns<'static> {}
+
+impl Extract for Patterns<'static> {
+    type Out<'a> = Patterns<'a>;
+
+    fn extract(ctx: &ModeCtx) -> Patterns<'_> {
+        Patterns(&ctx.patterns)
     }
 }
