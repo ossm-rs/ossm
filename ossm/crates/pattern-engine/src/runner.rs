@@ -34,8 +34,10 @@ impl RunnerState {
 /// Produced by [`PatternEngine::split`](crate::PatternEngine::split).
 /// Drives the engine's main loop via [`run`](Self::run). The loop
 /// only returns if the host future is dropped (e.g. a mode switch),
-/// at which point the runner is free for another `run` call - each
-/// call starts fresh from the engine's current state.
+/// at which point the runner is free for another `run` call. Each
+/// call starts fresh: commands queued while no run was active are
+/// discarded, and the engine reports [`EngineState::Idle`] both on
+/// entry and once the run's future is dropped.
 ///
 /// The runner carries no state of its own; "currently running" is a
 /// property of the in-flight future, not the type. Spawning two
@@ -66,6 +68,12 @@ impl PatternRunner {
         let engine = self.engine;
         let input = &engine.input;
         let mut state = RunnerState::Idle;
+
+        // Commands sent while no run was active (e.g. a remote pressing
+        // play during another mode) must not replay when this run starts.
+        while engine.commands.try_receive().is_ok() {}
+        store_and_publish(engine, EngineState::Idle);
+        let _idle_on_drop = IdleOnDrop(engine);
 
         loop {
             match state {
@@ -170,6 +178,16 @@ impl PatternRunner {
                 }
             }
         }
+    }
+}
+
+/// Publishes [`EngineState::Idle`] when a run's future is dropped, so
+/// observers don't keep reporting a pattern that is no longer driven.
+struct IdleOnDrop(&'static PatternEngine);
+
+impl Drop for IdleOnDrop {
+    fn drop(&mut self) {
+        store_and_publish(self.0, EngineState::Idle);
     }
 }
 
