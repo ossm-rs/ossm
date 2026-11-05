@@ -5,11 +5,13 @@ edition = "2024"
 
 [dependencies]
 ossm = { path = "../../core" }
+embassy-futures = { version = "0.1", default-features = false }
+embassy-sync = { version = "0.7", default-features = false }
+log = "0.4"
 
 [dev-dependencies]
 ossm = { path = "../../core", features = ["sim"] }
 sim-board = { path = "../../boards/sim-board" }
 sim-motor = { path = "../../drivers/sim-motor" }
-embassy-futures = { version = "0.1", default-features = false }
 critical-section = { version = "1.2", features = ["std"] }
 static_cell = "2.1.1"

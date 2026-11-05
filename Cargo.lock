@@ -1128,6 +1128,8 @@ version = "0.1.0"
 dependencies = [
  "critical-section",
  "embassy-futures",
+ "embassy-sync 0.7.2",
+ "log",
  "ossm",
  "sim-board",
  "sim-motor",
