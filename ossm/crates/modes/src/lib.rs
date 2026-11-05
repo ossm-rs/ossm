@@ -4,7 +4,10 @@ mod ctx;
 mod extract;
 mod mode;
 mod sealed;
+mod supervisor;
 
-pub use ctx::ModeCtx;
+use ctx::ModeCtx;
+
 pub use extract::{Extract, Motion, MotionStatus};
 pub use mode::Mode;
+pub use supervisor::{Entry, ModeKey, ModeList, Modes};
