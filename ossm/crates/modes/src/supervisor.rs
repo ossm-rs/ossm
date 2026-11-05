@@ -10,6 +10,7 @@ use embassy_sync::blocking_mutex::Mutex;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
 use ossm::{MotionPhase, MotionSender};
+use pattern_engine::PatternRunner;
 
 use crate::sealed;
 use crate::{Mode, ModeCtx};
@@ -110,7 +111,7 @@ where
 /// Modes::new()
 ///     .mode(AppMode::Patterns, patterns)
 ///     .start_in(AppMode::Patterns)
-///     .run(motion)
+///     .run(motion, runner)
 ///     .await
 /// ```
 pub struct Modes<K, L> {
@@ -185,8 +186,8 @@ where
 
     /// Run the modes for the rest of the program, lending each the
     /// capabilities it declares.
-    pub async fn run(self, motion: MotionSender) -> ! {
-        let ctx = ModeCtx::new(motion);
+    pub async fn run(self, motion: MotionSender, patterns: PatternRunner) -> ! {
+        let ctx = ModeCtx::new(motion, patterns);
         let start = match self.start {
             ModeKey::Custom(key) if !self.list.contains(key) => {
                 log::error!("Start mode {:?} is not registered; starting in Idle", key);

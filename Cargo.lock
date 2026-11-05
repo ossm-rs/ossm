@@ -1128,8 +1128,10 @@ version = "0.1.0"
 dependencies = [
  "embassy-futures",
  "embassy-sync 0.7.2",
+ "embassy-time",
  "log",
  "ossm-core",
+ "pattern-engine",
 ]
 
 [[package]]
