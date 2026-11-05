@@ -1,9 +1,10 @@
 use core::sync::atomic::Ordering;
 
 use embassy_futures::select::{self, Either};
+use embassy_time::Timer;
 use embedded_hal_async::delay::DelayNs;
 use log::info;
-use ossm::{MotionSender, StateResponse};
+use ossm::{MotionPhase, MotionSender, StateResponse};
 
 use crate::AnyPattern;
 use crate::engine::{EnginePhase, PatternEngine};
@@ -132,10 +133,16 @@ impl PatternRunner {
                     let mut ctx = PatternCtx::new(motion, pattern_state, delay.clone());
                     let pattern_fut = core::pin::pin!(patterns[idx].run(&mut ctx));
                     let mut pattern_fut = pattern_fut;
+                    // While paused the pattern is not polled, so it issues no
+                    // moves, whether or not the motor was mid-move.
+                    let mut paused = false;
 
                     loop {
-                        let result =
-                            select::select(pattern_fut.as_mut(), next_event(engine)).await;
+                        let result = if paused {
+                            Either::Second(next_event(engine).await)
+                        } else {
+                            select::select(pattern_fut.as_mut(), next_event(engine)).await
+                        };
 
                         match result {
                             Either::First(_result) => {
@@ -146,29 +153,43 @@ impl PatternRunner {
                                 break;
                             }
                             Either::Second(event) => match event {
-                                PatternEvent::Pause => {
-                                    if motion.pause().await != StateResponse::Completed {
+                                PatternEvent::Pause if !paused => {
+                                    if !pause_motion(motion).await {
                                         log::error!("Pause failed, stopping engine");
                                         state = RunnerState::Idle;
                                         store_and_publish(engine, EnginePhase::Idle);
                                         break;
                                     }
+                                    paused = true;
                                     store_and_publish(engine, EnginePhase::Paused(idx));
                                 }
-                                PatternEvent::Resume => {
-                                    if motion.resume().await != StateResponse::Completed {
+                                PatternEvent::Resume if paused => {
+                                    if !resume_motion(motion).await {
                                         log::error!("Resume failed, stopping engine");
                                         state = RunnerState::Idle;
                                         store_and_publish(engine, EnginePhase::Idle);
                                         break;
                                     }
+                                    paused = false;
                                     store_and_publish(engine, EnginePhase::Playing(idx));
                                 }
-                                PatternEvent::Play(i) if i == idx => {}
+                                // Playing means moving: resume first if paused.
                                 PatternEvent::Play(new_idx) if new_idx < N => {
-                                    state = RunnerState::Playing(new_idx);
-                                    store_and_publish(engine, EnginePhase::Playing(new_idx));
-                                    break;
+                                    if paused {
+                                        if !resume_motion(motion).await {
+                                            log::error!("Resume failed, stopping engine");
+                                            state = RunnerState::Idle;
+                                            store_and_publish(engine, EnginePhase::Idle);
+                                            break;
+                                        }
+                                        paused = false;
+                                        store_and_publish(engine, EnginePhase::Playing(idx));
+                                    }
+                                    if new_idx != idx {
+                                        state = RunnerState::Playing(new_idx);
+                                        store_and_publish(engine, EnginePhase::Playing(new_idx));
+                                        break;
+                                    }
                                 }
                                 PatternEvent::Stop => {
                                     if motion.disable().await == StateResponse::Fault {
@@ -186,6 +207,24 @@ impl PatternRunner {
             }
         }
     }
+}
+
+/// Decelerate the motor if it is mid-move. Between moves there is nothing
+/// to stop, which the controller reports as an invalid transition; only a
+/// fault counts as failure.
+async fn pause_motion(motion: &MotionSender) -> bool {
+    motion.state().phase != MotionPhase::Moving
+        || motion.pause().await != StateResponse::Fault
+}
+
+/// Resume a move that [`pause_motion`] stopped, if there is one. Waits out
+/// a deceleration still in progress so the move isn't left paused.
+async fn resume_motion(motion: &MotionSender) -> bool {
+    while motion.state().phase == MotionPhase::Stopping {
+        Timer::after_millis(10).await;
+    }
+    motion.state().phase != MotionPhase::Paused
+        || motion.resume().await != StateResponse::Fault
 }
 
 /// Publishes [`EnginePhase::Idle`] when a run's future is dropped, so
