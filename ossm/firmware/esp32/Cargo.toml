@@ -26,6 +26,7 @@ status-indicator = { path = "../../crates/status-indicator", optional = true }
 ossm = { path = "../../core" }
 ossm-esp = { path = "../../esp", features = ["esp32"] }
 pattern-engine = { path = "../../crates/pattern-engine" }
+modes = { path = "../../crates/modes" }
 ble-remote = { path = "../../crates/ble-remote", features = ["esp32"] }
 
 esp-hal = { version = "~1.0", features = ["log-04", "esp32", "unstable"] }

@@ -24,7 +24,7 @@ pub use motor::Config as MotorConfig;
 use embassy_executor::Spawner;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
-use embassy_time::{Delay, Duration, Ticker};
+use embassy_time::{Duration, Ticker};
 use esp_hal::{
     Blocking,
     interrupt::{Priority, software::SoftwareInterruptControl},
@@ -35,8 +35,9 @@ use esp_hal::{
 };
 use esp_rtos::embassy::InterruptExecutor;
 use log::info;
+use modes::{ModeCtx, OssmMode, Supervisor};
 use ossm::{MechanicalConfig, MotionController, MotionLimits, Ossm};
-use pattern_engine::{AnyPattern, PatternEngine, PatternSender};
+use pattern_engine::{PatternEngine, PatternSender};
 use static_cell::StaticCell;
 
 extern crate alloc;
@@ -53,6 +54,7 @@ const UPDATE_INTERVAL_SECS: f64 = 0.01;
 
 static OSSM_CELL: StaticCell<Ossm> = StaticCell::new();
 static PATTERNS_CELL: StaticCell<PatternEngine> = StaticCell::new();
+static SUPERVISOR_CELL: StaticCell<Supervisor<OssmMode>> = StaticCell::new();
 
 static EXECUTOR_CORE_1: StaticCell<InterruptExecutor<2>> = StaticCell::new();
 // ESP32 DRAM is tighter than ESP32-S3
@@ -150,5 +152,9 @@ where
 
     radio::start(&spawner, config.bt, patterns);
 
-    runner.run(&motion, AnyPattern::all_builtin(), Delay).await
+    // Nothing requests a switch yet, so the firmware stays in pattern mode.
+    let (modes, _switcher) = SUPERVISOR_CELL
+        .init(Supervisor::new(OssmMode::Patterns))
+        .split();
+    modes.run(ModeCtx::new(motion, runner)).await
 }
