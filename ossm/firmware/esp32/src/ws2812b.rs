@@ -5,7 +5,7 @@ use esp_hal::{
     Blocking,
     rmt::{ChannelCreator, TxChannelCreator},
 };
-use ossm::MotionObserver;
+use ossm::motion::MotionObserver;
 use ossm_esp::indicator::ws2812b;
 use pattern_engine::PatternObserver;
 use status_indicator::{policy::Output, runtime};

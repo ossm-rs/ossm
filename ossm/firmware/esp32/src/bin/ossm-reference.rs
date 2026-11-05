@@ -2,6 +2,7 @@
 #![no_main]
 
 use {esp_backtrace as _, esp_println as _};
+use ossm::{Ossm, OssmMode, patterns};
 
 esp_bootloader_esp_idf::esp_app_desc!();
 
@@ -35,5 +36,10 @@ async fn main(spawner: embassy_executor::Spawner) {
         cpu_ctrl: p.CPU_CTRL,
     };
 
-    esp32::run(spawner, config).await;
+    // Start in pattern mode, matching how the firmware behaved before modes.
+    Ossm::new(esp32::Esp32::new(spawner, config))
+        .mode(OssmMode::Patterns, patterns)
+        .start_in(OssmMode::Patterns)
+        .run()
+        .await
 }
