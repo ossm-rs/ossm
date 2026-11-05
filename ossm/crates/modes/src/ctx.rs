@@ -1,19 +1,17 @@
-use ossm::{MotionObserver, MotionSender};
+use ossm::MotionSender;
+use pattern_engine::PatternRunner;
 
 use crate::Mode;
 
 /// Owner of every capability a mode can ask for.
 pub struct ModeCtx {
     pub(crate) motion: MotionSender,
-    pub(crate) motion_status: MotionObserver,
+    pub(crate) patterns: PatternRunner,
 }
 
 impl ModeCtx {
-    pub fn new(motion: MotionSender, motion_status: MotionObserver) -> Self {
-        Self {
-            motion,
-            motion_status,
-        }
+    pub fn new(motion: MotionSender, patterns: PatternRunner) -> Self {
+        Self { motion, patterns }
     }
 
     /// Run `mode` until it completes, lending it the capabilities it

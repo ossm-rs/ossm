@@ -1,6 +1,9 @@
 use core::ops::Deref;
 
-use ossm::{MotionObserver, MotionSender};
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_sync::pubsub::{self, Subscriber};
+use ossm::{MotionPhase, MotionSender, MotionState};
+use pattern_engine::PatternRunner;
 
 use crate::ModeCtx;
 
@@ -36,13 +39,26 @@ impl Extract for Motion<'static> {
 }
 
 /// Read only view of motion state and phase transitions.
-pub struct MotionStatus<'a>(&'a MotionObserver);
+///
+/// Borrows the same [`MotionSender`] as [`Motion`] but only exposes its
+/// read methods, so a mode holding just a `MotionStatus` cannot issue
+/// commands.
+pub struct MotionStatus<'a>(&'a MotionSender);
 
-impl Deref for MotionStatus<'_> {
-    type Target = MotionObserver;
+impl MotionStatus<'_> {
+    /// Current motion state (position, velocity, torque, phase).
+    pub fn state(&self) -> MotionState {
+        self.0.state()
+    }
 
-    fn deref(&self) -> &MotionObserver {
-        self.0
+    /// Subscribe to [`MotionPhase`] transitions.
+    ///
+    /// Returns `Err` if all subscriber slots are in use.
+    pub fn subscribe(
+        &self,
+    ) -> Result<Subscriber<'_, CriticalSectionRawMutex, MotionPhase, 1, 8, 0>, pubsub::Error>
+    {
+        self.0.subscribe()
     }
 }
 
@@ -50,6 +66,27 @@ impl Extract for MotionStatus<'static> {
     type Out<'a> = MotionStatus<'a>;
 
     fn extract(ctx: &ModeCtx) -> MotionStatus<'_> {
-        MotionStatus(&ctx.motion_status)
+        MotionStatus(&ctx.motion)
+    }
+}
+
+/// Permission to drive the pattern engine.
+///
+/// Derefs to [`PatternRunner`]. Running it also needs a [`Motion`].
+pub struct Patterns<'a>(&'a PatternRunner);
+
+impl Deref for Patterns<'_> {
+    type Target = PatternRunner;
+
+    fn deref(&self) -> &PatternRunner {
+        self.0
+    }
+}
+
+impl Extract for Patterns<'static> {
+    type Out<'a> = Patterns<'a>;
+
+    fn extract(ctx: &ModeCtx) -> Patterns<'_> {
+        Patterns(&ctx.patterns)
     }
 }
