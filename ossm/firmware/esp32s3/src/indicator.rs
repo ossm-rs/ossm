@@ -11,7 +11,7 @@ mod ws2812b;
 pub type Config = ossm_esp::indicator::ws2812b::Config<'static, 0, 1>;
 
 #[cfg(feature = "indicator-ws2812b")]
-pub use ws2812b::{build, start};
+pub use ws2812b::{StatusOutput as Output, build, start};
 
 #[cfg(feature = "indicator-led")]
 #[path = "led.rs"]
@@ -21,19 +21,23 @@ mod led;
 pub type Config = ossm_esp::indicator::led::Config<'static>;
 
 #[cfg(feature = "indicator-led")]
+pub type Output = ossm_esp::indicator::led::Indicator;
+
+#[cfg(feature = "indicator-led")]
 pub use led::{build, start};
 
 #[cfg(not(any(feature = "indicator-ws2812b", feature = "indicator-led")))]
-pub use disabled::{Config, build, start};
+pub use disabled::{Config, Output, build, start};
 
 #[cfg(not(any(feature = "indicator-ws2812b", feature = "indicator-led")))]
 mod disabled {
     use embassy_executor::Spawner;
-    use ossm::MotionObserver;
+    use ossm::motion::MotionObserver;
     use pattern_engine::PatternObserver;
 
     // No value can populate Some when indicator hardware support is absent.
     pub type Config = core::convert::Infallible;
+    pub type Output = Config;
 
     pub fn build(config: Option<Config>) -> Option<Config> {
         config

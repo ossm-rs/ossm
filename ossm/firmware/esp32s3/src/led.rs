@@ -1,7 +1,7 @@
 //! Compose the ESP GPIO LED adapter with the portable diagnostic runtime.
 
 use embassy_executor::Spawner;
-use ossm::MotionObserver;
+use ossm::motion::MotionObserver;
 use ossm_esp::indicator::led;
 use pattern_engine::PatternObserver;
 use status_indicator::runtime;

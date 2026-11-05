@@ -34,7 +34,7 @@ required-features = ["indicator-led"]
 
 [dependencies]
 status-indicator = { path = "../../crates/status-indicator", optional = true }
-ossm = { package = "ossm-core", path = "../../core" }
+ossm = { path = "../../runtime" }
 ossm-esp = { path = "../../esp", features = ["esp32s3"] }
 pattern-engine = { path = "../../crates/pattern-engine" }
 ossm-m5-remote = { path = "../../crates/ossm-m5-remote", features = [
