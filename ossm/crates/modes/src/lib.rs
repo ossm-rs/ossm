@@ -13,7 +13,9 @@ mod supervisor;
 
 use ctx::ModeCtx;
 
-pub use extract::{Extract, Input, Motion, MotionStatus, Patterns, Subscriptions};
+pub use extract::{
+    Extract, Input, LostEvent, Motion, MotionStatus, Patterns, RemoteLost, Subscriptions,
+};
 pub use input::{InputKind, InputKinds, Message, PatternInput, Received};
 pub use mode::Mode;
 pub use ossm_mode::{OssmMode, patterns};

@@ -20,7 +20,8 @@ use pattern_engine::{PatternEngine, PatternSender};
 use static_cell::StaticCell;
 
 pub use modes::{
-    Input, Mode, ModeKey, Motion, MotionStatus, OssmMode, PatternInput, Patterns, Received, patterns,
+    Input, LostEvent, Mode, ModeKey, Motion, MotionStatus, OssmMode, PatternInput, Patterns,
+    Received, RemoteLost, patterns,
 };
 
 pub mod platform;

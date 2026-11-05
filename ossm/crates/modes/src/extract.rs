@@ -7,6 +7,7 @@ use pattern_engine::{PatternEvent, PatternRunner, PatternSender, PatternState};
 
 use crate::ModeCtx;
 use crate::input::{InputKind, InputKinds, InputSlot, Received};
+use crate::remote::{Inputs, RemoteId};
 use crate::sealed;
 
 /// A capability a mode can declare as an argument.
@@ -36,20 +37,37 @@ pub trait Extract: sealed::Sealed {
 pub struct Subscriptions {
     /// Input kinds remotes may send.
     inputs: InputKinds,
+    /// Whether the mode handles a remote losing its link itself, rather
+    /// than the supervisor falling back to Idle.
+    lost: bool,
 }
 
 impl Subscriptions {
     pub(crate) const NONE: Self = Self {
         inputs: InputKinds::NONE,
+        lost: false,
+    };
+
+    /// Remotes losing their link, handled by the mode.
+    pub(crate) const LOST: Self = Self {
+        inputs: InputKinds::NONE,
+        lost: true,
     };
 
     /// Input of these kinds from remotes.
     pub(crate) const fn inputs(inputs: InputKinds) -> Self {
-        Self { inputs }
+        Self {
+            inputs,
+            lost: false,
+        }
     }
 
     pub(crate) const fn accepts(self) -> InputKinds {
         self.inputs
+    }
+
+    pub(crate) const fn handles_lost(self) -> bool {
+        self.lost
     }
 
     /// Both sets of subscriptions. Fails to build if both take the same
@@ -61,6 +79,7 @@ impl Subscriptions {
         );
         Self {
             inputs: self.inputs.union(other.inputs),
+            lost: self.lost || other.lost,
         }
     }
 }
@@ -202,5 +221,51 @@ impl<K: InputKind> Extract for Input<'static, K> {
         Input {
             slot: K::slot(ctx.inputs),
         }
+    }
+}
+
+/// Remotes losing their link while the mode runs.
+///
+/// A mode holding one decides what losing a remote means, but must call
+/// [`LostEvent::handled`] within 100ms of receiving the event. If it
+/// doesn't, or a mode doesn't hold one, the supervisor switches to
+/// [`Idle`](crate::ModeKey::Idle).
+pub struct RemoteLost<'a> {
+    inputs: &'a Inputs,
+}
+
+impl RemoteLost<'_> {
+    pub async fn next(&self) -> LostEvent<'_> {
+        let source = self.inputs.lost.wait().await;
+        LostEvent {
+            source,
+            inputs: self.inputs,
+        }
+    }
+}
+
+impl sealed::Sealed for RemoteLost<'static> {}
+
+impl Extract for RemoteLost<'static> {
+    type Out<'a> = RemoteLost<'a>;
+
+    const SUBSCRIBES: Subscriptions = Subscriptions::LOST;
+
+    fn extract(ctx: &ModeCtx) -> RemoteLost<'_> {
+        RemoteLost { inputs: ctx.inputs }
+    }
+}
+
+/// A remote lost its link. Dropping it without calling
+/// [`handled`](Self::handled) leaves the supervisor's fallback in place.
+#[must_use = "call `handled` once the loss is dealt with"]
+pub struct LostEvent<'a> {
+    pub source: RemoteId,
+    inputs: &'a Inputs,
+}
+
+impl LostEvent<'_> {
+    pub fn handled(self) {
+        self.inputs.lost_ack.signal(());
     }
 }
