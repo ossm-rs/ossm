@@ -176,11 +176,12 @@ impl Platform for Esp32s3 {
     fn start_remotes(
         &mut self,
         remotes: Remotes<OssmMode>,
-        patterns: &'static PatternSender,
+        _patterns: &'static PatternSender,
         limits: &MotionLimits,
     ) {
         let (wifi, bt) = self.radio.take().expect("start_remotes runs once");
         let radr = remotes.handle(RemoteId::Radr, Scope::new().sends::<PatternInput>().switches());
-        radio::start(&self.spawner, wifi, bt, radr, patterns, limits);
+        let m5 = remotes.handle(RemoteId::M5, Scope::new().sends::<PatternInput>().switches());
+        radio::start(&self.spawner, wifi, bt, radr, m5, limits);
     }
 }

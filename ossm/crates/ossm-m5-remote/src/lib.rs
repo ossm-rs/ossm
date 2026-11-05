@@ -10,7 +10,8 @@ use esp_radio::esp_now::{
     BROADCAST_ADDRESS, EspNowManager, EspNowReceiver, EspNowSender, PeerInfo,
 };
 use log::{error, info};
-use pattern_engine::{PatternEvent, PatternSender, PatternUpdate};
+use modes::{OssmMode, Rejected, RemoteHandle, Request};
+use pattern_engine::{EnginePhase, PatternEvent, PatternUpdate};
 use portable_atomic::{AtomicU32, AtomicU64};
 use zerocopy::{Immutable, IntoBytes, KnownLayout, TryFromBytes};
 
@@ -21,6 +22,8 @@ const MAX_NO_REMOTE_HEARTBEAT_MS: u64 = 10_000;
 static LAST_HEARTBEAT: AtomicU64 = AtomicU64::new(0);
 static CONNECTED: AtomicBool = AtomicBool::new(false);
 static CURRENT_PATTERN_IDX: AtomicU32 = AtomicU32::new(0);
+
+type Remote = RemoteHandle<OssmMode>;
 
 // The M5 remote has a hardcoded pattern list that differs in order (and
 // contents) from the pattern engine's `AnyPattern::all_builtin()`.
@@ -187,16 +190,16 @@ pub fn start(
     manager: &'static EspNowManager<'static>,
     sender: &'static Mutex<NoopRawMutex, EspNowSender<'static>>,
     receiver: EspNowReceiver<'static>,
-    patterns: &'static PatternSender,
+    remote: &'static Remote,
     config: RemoteConfig,
 ) {
     spawner
-        .spawn(receiver_task(manager, sender, receiver, patterns, config))
+        .spawn(receiver_task(manager, sender, receiver, remote, config))
         .unwrap();
     spawner
         .spawn(heartbeat_send_task(manager, sender, config))
         .unwrap();
-    spawner.spawn(heartbeat_check_task(patterns)).unwrap();
+    spawner.spawn(heartbeat_check_task(remote)).unwrap();
 
     info!("ESP-NOW remote tasks started, waiting for connection...");
 }
@@ -206,7 +209,7 @@ async fn receiver_task(
     manager: &'static EspNowManager<'static>,
     sender: &'static Mutex<NoopRawMutex, EspNowSender<'static>>,
     mut receiver: EspNowReceiver<'static>,
-    patterns: &'static PatternSender,
+    remote: &'static Remote,
     config: RemoteConfig,
 ) {
     info!("ESP-NOW receiver task started");
@@ -225,60 +228,50 @@ async fn receiver_task(
 
         match packet.command {
             M5Command::On => {
-                let ack = M5Packet {
-                    target: M5_ID,
-                    command: M5Command::On,
-                    ..Default::default()
-                };
-                if let Ok(peer) = manager.fetch_peer(true) {
-                    let mut sender = sender.lock().await;
-                    if let Err(err) = sender.send_async(&peer.peer_address, ack.as_bytes()).await {
-                        error!("Could not send ON ack: {}", err);
-                    }
-                }
+                // The remote treats the ack as the machine's on/off state,
+                // so only ack once something is actually playing.
                 let current = CURRENT_PATTERN_IDX.load(Ordering::Acquire) as usize;
                 info!("Playing pattern {}", current);
-                patterns.send(PatternEvent::Play(current));
+                if turn_on(remote, current).await {
+                    send_ack(manager, sender, M5Command::On).await;
+                } else {
+                    info!("Not turning on in mode {:?}", remote.status().mode);
+                }
             }
             M5Command::Off => {
-                let ack = M5Packet {
-                    target: M5_ID,
-                    command: M5Command::Off,
-                    ..Default::default()
-                };
-                if let Ok(peer) = manager.fetch_peer(true) {
-                    let mut sender = sender.lock().await;
-                    if let Err(err) = sender.send_async(&peer.peer_address, ack.as_bytes()).await {
-                        error!("Could not send OFF ack: {}", err);
-                    }
-                }
-                patterns.send(PatternEvent::Pause);
+                // Stopped either way, so the remote may always show off.
+                let _ = send(remote, PatternEvent::Pause).await;
+                send_ack(manager, sender, M5Command::Off).await;
                 info!("Paused");
             }
             M5Command::Speed => {
                 let velocity = (packet.value as f64) / config.max_velocity_mm_s;
-                patterns.update(PatternUpdate::Speed(velocity));
+                let _ = send(remote, PatternUpdate::Speed(velocity)).await;
             }
             M5Command::Depth => {
                 let depth = (packet.value as f64) / config.max_travel_mm;
-                patterns.update(PatternUpdate::Depth(depth));
+                let _ = send(remote, PatternUpdate::Depth(depth)).await;
             }
             M5Command::Stroke => {
                 let stroke = (packet.value as f64) / config.max_travel_mm;
-                patterns.update(PatternUpdate::Stroke(stroke));
+                let _ = send(remote, PatternUpdate::Stroke(stroke)).await;
             }
             M5Command::Sensation => {
                 // Remote sends -100..100; pattern engine expects -1.0..1.0
                 let sensation = (packet.value as f64) / 100.0;
-                patterns.update(PatternUpdate::Sensation(sensation));
+                let _ = send(remote, PatternUpdate::Sensation(sensation)).await;
             }
             M5Command::Pattern => {
                 let remote_idx = packet.value as u32;
                 if let Some(pattern) = RemotePattern::from_remote_index(remote_idx) {
                     let engine_idx = pattern.to_engine_index();
                     CURRENT_PATTERN_IDX.store(engine_idx, Ordering::Release);
-                    info!("Switching to pattern {}", engine_idx);
-                    patterns.send(PatternEvent::Play(engine_idx as usize));
+                    // Picking a pattern while off only selects it for the
+                    // next On; it doesn't start the machine.
+                    if matches!(remote.status().engine, EnginePhase::Playing(_)) {
+                        info!("Switching to pattern {}", engine_idx);
+                        let _ = send(remote, PatternEvent::Play(engine_idx as usize)).await;
+                    }
                 }
             }
             M5Command::Heartbeat => {
@@ -332,7 +325,7 @@ async fn heartbeat_send_task(
 }
 
 #[embassy_executor::task]
-async fn heartbeat_check_task(patterns: &'static PatternSender) {
+async fn heartbeat_check_task(remote: &'static Remote) {
     info!("ESP-NOW heartbeat check task started");
 
     let mut ticker = Ticker::every(Duration::from_millis(1000));
@@ -351,9 +344,38 @@ async fn heartbeat_check_task(patterns: &'static PatternSender) {
 
         if was_connected && !is_connected {
             info!("Remote disconnected, heartbeat lost");
-            patterns.send(PatternEvent::Pause);
+            remote.lost().await;
         } else if !was_connected && is_connected {
             info!("Remote connected");
+        }
+    }
+}
+
+/// Enter pattern mode if needed and play `pattern`, resuming it if
+/// paused. Returns whether the machine is now playing.
+async fn turn_on(remote: &'static Remote, pattern: usize) -> bool {
+    remote.switch(OssmMode::Patterns).await.is_ok()
+        && send(remote, PatternEvent::Play(pattern)).await.is_ok()
+}
+
+async fn send(remote: &'static Remote, request: impl Into<Request>) -> Result<(), Rejected> {
+    remote.send(request).await
+}
+
+async fn send_ack(
+    manager: &'static EspNowManager<'static>,
+    sender: &'static Mutex<NoopRawMutex, EspNowSender<'static>>,
+    command: M5Command,
+) {
+    let ack = M5Packet {
+        target: M5_ID,
+        command,
+        ..Default::default()
+    };
+    if let Ok(peer) = manager.fetch_peer(true) {
+        let mut sender = sender.lock().await;
+        if let Err(err) = sender.send_async(&peer.peer_address, ack.as_bytes()).await {
+            error!("Could not send {:?} ack: {}", ack.command, err);
         }
     }
 }
