@@ -8,7 +8,7 @@ pub struct ModeCtx {
 }
 
 impl ModeCtx {
-    pub fn new(motion: MotionSender) -> Self {
+    pub(crate) fn new(motion: MotionSender) -> Self {
         Self { motion }
     }
 

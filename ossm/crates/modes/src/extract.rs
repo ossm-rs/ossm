@@ -12,7 +12,7 @@ use crate::sealed;
 /// Implemented on the `'static` form of each extractor type (e.g.
 /// `Motion<'static>`), which only serves as a name for the type. The
 /// value a mode actually receives is [`Out<'a>`](Self::Out), borrowed
-/// from the [`ModeCtx`] for the duration of the run.
+/// from the supervisor for the duration of the run.
 ///
 /// Sealed: the extractors in this crate are the only capabilities a mode
 /// can ask for, until custom extractors are supported.
