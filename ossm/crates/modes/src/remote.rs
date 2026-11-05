@@ -290,7 +290,7 @@ where
     }
 
     pub fn status(&self) -> Status<K> {
-        let patterns = self.sup.patterns;
+        let patterns = &self.sup.patterns;
         Status {
             mode: self.sup.current(),
             engine: patterns.phase(),
