@@ -7,7 +7,7 @@ use embassy_futures::select::{Either, select};
 use embassy_sync::blocking_mutex::Mutex;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
-use ossm::{MotionPhase, MotionSender};
+use ossm::{MotionPhase, MotionSender, fault};
 
 use crate::ModeCtx;
 
@@ -17,19 +17,28 @@ use crate::ModeCtx;
 ///
 /// ```ignore
 /// #[derive(Clone, Copy, PartialEq, Debug)]
-/// enum AppMode { Idle, PatternEngine, FunScript }
+/// enum AppMode { Idle, PatternEngine, FunScript, Fault }
 ///
 /// impl ModeSet for AppMode {
+///     const FAULT: Self = AppMode::Fault;
+///
 ///     async fn run(self, ctx: &ModeCtx) {
 ///         match self {
 ///             AppMode::Idle => ctx.run(&idle).await,
 ///             AppMode::PatternEngine => ctx.run(&PatternEngine).await,
 ///             AppMode::FunScript => ctx.run(&FunScript).await,
+///             AppMode::Fault => ctx.run(&fault).await,
 ///         }
 ///     }
 /// }
 /// ```
 pub trait ModeSet: Copy + PartialEq + Debug + Send + 'static {
+    /// Entered when a fault is raised and never left until restart.
+    ///
+    /// Should dispatch to a mode that takes no extractors. Requests to
+    /// switch into it are ignored; only [`fault::raise`] enters it.
+    const FAULT: Self;
+
     fn run(self, ctx: &ModeCtx) -> impl Future<Output = ()>;
 }
 
@@ -76,16 +85,33 @@ impl<M: ModeSet> ModeRunner<M> {
     /// Requests for the mode that is already running are ignored and do
     /// not interrupt it. A mode that returns on its own stays current;
     /// the supervisor makes the motor safe and waits for the next request.
+    ///
+    /// A raised fault interrupts any mode and switches to
+    /// [`ModeSet::FAULT`], which is never left. Starts there directly if a
+    /// fault was raised before the supervisor ran.
     pub async fn run(self, ctx: ModeCtx) -> ! {
         let sup = self.sup;
-        let mut mode = sup.current();
+        let mut mode = match fault::raised() {
+            Some(_) => M::FAULT,
+            None => sup.current(),
+        };
 
         loop {
+            sup.current.lock(|cell| cell.set(mode));
+
+            if mode == M::FAULT {
+                log::error!("Entering mode {:?}; restart required", mode);
+                mode.run(&ctx).await;
+                loop {
+                    core::future::pending::<()>().await;
+                }
+            }
+
             log::info!("Entering mode {:?}", mode);
             let mut next = {
                 let mut run = pin!(mode.run(&ctx));
                 loop {
-                    match select(run.as_mut(), sup.request.wait()).await {
+                    match select(run.as_mut(), sup.next_event()).await {
                         Either::First(()) => break None,
                         Either::Second(next) if next == mode => continue,
                         Either::Second(next) => break Some(next),
@@ -97,11 +123,26 @@ impl<M: ModeSet> ModeRunner<M> {
             make_safe(&ctx.motion).await;
 
             while next.is_none_or(|next| next == mode) {
-                next = Some(sup.request.wait().await);
+                next = Some(sup.next_event().await);
             }
 
             mode = next.unwrap();
-            sup.current.lock(|cell| cell.set(mode));
+        }
+    }
+}
+
+impl<M: ModeSet> Supervisor<M> {
+    /// Wait for the next mode to switch to: [`ModeSet::FAULT`] once a
+    /// fault is raised, otherwise the latest request.
+    async fn next_event(&self) -> M {
+        loop {
+            match select(self.request.wait(), fault::wait()).await {
+                Either::First(mode) if mode == M::FAULT => {
+                    log::warn!("Ignoring request for {:?}; only a raised fault enters it", mode);
+                }
+                Either::First(mode) => return mode,
+                Either::Second(_) => return M::FAULT,
+            }
         }
     }
 }
@@ -109,7 +150,7 @@ impl<M: ModeSet> ModeRunner<M> {
 /// Handle for requesting mode switches.
 ///
 /// Requests are latest-wins, requesting the current mode is a
-/// no-op.
+/// no-op, and nothing leaves [`ModeSet::FAULT`].
 pub struct ModeSwitcher<M: ModeSet> {
     sup: &'static Supervisor<M>,
 }
