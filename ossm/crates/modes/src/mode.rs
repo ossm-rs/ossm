@@ -1,0 +1,33 @@
+use core::future::Future;
+
+use crate::{Extract, ModeCtx};
+
+/// An async fn the arguments of which are all [`Extract`] types.
+pub trait Mode<Args> {
+    fn run<'a>(&'a self, ctx: &'a ModeCtx) -> impl Future<Output = ()> + 'a;
+}
+
+macro_rules! impl_mode {
+    ($($arg:ident),*) => {
+        // The first `AsyncFn` bound pins each `$arg` to the `'static`
+        // form of the parameter type, which inference can't recover from
+        // the projection alone. The second is the call we actually make,
+        // valid for any borrow of the context.
+        impl<F, $($arg: Extract + 'static),*> Mode<($($arg,)*)> for F
+        where
+            F: AsyncFn($($arg),*) + for<'a> AsyncFn($($arg::Out<'a>),*),
+        {
+            #[allow(unused_variables)]
+            fn run<'a>(&'a self, ctx: &'a ModeCtx) -> impl Future<Output = ()> + 'a {
+                self($($arg::extract(ctx)),*)
+            }
+        }
+    };
+}
+
+impl_mode!();
+impl_mode!(A);
+impl_mode!(A, B);
+impl_mode!(A, B, C);
+impl_mode!(A, B, C, D);
+impl_mode!(A, B, C, D, E);
