@@ -33,8 +33,8 @@ use esp_hal::{
 use esp_rtos::embassy::InterruptExecutor;
 use log::info;
 use modes::{ModeCtx, OssmMode, Supervisor};
-use ossm::{MechanicalConfig, MotionController, MotionLimits, Ossm, fault};
-use pattern_engine::{PatternEngine, PatternSender};
+use ossm::{MechanicalConfig, MotionController, MotionLimits, MotionSender, Ossm, fault};
+use pattern_engine::{PatternEngine, PatternRunner, PatternSender};
 use static_cell::StaticCell;
 
 extern crate alloc;
@@ -99,8 +99,9 @@ pub async fn run(spawner: Spawner, config: Config) {
     let motor = match motor::build(config.motor).await {
         Ok(motor) => motor,
         Err(error) => {
+            fault::raise(error);
             indicator::start(&spawner, indicator, motion_observer, pattern_observer);
-            fault::halt(error).await
+            run_modes(motion, runner).await
         }
     };
 
@@ -150,6 +151,12 @@ pub async fn run(spawner: Spawner, config: Config) {
 
     radio::start(&spawner, config.wifi, config.bt, patterns, &limits);
 
+    run_modes(motion, runner).await
+}
+
+/// Hand the motion and pattern capabilities to the mode supervisor for the
+/// rest of the program. Starts in [`OssmMode::Fault`] if a fault is raised.
+async fn run_modes(motion: MotionSender, runner: PatternRunner) -> ! {
     // Nothing requests a switch yet, so the firmware stays in pattern mode.
     let (modes, _switcher) = SUPERVISOR_CELL
         .init(Supervisor::new(OssmMode::Patterns))

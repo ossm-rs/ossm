@@ -22,22 +22,13 @@ static RAISED: AtomicU8 = AtomicU8::new(0);
 static RAISED_SIGNAL: Signal<CriticalSectionRawMutex, Fault> = Signal::new();
 
 /// Report a fault until restart. The first fault wins as the likely root
-/// cause. The caller is responsible for stopping the machine; see [`halt`].
+/// cause. The mode supervisor reacts by stopping the machine; see [`wait`].
 pub fn raise(fault: Fault) {
     if RAISED
         .compare_exchange(0, fault as u8, Ordering::Relaxed, Ordering::Relaxed)
         .is_ok()
     {
         RAISED_SIGNAL.signal(fault);
-    }
-}
-
-/// Raise the fault and park the calling task until restart, leaving the
-/// executor free for the status indicator.
-pub async fn halt(fault: Fault) -> ! {
-    raise(fault);
-    loop {
-        core::future::pending::<()>().await;
     }
 }
 
