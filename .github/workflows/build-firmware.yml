@@ -83,6 +83,10 @@ jobs:
           OBJCOPY=$(echo "${{ matrix.target }}" | sed 's/-none-elf$/-elf-objcopy/')
           cp "$ELF" /tmp/stripped.elf
           $OBJCOPY --remove-section .ossm.build_info /tmp/stripped.elf
+          # The ESP-IDF app descriptor also records the build time and date.
+          $OBJCOPY --dump-section .rodata_desc=/tmp/desc.bin /tmp/stripped.elf
+          python3 scripts/blank-app-desc-time.py /tmp/desc.bin
+          $OBJCOPY --update-section .rodata_desc=/tmp/desc.bin /tmp/stripped.elf
           espflash save-image --merge --chip ${{ matrix.chip }} --partition-table ${{ matrix.path }}/partitions.csv /tmp/stripped.elf /tmp/stripped.bin
           sha256sum /tmp/stripped.bin | cut -d' ' -f1 > ${{ matrix.firmware }}.sha256
 
