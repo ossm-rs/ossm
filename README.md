@@ -79,6 +79,7 @@ Blinking red (green on WaveShare) LED repeats a group of blinks separated by a l
 | 1 | The motor did not respond during startup. Check motor power and wiring, then restart. |
 | 2 | The motor was configured for this firmware. Power cycle the motor and the board. |
 | 3 | The board could not set up its hardware. Check that the firmware matches the board, then restart. |
+| 4 | The motor or board reported an error while running. Check motor power and wiring, then restart. |
 
 On boards with a single-color user LED, such as the Seeed XIAO ESP32S3, the LED stays off during normal operation. It blinks the same codes, and stays on steadily after an error.
 

@@ -10,18 +10,27 @@ pub enum OssmMode {
     Idle,
     /// The pattern engine drives the motor from remote commands.
     Patterns,
+    /// A fault was raised. Holds no capabilities; only a restart leaves.
+    Fault,
 }
 
 impl ModeSet for OssmMode {
+    const FAULT: Self = OssmMode::Fault;
+
     async fn run(self, ctx: &ModeCtx) {
         match self {
             OssmMode::Idle => ctx.run(&idle).await,
             OssmMode::Patterns => ctx.run(&patterns).await,
+            OssmMode::Fault => ctx.run(&fault).await,
         }
     }
 }
 
 async fn idle() {
+    core::future::pending().await
+}
+
+async fn fault() {
     core::future::pending().await
 }
 

@@ -2,6 +2,7 @@ use rsruckig::prelude::*;
 use num_traits::float::Float;
 
 use crate::command::{Cancelled, MotionCommand, StateCommand, StateResponse};
+use crate::fault::{self, Fault};
 use crate::state::MotionPhase;
 use crate::{Board, MotionLimits, Ossm};
 
@@ -102,10 +103,18 @@ impl<'a, B: Board> MotionController<'a, B> {
 
     /// Advance the motion control loop by one step.
     ///
-    /// Returns `Err` if the board reports a critical fault. The caller should
-    /// treat this as an unrecoverable error for this control cycle — the
-    /// controller will have already transitioned to `Disabled`.
+    /// Returns `Err` if the board reports a critical fault. The controller
+    /// will have already transitioned to `Disabled` and raised
+    /// [`Fault::Runtime`], which latches until restart.
     pub async fn update(&mut self) -> Result<(), B::Error> {
+        let result = self.step().await;
+        if result.is_err() {
+            fault::raise(Fault::Runtime);
+        }
+        result
+    }
+
+    async fn step(&mut self) -> Result<(), B::Error> {
         if let Err(e) = self.board.tick().await {
             log::error!("Board tick fault: {:?}", e);
             self.enter_fault();
@@ -126,6 +135,13 @@ impl<'a, B: Board> MotionController<'a, B> {
     }
 
     async fn process_state_command(&mut self, cmd: StateCommand) -> Result<(), B::Error> {
+        // A raised fault latches until restart, so nothing may power the
+        // motor back up.
+        if matches!(cmd, StateCommand::Enable) && fault::raised().is_some() {
+            self.respond(StateResponse::Fault);
+            return Ok(());
+        }
+
         match (&self.state, cmd) {
             (MotionState::Disabled, StateCommand::Enable) => {
                 match self.board.enable().await {

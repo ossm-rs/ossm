@@ -19,6 +19,7 @@ pub fn blinks(fault: Fault) -> u8 {
         Fault::MotorUnresponsive => 1,
         Fault::MotorPowerCycle => 2,
         Fault::BoardSetup => 3,
+        Fault::Runtime => 4,
     }
 }
 
