@@ -37,8 +37,9 @@ impl RunnerState {
 /// only returns if the host future is dropped (e.g. a mode switch),
 /// at which point the runner is free for another `run` call. Each
 /// call starts fresh: events queued while no run was active are
-/// discarded, and the engine reports [`EnginePhase::Idle`] both on
-/// entry and once the run's future is dropped.
+/// discarded, speed is reset to zero, and the engine reports
+/// [`EnginePhase::Idle`] both on entry and once the run's future is
+/// dropped.
 ///
 /// The runner carries no state of its own; "currently running" is a
 /// property of the in-flight future, not the type. Spawning two
@@ -73,6 +74,12 @@ impl PatternRunner {
         // Events sent while no run was active (e.g. a remote pressing
         // play during another mode) must not replay when this run starts.
         while engine.events.try_receive().is_ok() {}
+        // Never resume at a speed set before this run, however it started.
+        pattern_state.sender().send_modify(|opt| {
+            if let Some(state) = opt {
+                state.speed = 0.0;
+            }
+        });
         store_and_publish(engine, EnginePhase::Idle);
         let _idle_on_drop = IdleOnDrop(engine);
 
