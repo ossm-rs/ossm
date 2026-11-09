@@ -34,7 +34,7 @@ use esp_rtos::embassy::InterruptExecutor;
 use log::info;
 use ossm::motion::{MechanicalConfig, MotionController, MotionLimits, MotionObserver};
 use ossm::OssmMode;
-use ossm::platform::{Fault, Hardware, Platform};
+use ossm::platform::{Fault, Hardware, Platform, Remotes};
 use pattern_engine::{PatternObserver, PatternSender};
 use static_cell::StaticCell;
 
@@ -173,7 +173,12 @@ impl Platform for Esp32s3 {
         indicator::start(&self.spawner, self.indicator.take(), motion, patterns);
     }
 
-    fn start_remotes(&mut self, patterns: &'static PatternSender, limits: &MotionLimits) {
+    fn start_remotes(
+        &mut self,
+        _remotes: Remotes<OssmMode>,
+        patterns: &'static PatternSender,
+        limits: &MotionLimits,
+    ) {
         let (wifi, bt) = self.radio.take().expect("start_remotes runs once");
         radio::start(&self.spawner, wifi, bt, patterns, limits);
     }

@@ -19,7 +19,9 @@ use ossm_core::fault;
 use pattern_engine::{PatternEngine, PatternSender};
 use static_cell::StaticCell;
 
-pub use modes::{Mode, ModeKey, Motion, MotionStatus, OssmMode, Patterns, patterns};
+pub use modes::{
+    Input, Mode, ModeKey, Motion, MotionStatus, OssmMode, PatternInput, Patterns, Received, patterns,
+};
 
 pub mod platform;
 
@@ -84,8 +86,8 @@ where
 
     /// Set up the platform and run the modes for the rest of the program.
     ///
-    /// Can only be called once: the motion channels and pattern engine
-    /// it creates are unique to the program.
+    /// Can only be called once: the motion channels, pattern engine and
+    /// supervisor it creates are unique to the program.
     pub async fn run(mut self) -> ! {
         let (receiver, motion_observer, motion) = CHANNELS.init(MotionChannels::new()).split();
         let (pattern_runner, pattern_observer, patterns) =
@@ -108,8 +110,9 @@ where
 
         self.platform.start_indicator(motion_observer, pattern_observer);
         let patterns = PATTERN_SENDER.init(patterns);
-        self.platform.start_remotes(patterns, &hardware.limits);
+        let (modes, remotes) = self.modes.split(patterns);
+        self.platform.start_remotes(remotes, patterns, &hardware.limits);
 
-        self.modes.run(motion, pattern_runner).await
+        modes.run(motion, pattern_runner).await
     }
 }
