@@ -36,8 +36,8 @@ use esp_hal::{
 use esp_rtos::embassy::InterruptExecutor;
 use log::info;
 use ossm::motion::{MechanicalConfig, MotionController, MotionLimits, MotionObserver};
-use ossm::OssmMode;
-use ossm::platform::{Fault, Hardware, Platform, Remotes};
+use ossm::platform::{Fault, Hardware, Platform, RemoteId, Remotes, Scope};
+use ossm::{OssmMode, PatternInput};
 use pattern_engine::{PatternObserver, PatternSender};
 use static_cell::StaticCell;
 
@@ -182,11 +182,12 @@ where
 
     fn start_remotes(
         &mut self,
-        _remotes: Remotes<OssmMode>,
-        patterns: &'static PatternSender,
+        remotes: Remotes<OssmMode>,
+        _patterns: &'static PatternSender,
         _limits: &MotionLimits,
     ) {
         let bt = self.bt.take().expect("start_remotes runs once");
-        radio::start(&self.spawner, bt, patterns);
+        let radr = remotes.handle(RemoteId::Radr, Scope::new().sends::<PatternInput>().switches());
+        radio::start(&self.spawner, bt, radr);
     }
 }

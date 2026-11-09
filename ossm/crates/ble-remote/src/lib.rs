@@ -2,7 +2,7 @@
 
 use core::{
     fmt::Write,
-    sync::atomic::{AtomicBool, Ordering},
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 
 pub const CONNECTIONS_MAX: usize = 1;
@@ -17,10 +17,8 @@ use embassy_time::{Duration, Ticker, Timer};
 use esp_radio::ble::controller::BleConnector;
 use heapless::String;
 use log::{debug, error, info, warn};
-use pattern_engine::{
-    EnginePhase, PatternEvent, PatternSender, PatternState, PatternUpdate, pattern_description,
-    pattern_list,
-};
+use modes::{ModeKey, OssmMode, Rejected, RemoteHandle, Request, Status};
+use pattern_engine::{EnginePhase, PatternEvent, PatternUpdate, pattern_description, pattern_list};
 use static_cell::StaticCell;
 use trouble_host::prelude::*;
 
@@ -32,6 +30,11 @@ const PATTERN_LIST_UUID: Uuid = uuid!("522b443a-4f53-534d-3000-420badbabe69");
 const PATTERN_DESCRIPTION_UUID: Uuid = uuid!("522b443a-4f53-534d-3010-420badbabe69");
 
 static CONNECTED: AtomicBool = AtomicBool::new(false);
+/// Pattern `go:strokeEngine` plays when nothing is playing: the last one
+/// pattern mode accepted from `set:pattern`.
+static LAST_PATTERN: AtomicUsize = AtomicUsize::new(0);
+
+type Remote = RemoteHandle<OssmMode>;
 
 macro_rules! mk_static {
     ($t:ty, $val:expr) => {{
@@ -98,7 +101,7 @@ fn get_pattern_description(index: usize) -> String<MAX_PATTERN_LENGTH> {
 pub fn start(
     spawner: &Spawner,
     connector: BleConnector<'static>,
-    patterns: &'static PatternSender,
+    remote: &'static Remote,
 ) {
     let bt_controller: ExternalController<_, 20> = ExternalController::new(connector);
 
@@ -117,7 +120,7 @@ pub fn start(
     } = stack.build();
 
     spawner.must_spawn(ble_runner_task(runner));
-    spawner.must_spawn(ble_events_task(stack, peripheral, patterns));
+    spawner.must_spawn(ble_events_task(stack, peripheral, remote));
 
     info!("BLE remote tasks started, waiting for connection...");
 }
@@ -134,7 +137,7 @@ pub async fn ble_events_task(
         ExternalController<BleConnector<'static>, 20>,
         DefaultPacketPool,
     >,
-    patterns: &'static PatternSender,
+    remote: &'static Remote,
 ) {
     info!("Starting advertising and GATT service");
     let server = Server::new_with_config(GapConfig::Peripheral(PeripheralConfig {
@@ -187,8 +190,8 @@ pub async fn ble_events_task(
                     .with_attribute_server(&server)
                     .expect("Could not transform connection into GATT connection");
 
-                let events = gatt_events_task(&server, &gatt_connection, patterns);
-                let notify = state_notifications(&server, &gatt_connection, patterns);
+                let events = gatt_events_task(&server, &gatt_connection, remote);
+                let notify = state_notifications(&server, &gatt_connection, remote);
 
                 match select(events, notify).await {
                     Either::First(res) => {
@@ -202,7 +205,8 @@ pub async fn ble_events_task(
                     },
                 }
 
-                patterns.send(PatternEvent::Stop);
+                // Only pattern mode moves the motor; other modes reject this.
+                let _ = remote.send(PatternEvent::Stop).await;
                 info!("BLE session ended, stopping engine");
             }
             Err(err) => {
@@ -226,7 +230,7 @@ pub async fn ble_runner_task(
 async fn gatt_events_task<P: PacketPool>(
     server: &Server<'_>,
     connection: &GattConnection<'_, '_, P>,
-    patterns: &'static PatternSender,
+    remote: &'static Remote,
 ) -> Result<(), Error> {
     let reason = loop {
         match connection.next().await {
@@ -237,9 +241,7 @@ async fn gatt_events_task<P: PacketPool>(
                 match &event {
                     GattEvent::Read(event) => {
                         if event.handle() == server.ossm_service.current_state.handle {
-                            let engine_state = patterns.phase();
-                            let input = patterns.state();
-                            let state_json = state_to_json(engine_state, &input);
+                            let state_json = state_to_json(&remote.status());
                             debug!("Read State: {}", state_json);
                             server.set(&server.ossm_service.current_state, &state_json)?;
                         }
@@ -269,7 +271,7 @@ async fn gatt_events_task<P: PacketPool>(
                         let command: String<MAX_COMMAND_LENGTH> =
                             server.get(&server.ossm_service.primary_command)?;
 
-                        process_command(&command, server, patterns);
+                        process_command(&command, server, remote).await;
                     }
                     if event_handle == server.ossm_service.pattern_description.handle {
                         let command: String<MAX_PATTERN_LENGTH> =
@@ -337,34 +339,35 @@ async fn advertise<'values, 'server, C: Controller>(
 async fn state_notifications<P: PacketPool>(
     server: &Server<'_>,
     connection: &GattConnection<'_, '_, P>,
-    patterns: &'static PatternSender,
+    remote: &'static Remote,
 ) -> Result<(), Error> {
-    let mut sub = patterns
-        .subscribe()
+    let mut sub = remote
+        .subscribe_engine()
         .expect("No state subscriber slots available");
     let mut heartbeat = Ticker::every(Duration::from_secs(1));
-    let mut old_state: (EnginePhase, PatternState) = (EnginePhase::Idle, PatternState::DEFAULT);
+    let mut old_status: Option<Status<OssmMode>> = None;
     loop {
-        let engine_state = match select(sub.next_message_pure(), heartbeat.next()).await {
-            Either::First(state) => state,
-            Either::Second(_) => patterns.phase(),
-        };
+        // Engine transitions wake us early; mode changes that don't touch
+        // the engine show up on the heartbeat.
+        select(sub.next_message_pure(), heartbeat.next()).await;
 
-        let input = patterns.state();
-        if old_state != (engine_state, input) {
-            let state_json = state_to_json(engine_state, &input);
+        let status = remote.status();
+        if old_status != Some(status) {
+            let state_json = state_to_json(&status);
             debug!("Notify State: {}", state_json);
             server
                 .ossm_service
                 .current_state
                 .notify(connection, &state_json)
                 .await?;
-            old_state = (engine_state, input);
+            old_status = Some(status);
         }
     }
 }
 
-fn state_to_json(state: EnginePhase, input: &PatternState) -> String<MAX_STATE_LENGTH> {
+fn state_to_json(status: &Status<OssmMode>) -> String<MAX_STATE_LENGTH> {
+    let state = status.engine;
+    let pattern = &status.pattern;
     let pattern_name = match state {
         EnginePhase::Playing(idx) | EnginePhase::Paused(idx) => pattern_list()
             .get(idx)
@@ -384,11 +387,11 @@ fn state_to_json(state: EnginePhase, input: &PatternState) -> String<MAX_STATE_L
         EnginePhase::Playing(i) | EnginePhase::Paused(i) => i,
         _ => 0,
     };
-    let speed = (input.speed * 100.0) as u32;
-    let stroke = (input.stroke * 100.0) as u32;
-    let depth = (input.depth * 100.0) as u32;
+    let speed = (pattern.speed * 100.0) as u32;
+    let stroke = (pattern.stroke * 100.0) as u32;
+    let depth = (pattern.depth * 100.0) as u32;
     // Map internal -1.0..1.0 back to BLE protocol 0–100.
-    let sensation = ((input.sensation + 1.0) * 50.0) as u32;
+    let sensation = ((pattern.sensation + 1.0) * 50.0) as u32;
     let _ = write!(
         out,
         r#"{{"state":"{state_str}","speed":{speed},"stroke":{stroke},"sensation":{sensation},"depth":{depth},"pattern":{idx},"patternName":"{pattern_name}"}}"#,
@@ -396,88 +399,139 @@ fn state_to_json(state: EnginePhase, input: &PatternState) -> String<MAX_STATE_L
     out
 }
 
-fn process_command(
+/// How the RADR app's commands map onto modes. The app never reads the
+/// `ok:`/`fail:` reply, so replies are kept honest for remotes that do:
+/// `ok:` when the command was applied or is meaningless in the current
+/// mode, `fail:` when it would need motion the current mode refuses.
+async fn process_command(
     command: &String<MAX_COMMAND_LENGTH>,
     server: &Server<'_>,
-    patterns: &'static PatternSender,
+    remote: &'static Remote,
 ) {
     info!("BLE Command {}", command);
 
-    let mut split_command = command.split(":");
-
-    let mut fail = false;
-
-    if let Some(cmd) = split_command.next() {
-        if let Some(action) = split_command.next() {
-            match cmd {
-                "set" => {
-                    if let Some(value) = split_command.next() {
-                        if let Ok(value) = value.parse::<u32>() {
-                            let normalized = value as f64 / 100.0;
-                            match action {
-                                "speed" => patterns.update(PatternUpdate::Speed(normalized)),
-                                "stroke" => patterns.update(PatternUpdate::Stroke(normalized)),
-                                "depth" => patterns.update(PatternUpdate::Depth(normalized)),
-                                // BLE sends 0–100; internal range is -1.0..1.0.
-                                "sensation" => patterns.update(PatternUpdate::Sensation(
-                                    normalized * 2.0 - 1.0,
-                                )),
-                                "pattern" => patterns.send(PatternEvent::Play(value as usize)),
-                                _ => {
-                                    error!("Invalid set command {}", action);
-                                    fail = true;
-                                }
-                            }
-                        } else {
-                            error!("Could not parse set value");
-                            fail = true;
-                        };
-                    } else {
-                        error!("No value after set");
-                        fail = true;
-                    }
-                }
-                "go" => match action {
-                    "simplePenetration" | "strokeEngine" => patterns.send(PatternEvent::Play(0)),
-                    "menu" => patterns.send(PatternEvent::Stop),
-                    _ => {
-                        error!("Unknown go action: {}", action);
-                        fail = true;
-                    }
-                },
-                _ => {
-                    error!("Unknown command: {}", cmd);
-                    fail = true;
-                }
-            }
-        } else {
-            error!("No action in command");
-            fail = true;
-        }
-    } else {
-        error!("Invalid command");
-        fail = true;
-    }
+    let ok = match parse_command(command) {
+        Some(parsed) => apply_command(parsed, remote).await,
+        None => false,
+    };
 
     let mut response_str: String<MAX_COMMAND_LENGTH> = String::new();
-    if fail {
-        response_str.write_str("fail:").expect("Should always fit");
-        if response_str.write_str(command.as_str()).is_err() {
-            response_str
-                .write_str("overflow")
-                .expect("Should always fit");
-        }
-    } else {
-        response_str.write_str("ok:").expect("Should always fit");
-        if response_str.write_str(command.as_str()).is_err() {
-            response_str
-                .write_str("overflow")
-                .expect("Should always fit");
-        }
+    let prefix = if ok { "ok:" } else { "fail:" };
+    response_str.write_str(prefix).expect("Should always fit");
+    if response_str.write_str(command.as_str()).is_err() {
+        response_str
+            .write_str("overflow")
+            .expect("Should always fit");
     }
     if let Err(err) = server.set(&server.ossm_service.primary_command, &response_str) {
         error!("Failed to write the response to a set command {:?}", err);
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum BleCommand {
+    /// `go:strokeEngine` or `go:simplePenetration`.
+    StartPatterns,
+    /// `go:menu`.
+    Menu,
+    SetPattern(usize),
+    /// `set:speed|stroke|depth|sensation`.
+    Update(PatternUpdate),
+}
+
+fn parse_command(command: &str) -> Option<BleCommand> {
+    let mut parts = command.split(':');
+    let (cmd, action) = (parts.next()?, parts.next());
+    let Some(action) = action else {
+        error!("No action in command");
+        return None;
+    };
+    match cmd {
+        "set" => {
+            let Some(value) = parts.next() else {
+                error!("No value after set");
+                return None;
+            };
+            let Ok(value) = value.parse::<u32>() else {
+                error!("Could not parse set value");
+                return None;
+            };
+            let normalized = value as f64 / 100.0;
+            Some(match action {
+                "speed" => BleCommand::Update(PatternUpdate::Speed(normalized)),
+                "stroke" => BleCommand::Update(PatternUpdate::Stroke(normalized)),
+                "depth" => BleCommand::Update(PatternUpdate::Depth(normalized)),
+                // BLE sends 0–100; internal range is -1.0..1.0.
+                "sensation" => BleCommand::Update(PatternUpdate::Sensation(normalized * 2.0 - 1.0)),
+                "pattern" => BleCommand::SetPattern(value as usize),
+                _ => {
+                    error!("Invalid set command {}", action);
+                    return None;
+                }
+            })
+        }
+        "go" => match action {
+            "simplePenetration" | "strokeEngine" => Some(BleCommand::StartPatterns),
+            "menu" => Some(BleCommand::Menu),
+            _ => {
+                error!("Unknown go action: {}", action);
+                None
+            }
+        },
+        _ => {
+            error!("Unknown command: {}", cmd);
+            None
+        }
+    }
+}
+
+/// Returns whether to reply `ok:`.
+async fn apply_command(command: BleCommand, remote: &'static Remote) -> bool {
+    let mode = remote.status().mode;
+    match command {
+        BleCommand::StartPatterns => start_patterns(remote).await,
+        BleCommand::Menu => match mode {
+            ModeKey::Custom(OssmMode::Patterns) => remote.switch(ModeKey::Idle).await.is_ok(),
+            // Already stopped.
+            _ => true,
+        },
+        BleCommand::SetPattern(idx) => match send(remote, PatternEvent::Play(idx)).await {
+            Ok(()) => {
+                LAST_PATTERN.store(idx, Ordering::Relaxed);
+                true
+            }
+            // The app only picks patterns while playing; outside pattern
+            // mode there is nothing to change.
+            Err(Rejected::NotAccepted) => true,
+            Err(_) => false,
+        },
+        // Values sent outside pattern mode are dropped: pattern mode
+        // starts at speed 0, so a dropped value can't make it faster.
+        BleCommand::Update(update) => {
+            let _ = send(remote, update).await;
+            true
+        }
+    }
+}
+
+/// Enter pattern mode and make sure a pattern is playing, without
+/// restarting one that already is. The app sends this twice on every
+/// connect and every resume.
+async fn start_patterns(remote: &'static Remote) -> bool {
+    if remote.switch(OssmMode::Patterns).await.is_err() {
+        return false;
+    }
+    match remote.status().engine {
+        EnginePhase::Playing(_) | EnginePhase::Paused(_) | EnginePhase::Homing => true,
+        EnginePhase::Idle | EnginePhase::Ready => {
+            let idx = LAST_PATTERN.load(Ordering::Relaxed);
+            send(remote, PatternEvent::Play(idx)).await.is_ok()
+        }
+    }
+}
+
+async fn send(remote: &'static Remote, request: impl Into<Request>) -> Result<(), Rejected> {
+    remote.send(request).await
 }
 
 pub fn is_ble_connected() -> bool {
