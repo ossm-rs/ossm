@@ -37,7 +37,7 @@ use esp_rtos::embassy::InterruptExecutor;
 use log::info;
 use ossm::motion::{MechanicalConfig, MotionController, MotionLimits, MotionObserver};
 use ossm::OssmMode;
-use ossm::platform::{Fault, Hardware, Platform};
+use ossm::platform::{Fault, Hardware, Platform, Remotes};
 use pattern_engine::{PatternObserver, PatternSender};
 use static_cell::StaticCell;
 
@@ -180,7 +180,12 @@ where
         indicator::start(&self.spawner, self.indicator.take(), motion, patterns);
     }
 
-    fn start_remotes(&mut self, patterns: &'static PatternSender, _limits: &MotionLimits) {
+    fn start_remotes(
+        &mut self,
+        _remotes: Remotes<OssmMode>,
+        patterns: &'static PatternSender,
+        _limits: &MotionLimits,
+    ) {
         let bt = self.bt.take().expect("start_remotes runs once");
         radio::start(&self.spawner, bt, patterns);
     }
