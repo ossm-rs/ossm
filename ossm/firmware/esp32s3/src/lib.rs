@@ -32,7 +32,7 @@ use esp_hal::{
 };
 use esp_rtos::embassy::InterruptExecutor;
 use log::info;
-use modes::{ModeCtx, OssmMode, Supervisor};
+use modes::{OssmMode, Supervisor};
 use ossm::{MechanicalConfig, MotionController, MotionLimits, MotionSender, Ossm, fault};
 use pattern_engine::{PatternEngine, PatternRunner, PatternSender};
 use static_cell::StaticCell;
@@ -95,13 +95,14 @@ pub async fn run(spawner: Spawner, config: Config) {
     let indicator = indicator::build(config.indicator);
     let (receiver, motion_observer, motion) = OSSM_CELL.init(Ossm::new()).split();
     let (runner, pattern_observer, patterns) = PATTERNS_CELL.init(PatternEngine::new()).split();
+    let patterns: &'static PatternSender = mk_static!(PatternSender, patterns);
 
     let motor = match motor::build(config.motor).await {
         Ok(motor) => motor,
         Err(error) => {
             fault::raise(error);
             indicator::start(&spawner, indicator, motion_observer, pattern_observer);
-            run_modes(motion, runner).await
+            run_modes(motion, runner, patterns).await
         }
     };
 
@@ -145,21 +146,23 @@ pub async fn run(spawner: Spawner, config: Config) {
         UPDATE_INTERVAL_SECS * 1000.0
     );
 
-    let patterns: &'static PatternSender = mk_static!(PatternSender, patterns);
-
     indicator::start(&spawner, indicator, motion_observer, pattern_observer);
 
     radio::start(&spawner, config.wifi, config.bt, patterns, &limits);
 
-    run_modes(motion, runner).await
+    run_modes(motion, runner, patterns).await
 }
 
 /// Hand the motion and pattern capabilities to the mode supervisor for the
 /// rest of the program. Starts in [`OssmMode::Fault`] if a fault is raised.
-async fn run_modes(motion: MotionSender, runner: PatternRunner) -> ! {
+async fn run_modes(
+    motion: MotionSender,
+    runner: PatternRunner,
+    patterns: &'static PatternSender,
+) -> ! {
     // Nothing requests a switch yet, so the firmware stays in pattern mode.
-    let (modes, _switcher) = SUPERVISOR_CELL
-        .init(Supervisor::new(OssmMode::Patterns))
+    let (modes, _remote) = SUPERVISOR_CELL
+        .init(Supervisor::new(OssmMode::Patterns, patterns))
         .split();
-    modes.run(ModeCtx::new(motion, runner)).await
+    modes.run(motion, runner).await
 }

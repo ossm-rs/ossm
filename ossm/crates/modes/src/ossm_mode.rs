@@ -1,7 +1,9 @@
+use embassy_futures::select::select;
 use embassy_time::Delay;
 use pattern_engine::AnyPattern;
+use pattern_engine::commands::PatternCommand;
 
-use crate::{ModeCtx, ModeSet, Motion, Patterns};
+use crate::{Commands, ModeCtx, ModeSet, Motion, Patterns};
 
 /// The modes OSSM firmware can switch between.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -34,8 +36,20 @@ async fn fault() {
     core::future::pending().await
 }
 
-async fn patterns(motion: Motion<'_>, patterns: Patterns<'_>) {
-    patterns
-        .run(&motion, AnyPattern::all_builtin(), Delay)
-        .await
+async fn patterns(
+    motion: Motion<'_>,
+    patterns: Patterns<'_>,
+    commands: Commands<'_, PatternCommand>,
+) {
+    let forward = async {
+        loop {
+            let (_source, command) = commands.next().await;
+            patterns.apply(command);
+        }
+    };
+    select(
+        patterns.run(&motion, AnyPattern::all_builtin(), Delay),
+        forward,
+    )
+    .await;
 }

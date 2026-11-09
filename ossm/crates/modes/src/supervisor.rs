@@ -2,13 +2,16 @@ use core::cell::Cell;
 use core::fmt::Debug;
 use core::future::Future;
 use core::pin::pin;
+use core::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 use embassy_futures::select::{Either, select};
 use embassy_sync::blocking_mutex::Mutex;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
 use ossm::{MotionPhase, MotionSender, fault};
+use pattern_engine::{PatternRunner, PatternSender};
 
+use crate::remote::{Mailbox, RemoteHandle};
 use crate::ModeCtx;
 
 /// The set of modes a firmware can switch between.
@@ -48,24 +51,38 @@ pub trait ModeSet: Copy + PartialEq + Debug + Send + 'static {
 /// [`split`](Self::split), in the same shape as `Ossm` and
 /// `PatternEngine`.
 pub struct Supervisor<M: ModeSet> {
-    request: Signal<CriticalSectionRawMutex, M>,
+    pub(crate) request: Signal<CriticalSectionRawMutex, M>,
+    /// Bumped on every switch request so a waiting caller can tell it was
+    /// superseded.
+    pub(crate) request_seq: AtomicU32,
     current: Mutex<CriticalSectionRawMutex, Cell<M>>,
+    /// Set from deciding to leave the current mode until the next one is
+    /// entered, so `current` is not mistaken for where the machine stays.
+    pub(crate) leaving: AtomicBool,
+    pub(crate) mailbox: Mailbox,
+    /// Shared with remotes that still drive the engine directly, until
+    /// every remote goes through [`RemoteHandle`].
+    pub(crate) patterns: &'static PatternSender,
 }
 
 impl<M: ModeSet> Supervisor<M> {
-    pub const fn new(initial: M) -> Self {
+    pub const fn new(initial: M, patterns: &'static PatternSender) -> Self {
         Self {
             request: Signal::new(),
+            request_seq: AtomicU32::new(0),
             current: Mutex::new(Cell::new(initial)),
+            leaving: AtomicBool::new(false),
+            mailbox: Mailbox::new(),
+            patterns,
         }
     }
 
-    /// Split into the driver and the switch-request handle.
-    pub fn split(&'static mut self) -> (ModeRunner<M>, ModeSwitcher<M>) {
-        (ModeRunner { sup: self }, ModeSwitcher { sup: self })
+    /// Split into the driver and the handle remote adapters share.
+    pub fn split(&'static mut self) -> (ModeRunner<M>, RemoteHandle<M>) {
+        (ModeRunner { sup: self }, RemoteHandle { sup: self })
     }
 
-    fn current(&self) -> M {
+    pub(crate) fn current(&self) -> M {
         self.current.lock(|cell| cell.get())
     }
 }
@@ -73,7 +90,7 @@ impl<M: ModeSet> Supervisor<M> {
 /// Driver capability for the [`Supervisor`].
 ///
 /// Consumed by [`run`](Self::run), which takes ownership of the
-/// [`ModeCtx`] for the duration.
+/// capabilities for the duration.
 pub struct ModeRunner<M: ModeSet> {
     sup: &'static Supervisor<M>,
 }
@@ -89,8 +106,9 @@ impl<M: ModeSet> ModeRunner<M> {
     /// A raised fault interrupts any mode and switches to
     /// [`ModeSet::FAULT`], which is never left. Starts there directly if a
     /// fault was raised before the supervisor ran.
-    pub async fn run(self, ctx: ModeCtx) -> ! {
+    pub async fn run(self, motion: MotionSender, patterns: PatternRunner) -> ! {
         let sup = self.sup;
+        let ctx = ModeCtx::new(motion, patterns, sup.patterns, &sup.mailbox);
         let mut mode = match fault::raised() {
             Some(_) => M::FAULT,
             None => sup.current(),
@@ -98,6 +116,7 @@ impl<M: ModeSet> ModeRunner<M> {
 
         loop {
             sup.current.lock(|cell| cell.set(mode));
+            sup.leaving.store(false, Ordering::Relaxed);
 
             if mode == M::FAULT {
                 log::error!("Entering mode {:?}; restart required", mode);
@@ -120,12 +139,14 @@ impl<M: ModeSet> ModeRunner<M> {
             };
 
             log::info!("Leaving mode {:?}", mode);
+            sup.leaving.store(next.is_some(), Ordering::Relaxed);
             make_safe(&ctx.motion).await;
 
             while next.is_none_or(|next| next == mode) {
                 next = Some(sup.next_event().await);
             }
 
+            sup.leaving.store(true, Ordering::Relaxed);
             mode = next.unwrap();
         }
     }
@@ -144,24 +165,6 @@ impl<M: ModeSet> Supervisor<M> {
                 Either::Second(_) => return M::FAULT,
             }
         }
-    }
-}
-
-/// Handle for requesting mode switches.
-///
-/// Requests are latest-wins, requesting the current mode is a
-/// no-op, and nothing leaves [`ModeSet::FAULT`].
-pub struct ModeSwitcher<M: ModeSet> {
-    sup: &'static Supervisor<M>,
-}
-
-impl<M: ModeSet> ModeSwitcher<M> {
-    pub fn request(&self, mode: M) {
-        self.sup.request.signal(mode);
-    }
-
-    pub fn current(&self) -> M {
-        self.sup.current()
     }
 }
 

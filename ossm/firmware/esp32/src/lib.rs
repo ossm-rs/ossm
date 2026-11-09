@@ -35,7 +35,7 @@ use esp_hal::{
 };
 use esp_rtos::embassy::InterruptExecutor;
 use log::info;
-use modes::{ModeCtx, OssmMode, Supervisor};
+use modes::{OssmMode, Supervisor};
 use ossm::{MechanicalConfig, MotionController, MotionLimits, Ossm};
 use pattern_engine::{PatternEngine, PatternSender};
 use static_cell::StaticCell;
@@ -147,14 +147,13 @@ where
 
     let (runner, pattern_observer, patterns) = PATTERNS_CELL.init(PatternEngine::new()).split();
     let patterns: &'static PatternSender = mk_static!(PatternSender, patterns);
-
     indicator::start(&spawner, indicator, motion_observer, pattern_observer);
 
     radio::start(&spawner, config.bt, patterns);
 
     // Nothing requests a switch yet, so the firmware stays in pattern mode.
-    let (modes, _switcher) = SUPERVISOR_CELL
-        .init(Supervisor::new(OssmMode::Patterns))
+    let (modes, _remote) = SUPERVISOR_CELL
+        .init(Supervisor::new(OssmMode::Patterns, patterns))
         .split();
-    modes.run(ModeCtx::new(motion, runner)).await
+    modes.run(motion, runner).await
 }
