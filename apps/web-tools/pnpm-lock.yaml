@@ -48,8 +48,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0(@types/react@19.2.14)(react@19.2.5)
       react-router:
-        specifier: ^7.18.4
-        version: 7.18.4(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+        specifier: ^7.18.5
+        version: 7.18.5(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       remark-gfm:
         specifier: ^4.0.1
         version: 4.0.1
@@ -2635,8 +2635,8 @@ packages:
       '@types/react':
         optional: true
 
-  react-router@7.18.4:
-    resolution: {integrity: sha512-PUPQcMhMGRAslLcvtlPz/kmzBEWPhLdgLFrL7pLNepBL6dX0lWj4WD2cUYVgYCuT3jxvghYFg81cDTj44DhetQ==}
+  react-router@7.18.5:
+    resolution: {integrity: sha512-dTgvcXDOrLPrlLHrcZAqWveiK1hMSqN+rGAJzegP8HtmNkfRxOoshGWBNX3ZJ0cZjOHkRdlUJtaIhZMLLyGyPw==}
     engines: {node: '>=20.0.0'}
     peerDependencies:
       react: '>=18'
@@ -2714,8 +2714,8 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
-  set-cookie-parser@2.7.2:
-    resolution: {integrity: sha512-oeM1lpU/UvhTxw+g3cIfxXHyJRc/uidd3yK1P242gzHds0udQBYzs3y8j4gCCW+ZJ7ad0yctld8RYO+bdurlvw==}
+  set-cookie-parser@2.7.3:
+    resolution: {integrity: sha512-irZHtTqurLna57KQG/s+fzOwv/J6XSH4cs8M/vsrY3uCaQ3S6+QJguAH0WdN47SXlk82voMZ4naWMQf8fdEoIg==}
 
   sharp@0.34.5:
     resolution: {integrity: sha512-Ou9I5Ft9WNcCbXrU9cMgPBcCK8LiwLqcbywW3t4oDV37n1pzpuNLsYiAV8eODnjbtQlSDwZ2cUEeQz4E54Hltg==}
@@ -5554,11 +5554,11 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.14
 
-  react-router@7.18.4(react-dom@19.2.5(react@19.2.5))(react@19.2.5):
+  react-router@7.18.5(react-dom@19.2.5(react@19.2.5))(react@19.2.5):
     dependencies:
       cookie: 1.1.1
       react: 19.2.5
-      set-cookie-parser: 2.7.2
+      set-cookie-parser: 2.7.3
     optionalDependencies:
       react-dom: 19.2.5(react@19.2.5)
 
@@ -5679,7 +5679,7 @@ snapshots:
 
   semver@7.7.4: {}
 
-  set-cookie-parser@2.7.2: {}
+  set-cookie-parser@2.7.3: {}
 
   sharp@0.34.5:
     dependencies:
