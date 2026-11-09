@@ -32,9 +32,9 @@ use esp_hal::{
 };
 use esp_rtos::embassy::InterruptExecutor;
 use log::info;
-use modes::{OssmMode, Supervisor};
-use ossm::{MechanicalConfig, MotionController, MotionLimits, MotionSender, Ossm, fault};
-use pattern_engine::{PatternEngine, PatternRunner, PatternSender};
+use modes::{OssmMode, RemoteHandle, Supervisor};
+use ossm::{MechanicalConfig, MotionController, MotionLimits, Ossm, fault};
+use pattern_engine::{PatternEngine, PatternSender};
 use static_cell::StaticCell;
 
 extern crate alloc;
@@ -96,13 +96,20 @@ pub async fn run(spawner: Spawner, config: Config) {
     let (receiver, motion_observer, motion) = OSSM_CELL.init(Ossm::new()).split();
     let (runner, pattern_observer, patterns) = PATTERNS_CELL.init(PatternEngine::new()).split();
     let patterns: &'static PatternSender = mk_static!(PatternSender, patterns);
+    // Start in pattern mode: the M5 remote still drives the engine directly
+    // and only reaches it while pattern mode runs.
+    let (modes, remote) = SUPERVISOR_CELL
+        .init(Supervisor::new(OssmMode::Patterns, patterns))
+        .split();
+    let remote: &'static RemoteHandle<OssmMode> = mk_static!(RemoteHandle<OssmMode>, remote);
 
     let motor = match motor::build(config.motor).await {
         Ok(motor) => motor,
         Err(error) => {
             fault::raise(error);
             indicator::start(&spawner, indicator, motion_observer, pattern_observer);
-            run_modes(motion, runner, patterns).await
+            // Starts in fault mode, as the fault is already raised.
+            modes.run(motion, runner).await
         }
     };
 
@@ -148,21 +155,7 @@ pub async fn run(spawner: Spawner, config: Config) {
 
     indicator::start(&spawner, indicator, motion_observer, pattern_observer);
 
-    radio::start(&spawner, config.wifi, config.bt, patterns, &limits);
+    radio::start(&spawner, config.wifi, config.bt, patterns, remote, &limits);
 
-    run_modes(motion, runner, patterns).await
-}
-
-/// Hand the motion and pattern capabilities to the mode supervisor for the
-/// rest of the program. Starts in [`OssmMode::Fault`] if a fault is raised.
-async fn run_modes(
-    motion: MotionSender,
-    runner: PatternRunner,
-    patterns: &'static PatternSender,
-) -> ! {
-    // Nothing requests a switch yet, so the firmware stays in pattern mode.
-    let (modes, _remote) = SUPERVISOR_CELL
-        .init(Supervisor::new(OssmMode::Patterns, patterns))
-        .split();
     modes.run(motion, runner).await
 }
