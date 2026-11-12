@@ -4,8 +4,8 @@ use alloc::string::String;
 use embassy_time::{Delay, Duration, Ticker};
 use ossm::{MechanicalConfig, MotionLimits, MotionObserver, MotionChannels};
 use pattern_engine::{
-    AnyPattern, PatternEngine, PatternObserver, PatternSender,
-    commands,
+    AnyPattern, PatternEngine, PatternEvent, PatternObserver, PatternSender, PatternUpdate,
+    pattern_description, pattern_list,
 };
 use sim_board::SimBoard;
 use sim_motor::SimMotor;
@@ -86,50 +86,50 @@ impl Simulator {
     }
 
     pub fn set_depth(&self, depth: f64) {
-        self.patterns.set_depth(depth);
+        self.patterns.update(PatternUpdate::Depth(depth));
     }
 
     pub fn set_stroke(&self, stroke: f64) {
-        self.patterns.set_stroke(stroke);
+        self.patterns.update(PatternUpdate::Stroke(stroke));
     }
 
     pub fn set_velocity(&self, velocity: f64) {
-        self.patterns.set_speed(velocity);
+        self.patterns.update(PatternUpdate::Speed(velocity));
     }
 
     pub fn set_sensation(&self, sensation: f64) {
-        self.patterns.set_sensation(sensation);
+        self.patterns.update(PatternUpdate::Sensation(sensation));
     }
 
     pub fn play(&self, index: usize) {
-        self.patterns.play(index);
+        self.patterns.send(PatternEvent::Play(index));
     }
 
     pub fn pause(&self) {
-        self.patterns.pause();
+        self.patterns.send(PatternEvent::Pause);
     }
 
     pub fn resume(&self) {
-        self.patterns.resume();
+        self.patterns.send(PatternEvent::Resume);
     }
 
     pub fn stop(&self) {
-        self.patterns.stop();
+        self.patterns.send(PatternEvent::Stop);
     }
 
     pub fn pattern_count(&self) -> usize {
-        commands::pattern_list().len()
+        pattern_list().len()
     }
 
     pub fn pattern_name(&self, index: usize) -> String {
-        commands::pattern_list()
+        pattern_list()
             .get(index)
             .map(|p| String::from(p.name))
             .unwrap_or_default()
     }
 
     pub fn pattern_description(&self, index: usize) -> String {
-        commands::pattern_description(index)
+        pattern_description(index)
             .map(String::from)
             .unwrap_or_default()
     }

@@ -3,25 +3,20 @@ use core::sync::atomic::Ordering;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::pubsub::{self, Subscriber};
 
-use crate::commands::PatternCommand;
-use crate::engine::{EngineCommand, EnginePhase, PatternEngine};
-use crate::input::PatternState;
+use crate::engine::{EnginePhase, PatternEngine};
+use crate::input::{PatternEvent, PatternState, PatternUpdate};
 
 /// Sender half of the pattern engine.
 ///
-/// Holds the capability to issue engine commands (`play`, `pause`,
-/// `resume`, `stop`, `home`) and to mutate the live pattern state
-/// (`set_speed`, `set_depth`, `set_stroke`, `set_sensation`), plus the
-/// read methods from [`PatternObserver`](crate::PatternObserver) -
-/// command issuers almost always also need to read state to plan,
-/// and reading is harmless. Code that only needs to observe should
-/// still take `&PatternObserver` for the tighter contract.
+/// Holds the capability to send playback events and to change the live
+/// pattern state, plus the read methods from
+/// [`PatternObserver`](crate::PatternObserver) - senders almost always
+/// also need to read state to plan, and reading is harmless. Code that
+/// only needs to observe should still take `&PatternObserver` for the
+/// tighter contract.
 ///
 /// Produced by [`PatternEngine::split`](crate::PatternEngine::split).
-/// Not [`Clone`] and not publicly constructible. The intended pattern
-/// is to hand `&PatternSender` (or own a static one) to every
-/// subsystem that needs to issue commands - typically the events-bus
-/// adapter that bridges `PatternCommand` into the engine.
+/// Not [`Clone`] and not publicly constructible.
 pub struct PatternSender {
     engine: &'static PatternEngine,
 }
@@ -31,83 +26,28 @@ impl PatternSender {
         Self { engine }
     }
 
-    pub fn play(&self, index: usize) {
-        let _ = self.engine.commands.try_send(EngineCommand::Play(index));
+    /// Send a playback event. Dropped if the engine is four events behind.
+    pub fn send(&self, event: PatternEvent) {
+        let _ = self.engine.events.try_send(event);
     }
 
-    pub fn pause(&self) {
-        let _ = self.engine.commands.try_send(EngineCommand::Pause);
-    }
-
-    pub fn resume(&self) {
-        let _ = self.engine.commands.try_send(EngineCommand::Resume);
-    }
-
-    pub fn stop(&self) {
-        let _ = self.engine.commands.try_send(EngineCommand::Stop);
-        self.engine.state.sender().send_modify(|opt| {
-            if let Some(state) = opt {
-                state.speed = 0.0;
+    /// Apply one update, clamped to its range.
+    pub fn update(&self, update: PatternUpdate) {
+        self.engine.state.sender().send_modify(|state| {
+            if let Some(state) = state {
+                state.apply(update);
             }
         });
     }
 
-    pub fn home(&self) {
-        let _ = self.engine.commands.try_send(EngineCommand::Home);
-    }
-
-    /// Set speed as a fraction of max velocity. Clamped to `0.0..=1.0`.
-    pub fn set_speed(&self, value: f64) {
-        self.engine.state.sender().send_modify(|opt| {
-            if let Some(state) = opt {
-                state.speed = value.clamp(0.0, 1.0);
-            }
+    /// Replace the whole state at once. Wakes the running pattern only if
+    /// something changed.
+    pub fn set(&self, state: PatternState) {
+        self.engine.state.sender().send_if_modified(|current| {
+            let changed = *current != Some(state);
+            *current = Some(state);
+            changed
         });
-    }
-
-    /// Set stroke as a fraction of depth. Clamped to `0.0..=1.0`.
-    pub fn set_stroke(&self, value: f64) {
-        self.engine.state.sender().send_modify(|opt| {
-            if let Some(state) = opt {
-                state.stroke = value.clamp(0.0, 1.0);
-            }
-        });
-    }
-
-    /// Set depth as a fraction of machine range. Clamped to `0.0..=1.0`.
-    pub fn set_depth(&self, value: f64) {
-        self.engine.state.sender().send_modify(|opt| {
-            if let Some(state) = opt {
-                state.depth = value.clamp(0.0, 1.0);
-            }
-        });
-    }
-
-    /// Set sensation (pattern-specific). Clamped to `-1.0..=1.0`.
-    pub fn set_sensation(&self, value: f64) {
-        self.engine.state.sender().send_modify(|opt| {
-            if let Some(state) = opt {
-                state.sensation = value.clamp(-1.0, 1.0);
-            }
-        });
-    }
-
-    /// Apply a single [`PatternCommand`] - the bridge from the events bus.
-    ///
-    /// A long-running task subscribes to `PatternCommand` events and calls
-    /// `apply` for each one.
-    pub fn apply(&self, cmd: PatternCommand) {
-        match cmd {
-            PatternCommand::Play(idx) => self.play(idx),
-            PatternCommand::Pause => self.pause(),
-            PatternCommand::Resume => self.resume(),
-            PatternCommand::Stop => self.stop(),
-            PatternCommand::Home => self.home(),
-            PatternCommand::SetSpeed(v) => self.set_speed(v),
-            PatternCommand::SetStroke(v) => self.set_stroke(v),
-            PatternCommand::SetDepth(v) => self.set_depth(v),
-            PatternCommand::SetSensation(v) => self.set_sensation(v),
-        }
     }
 
     /// Current engine phase (idle, homing, playing, paused, ready).
