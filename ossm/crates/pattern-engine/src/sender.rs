@@ -5,12 +5,12 @@ use embassy_sync::pubsub::{self, Subscriber};
 
 use crate::commands::PatternCommand;
 use crate::engine::{EngineCommand, EnginePhase, PatternEngine};
-use crate::input::PatternInput;
+use crate::input::PatternState;
 
 /// Sender half of the pattern engine.
 ///
 /// Holds the capability to issue engine commands (`play`, `pause`,
-/// `resume`, `stop`, `home`) and to mutate the live pattern input
+/// `resume`, `stop`, `home`) and to mutate the live pattern state
 /// (`set_speed`, `set_depth`, `set_stroke`, `set_sensation`), plus the
 /// read methods from [`PatternObserver`](crate::PatternObserver) -
 /// command issuers almost always also need to read state to plan,
@@ -45,9 +45,9 @@ impl PatternSender {
 
     pub fn stop(&self) {
         let _ = self.engine.commands.try_send(EngineCommand::Stop);
-        self.engine.input.sender().send_modify(|opt| {
-            if let Some(input) = opt {
-                input.velocity = 0.0;
+        self.engine.state.sender().send_modify(|opt| {
+            if let Some(state) = opt {
+                state.speed = 0.0;
             }
         });
     }
@@ -56,38 +56,38 @@ impl PatternSender {
         let _ = self.engine.commands.try_send(EngineCommand::Home);
     }
 
-    /// Set velocity as a fraction of max velocity. Clamped to `0.0..=1.0`.
+    /// Set speed as a fraction of max velocity. Clamped to `0.0..=1.0`.
     pub fn set_speed(&self, value: f64) {
-        self.engine.input.sender().send_modify(|opt| {
-            if let Some(input) = opt {
-                input.velocity = value.clamp(0.0, 1.0);
+        self.engine.state.sender().send_modify(|opt| {
+            if let Some(state) = opt {
+                state.speed = value.clamp(0.0, 1.0);
             }
         });
     }
 
     /// Set stroke as a fraction of depth. Clamped to `0.0..=1.0`.
     pub fn set_stroke(&self, value: f64) {
-        self.engine.input.sender().send_modify(|opt| {
-            if let Some(input) = opt {
-                input.stroke = value.clamp(0.0, 1.0);
+        self.engine.state.sender().send_modify(|opt| {
+            if let Some(state) = opt {
+                state.stroke = value.clamp(0.0, 1.0);
             }
         });
     }
 
     /// Set depth as a fraction of machine range. Clamped to `0.0..=1.0`.
     pub fn set_depth(&self, value: f64) {
-        self.engine.input.sender().send_modify(|opt| {
-            if let Some(input) = opt {
-                input.depth = value.clamp(0.0, 1.0);
+        self.engine.state.sender().send_modify(|opt| {
+            if let Some(state) = opt {
+                state.depth = value.clamp(0.0, 1.0);
             }
         });
     }
 
     /// Set sensation (pattern-specific). Clamped to `-1.0..=1.0`.
     pub fn set_sensation(&self, value: f64) {
-        self.engine.input.sender().send_modify(|opt| {
-            if let Some(input) = opt {
-                input.sensation = value.clamp(-1.0, 1.0);
+        self.engine.state.sender().send_modify(|opt| {
+            if let Some(state) = opt {
+                state.sensation = value.clamp(-1.0, 1.0);
             }
         });
     }
@@ -119,9 +119,9 @@ impl PatternSender {
         EnginePhase::decode(self.engine.phase.load(Ordering::Relaxed))
     }
 
-    /// Current pattern input (depth, stroke, velocity, sensation).
-    pub fn input(&self) -> PatternInput {
-        self.engine.input.try_get().unwrap_or(PatternInput::DEFAULT)
+    /// Current pattern state (depth, stroke, speed, sensation).
+    pub fn state(&self) -> PatternState {
+        self.engine.state.try_get().unwrap_or(PatternState::DEFAULT)
     }
 
     /// Subscribe to [`EnginePhase`] transitions.
