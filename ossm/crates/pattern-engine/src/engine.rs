@@ -4,21 +4,12 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
 use embassy_sync::pubsub::PubSubChannel;
 
-use crate::input::{PatternState, SharedPatternState};
+use crate::input::{PatternEvent, PatternState, SharedPatternState};
 use crate::observer::PatternObserver;
 use crate::runner::PatternRunner;
 use crate::sender::PatternSender;
 
-#[derive(Debug, Clone, Copy)]
-pub(crate) enum EngineCommand {
-    Play(usize),
-    Stop,
-    Home,
-    Pause,
-    Resume,
-}
-
-pub(crate) type EngineCommandChannel = Channel<CriticalSectionRawMutex, EngineCommand, 4>;
+pub(crate) type EventChannel = Channel<CriticalSectionRawMutex, PatternEvent, 4>;
 
 /// Lifecycle phase of the pattern engine.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -76,14 +67,14 @@ pub(crate) type PhaseChannel = PubSubChannel<CriticalSectionRawMutex, EnginePhas
 
 /// Root container for a pattern engine.
 ///
-/// Carries the command channel, shared pattern state, and phase pubsub
+/// Carries the event channel, shared pattern state, and phase pubsub
 /// that the three capability handles project from. `PatternEngine` is
 /// instantiated once in static storage and immediately consumed by
 /// [`split`](Self::split). After split returns, nothing in the program
 /// holds an `&PatternEngine`: the three named capabilities cover every
 /// role.
 pub struct PatternEngine {
-    pub(crate) commands: EngineCommandChannel,
+    pub(crate) events: EventChannel,
     pub(crate) phase: AtomicU16,
     pub(crate) state: SharedPatternState,
     pub(crate) phase_channel: PhaseChannel,
@@ -92,7 +83,7 @@ pub struct PatternEngine {
 impl PatternEngine {
     pub const fn new() -> Self {
         Self {
-            commands: EngineCommandChannel::new(),
+            events: EventChannel::new(),
             phase: AtomicU16::new(EnginePhase::Idle.encode()),
             state: SharedPatternState::new_with(PatternState::DEFAULT),
             phase_channel: PhaseChannel::new(),
@@ -110,7 +101,7 @@ impl PatternEngine {
     ///   [`run`](PatternRunner::run) to start the engine loop.
     /// - [`PatternObserver`] is the read-only handle for phase, state,
     ///   and subscriptions.
-    /// - [`PatternSender`] is the command + state issuer.
+    /// - [`PatternSender`] sends events and updates the state.
     pub fn split(&'static mut self) -> (PatternRunner, PatternObserver, PatternSender) {
         (
             PatternRunner::new(self),
