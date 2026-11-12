@@ -17,7 +17,7 @@ use embassy_time::{Duration, Ticker, Timer};
 use esp_radio::ble::controller::BleConnector;
 use heapless::String;
 use log::{debug, error, info, warn};
-use pattern_engine::{EnginePhase, PatternInput, PatternSender, commands};
+use pattern_engine::{EnginePhase, PatternSender, PatternState, commands};
 use static_cell::StaticCell;
 use trouble_host::prelude::*;
 
@@ -235,7 +235,7 @@ async fn gatt_events_task<P: PacketPool>(
                     GattEvent::Read(event) => {
                         if event.handle() == server.ossm_service.current_state.handle {
                             let engine_state = patterns.phase();
-                            let input = patterns.input();
+                            let input = patterns.state();
                             let state_json = state_to_json(engine_state, &input);
                             debug!("Read State: {}", state_json);
                             server.set(&server.ossm_service.current_state, &state_json)?;
@@ -340,14 +340,14 @@ async fn state_notifications<P: PacketPool>(
         .subscribe()
         .expect("No state subscriber slots available");
     let mut heartbeat = Ticker::every(Duration::from_secs(1));
-    let mut old_state: (EnginePhase, PatternInput) = (EnginePhase::Idle, PatternInput::DEFAULT);
+    let mut old_state: (EnginePhase, PatternState) = (EnginePhase::Idle, PatternState::DEFAULT);
     loop {
         let engine_state = match select(sub.next_message_pure(), heartbeat.next()).await {
             Either::First(state) => state,
             Either::Second(_) => patterns.phase(),
         };
 
-        let input = patterns.input();
+        let input = patterns.state();
         if old_state != (engine_state, input) {
             let state_json = state_to_json(engine_state, &input);
             debug!("Notify State: {}", state_json);
@@ -361,7 +361,7 @@ async fn state_notifications<P: PacketPool>(
     }
 }
 
-fn state_to_json(state: EnginePhase, input: &PatternInput) -> String<MAX_STATE_LENGTH> {
+fn state_to_json(state: EnginePhase, input: &PatternState) -> String<MAX_STATE_LENGTH> {
     let pattern_name = match state {
         EnginePhase::Playing(idx) | EnginePhase::Paused(idx) => commands::pattern_list()
             .get(idx)
@@ -381,7 +381,7 @@ fn state_to_json(state: EnginePhase, input: &PatternInput) -> String<MAX_STATE_L
         EnginePhase::Playing(i) | EnginePhase::Paused(i) => i,
         _ => 0,
     };
-    let speed = (input.velocity * 100.0) as u32;
+    let speed = (input.speed * 100.0) as u32;
     let stroke = (input.stroke * 100.0) as u32;
     let depth = (input.depth * 100.0) as u32;
     // Map internal -1.0..1.0 back to BLE protocol 0–100.

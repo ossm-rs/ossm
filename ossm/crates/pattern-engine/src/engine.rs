@@ -4,7 +4,7 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
 use embassy_sync::pubsub::PubSubChannel;
 
-use crate::input::{PatternInput, SharedPatternInput};
+use crate::input::{PatternState, SharedPatternState};
 use crate::observer::PatternObserver;
 use crate::runner::PatternRunner;
 use crate::sender::PatternSender;
@@ -76,7 +76,7 @@ pub(crate) type PhaseChannel = PubSubChannel<CriticalSectionRawMutex, EnginePhas
 
 /// Root container for a pattern engine.
 ///
-/// Carries the command channel, shared pattern input, and state pubsub
+/// Carries the command channel, shared pattern state, and phase pubsub
 /// that the three capability handles project from. `PatternEngine` is
 /// instantiated once in static storage and immediately consumed by
 /// [`split`](Self::split). After split returns, nothing in the program
@@ -85,7 +85,7 @@ pub(crate) type PhaseChannel = PubSubChannel<CriticalSectionRawMutex, EnginePhas
 pub struct PatternEngine {
     pub(crate) commands: EngineCommandChannel,
     pub(crate) phase: AtomicU16,
-    pub(crate) input: SharedPatternInput,
+    pub(crate) state: SharedPatternState,
     pub(crate) phase_channel: PhaseChannel,
 }
 
@@ -94,7 +94,7 @@ impl PatternEngine {
         Self {
             commands: EngineCommandChannel::new(),
             phase: AtomicU16::new(EnginePhase::Idle.encode()),
-            input: SharedPatternInput::new_with(PatternInput::DEFAULT),
+            state: SharedPatternState::new_with(PatternState::DEFAULT),
             phase_channel: PhaseChannel::new(),
         }
     }
@@ -108,9 +108,9 @@ impl PatternEngine {
     ///
     /// - [`PatternRunner`] is the driver capability, consumed by
     ///   [`run`](PatternRunner::run) to start the engine loop.
-    /// - [`PatternObserver`] is the read-only handle for state, input,
+    /// - [`PatternObserver`] is the read-only handle for phase, state,
     ///   and subscriptions.
-    /// - [`PatternSender`] is the command + input issuer.
+    /// - [`PatternSender`] is the command + state issuer.
     pub fn split(&'static mut self) -> (PatternRunner, PatternObserver, PatternSender) {
         (
             PatternRunner::new(self),
