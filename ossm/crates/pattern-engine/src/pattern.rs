@@ -5,12 +5,12 @@ use embassy_time::{Duration, Ticker};
 use embedded_hal_async::delay::DelayNs;
 use ossm::{Cancelled, MotionSender, MotionCommand};
 
-use crate::input::{PatternInput, SharedPatternInput};
+use crate::input::{PatternState, SharedPatternState};
 use crate::util::scale;
 
-/// Cap on how often input-driven motion updates are forwarded to the controller.
+/// Cap on how often state-driven motion updates are forwarded to the controller.
 /// Each forwarded command costs a Ruckig replan;  replans can take 5-15 ms,
-/// so an unthrottled BLE input flood starves the 100 Hz motion loop.
+/// so an unthrottled flood of state updates starves the 100 Hz motion loop.
 /// 250 ms keeps replans to ~4 Hz, well under the 10 ms tick budget while
 /// still feeling responsive to slider movement.
 const INPUT_UPDATE_THROTTLE: Duration = Duration::from_millis(250);
@@ -33,22 +33,22 @@ pub trait Pattern {
 
 pub struct PatternCtx<'m, D: DelayNs> {
     motion: &'m MotionSender,
-    input: &'m SharedPatternInput,
-    input_receiver: Receiver<'m, CriticalSectionRawMutex, PatternInput, 1>,
+    state: &'m SharedPatternState,
+    state_receiver: Receiver<'m, CriticalSectionRawMutex, PatternState, 1>,
     delay: D,
 }
 
 impl<'m, D: DelayNs> PatternCtx<'m, D> {
     pub fn new(
         motion: &'m MotionSender,
-        input: &'m SharedPatternInput,
+        state: &'m SharedPatternState,
         delay: D,
     ) -> Self {
-        let input_receiver = input.receiver().expect("Watch receiver slot already taken");
+        let state_receiver = state.receiver().expect("Watch receiver slot already taken");
         Self {
             motion,
-            input,
-            input_receiver,
+            state,
+            state_receiver,
             delay,
         }
     }
@@ -57,14 +57,11 @@ impl<'m, D: DelayNs> PatternCtx<'m, D> {
     ///
     /// Re-read at each `.await` point to pick up live changes from BLE/UI.
     pub fn sensation(&self) -> f64 {
-        self.input
-            .try_get()
-            .unwrap_or(PatternInput::DEFAULT)
-            .sensation
+        self.state().sensation
     }
 
-    fn input(&self) -> PatternInput {
-        self.input.try_get().unwrap_or(PatternInput::DEFAULT)
+    fn state(&self) -> PatternState {
+        self.state.try_get().unwrap_or(PatternState::DEFAULT)
     }
 
     /// Start building a motion command.
@@ -119,9 +116,9 @@ pub struct MotionBuilder<'a, 'm, D: DelayNs, P> {
 }
 
 impl<'a, 'm, D: DelayNs, P> MotionBuilder<'a, 'm, D, P> {
-    /// Set the velocity as a multiplier of the current input velocity.
+    /// Set the velocity as a multiplier of the current speed.
     ///
-    /// Default is 1.0 (full input velocity). 0.5 = half speed, max is 1.0.
+    /// Default is 1.0 (the full current speed). 0.5 = half speed, max is 1.0.
     pub fn speed(mut self, factor: f64) -> Self {
         self.speed_factor = factor;
         self
@@ -159,16 +156,16 @@ impl<'a, 'm, D: DelayNs> MotionBuilder<'a, 'm, D, NoPosition> {
 }
 
 fn compute_command(
-    input: &PatternInput,
+    state: &PatternState,
     fraction: f64,
     speed_factor: f64,
     jerk_factor: f64,
     torque: Option<f64>,
 ) -> MotionCommand {
-    let stroke = input.stroke.clamp(0.0, input.depth.clamp(0.0,1.0));
-    let shallow = (input.depth - stroke).clamp(0.0,1.0);
+    let stroke = state.stroke.clamp(0.0, state.depth.clamp(0.0,1.0));
+    let shallow = (state.depth - stroke).clamp(0.0,1.0);
     let position = shallow + fraction * stroke;
-    let speed = input.velocity * speed_factor.clamp(0.0, 1.0);
+    let speed = state.speed * speed_factor.clamp(0.0, 1.0);
     let jerk = jerk_factor.clamp(0.0, 1.0);
     MotionCommand {
         position,
@@ -185,29 +182,29 @@ impl<'a, 'm, D: DelayNs> MotionBuilder<'a, 'm, D, HasPosition> {
         let jerk_factor = self.jerk_factor;
         let torque = self.torque;
 
-        let input = self.ctx.input();
-        let cmd = compute_command(&input, fraction, speed_factor, jerk_factor, torque);
+        let state = self.ctx.state();
+        let cmd = compute_command(&state, fraction, speed_factor, jerk_factor, torque);
         self.ctx.motion.begin_motion(cmd);
 
         let mut move_done = core::pin::pin!(self.ctx.motion.await_motion());
         let mut throttle = Ticker::every(INPUT_UPDATE_THROTTLE);
-        let mut pending: Option<PatternInput> = None;
+        let mut pending: Option<PatternState> = None;
 
         loop {
             match select::select3(
                 move_done.as_mut(),
-                self.ctx.input_receiver.changed(),
+                self.ctx.state_receiver.changed(),
                 throttle.next(),
             )
             .await
             {
                 Either3::First(result) => return result,
-                Either3::Second(new_input) => {
-                    pending = Some(new_input);
+                Either3::Second(new_state) => {
+                    pending = Some(new_state);
                 }
                 Either3::Third(()) => {
-                    if let Some(input) = pending.take() {
-                        let cmd = compute_command(&input, fraction, speed_factor, jerk_factor, torque);
+                    if let Some(state) = pending.take() {
+                        let cmd = compute_command(&state, fraction, speed_factor, jerk_factor, torque);
                         self.ctx.motion.update_motion(cmd);
                     }
                 }

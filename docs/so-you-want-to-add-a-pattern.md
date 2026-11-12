@@ -128,7 +128,7 @@ Every `.send().await?` is a cancellation point - when the engine needs to stop t
 | Method            | Description                                                                                                          |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `.position(f)`    | **Required.** Target position as a fraction of stroke range (0.0 = shallowest, 1.0 = deepest). Clamped to 0.0–1.0.   |
-| `.speed(factor)`  | Velocity multiplier relative to the user's input velocity. Default is `1.0`. `0.5` = half speed. Clamped to 0.0–1.0. |
+| `.speed(factor)`  | Velocity multiplier relative to the user's chosen speed. Default is `1.0`. `0.5` = half speed. Clamped to 0.0–1.0. |
 | `.torque(factor)` | Torque limit as a factor from 0.0–1.0. Omitting uses the motor's default torque.                                     |
 | `.send().await?`  | Executes the command. Blocks until the motor reaches the target position.                                            |
 

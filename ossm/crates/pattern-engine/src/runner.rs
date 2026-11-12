@@ -64,7 +64,7 @@ impl PatternRunner {
         delay: D,
     ) -> ! {
         let engine = self.engine;
-        let input = &engine.input;
+        let pattern_state = &engine.state;
         let mut state = RunnerState::Idle;
 
         loop {
@@ -114,7 +114,7 @@ impl PatternRunner {
                     }
                 }
                 RunnerState::Playing(idx) => {
-                    let mut ctx = PatternCtx::new(motion, input, delay.clone());
+                    let mut ctx = PatternCtx::new(motion, pattern_state, delay.clone());
                     let pattern_fut = core::pin::pin!(patterns[idx].run(&mut ctx));
                     let mut pattern_fut = pattern_fut;
 
