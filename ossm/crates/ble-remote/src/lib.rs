@@ -17,7 +17,10 @@ use embassy_time::{Duration, Ticker, Timer};
 use esp_radio::ble::controller::BleConnector;
 use heapless::String;
 use log::{debug, error, info, warn};
-use pattern_engine::{EnginePhase, PatternSender, PatternState, commands};
+use pattern_engine::{
+    EnginePhase, PatternEvent, PatternSender, PatternState, PatternUpdate, pattern_description,
+    pattern_list,
+};
 use static_cell::StaticCell;
 use trouble_host::prelude::*;
 
@@ -63,7 +66,7 @@ struct OssmService {
 fn get_all_patterns_json() -> String<MAX_PATTERN_LENGTH> {
     let mut output: String<MAX_PATTERN_LENGTH> = String::new();
     output.write_char('[').ok();
-    for (i, meta) in commands::pattern_list().iter().enumerate() {
+    for (i, meta) in pattern_list().iter().enumerate() {
         let rollback = output.len();
         let sep = if i > 0 { "," } else { "" };
         if write!(output, r#"{sep}{{"name":"{}","idx":{i}}}"#, meta.name).is_err()
@@ -81,7 +84,7 @@ fn get_all_patterns_json() -> String<MAX_PATTERN_LENGTH> {
 fn get_pattern_description(index: usize) -> String<MAX_PATTERN_LENGTH> {
     let mut output = String::new();
 
-    let description = commands::pattern_description(index).unwrap_or("Invalid pattern index");
+    let description = pattern_description(index).unwrap_or("Invalid pattern index");
 
     if output.push_str(description).is_err() {
         output
@@ -199,7 +202,7 @@ pub async fn ble_events_task(
                     },
                 }
 
-                patterns.stop();
+                patterns.send(PatternEvent::Stop);
                 info!("BLE session ended, stopping engine");
             }
             Err(err) => {
@@ -363,7 +366,7 @@ async fn state_notifications<P: PacketPool>(
 
 fn state_to_json(state: EnginePhase, input: &PatternState) -> String<MAX_STATE_LENGTH> {
     let pattern_name = match state {
-        EnginePhase::Playing(idx) | EnginePhase::Paused(idx) => commands::pattern_list()
+        EnginePhase::Playing(idx) | EnginePhase::Paused(idx) => pattern_list()
             .get(idx)
             .map(|m| m.name)
             .unwrap_or(""),
@@ -412,12 +415,14 @@ fn process_command(
                         if let Ok(value) = value.parse::<u32>() {
                             let normalized = value as f64 / 100.0;
                             match action {
-                                "speed" => patterns.set_speed(normalized),
-                                "stroke" => patterns.set_stroke(normalized),
-                                "depth" => patterns.set_depth(normalized),
+                                "speed" => patterns.update(PatternUpdate::Speed(normalized)),
+                                "stroke" => patterns.update(PatternUpdate::Stroke(normalized)),
+                                "depth" => patterns.update(PatternUpdate::Depth(normalized)),
                                 // BLE sends 0–100; internal range is -1.0..1.0.
-                                "sensation" => patterns.set_sensation(normalized * 2.0 - 1.0),
-                                "pattern" => patterns.play(value as usize),
+                                "sensation" => patterns.update(PatternUpdate::Sensation(
+                                    normalized * 2.0 - 1.0,
+                                )),
+                                "pattern" => patterns.send(PatternEvent::Play(value as usize)),
                                 _ => {
                                     error!("Invalid set command {}", action);
                                     fail = true;
@@ -433,8 +438,8 @@ fn process_command(
                     }
                 }
                 "go" => match action {
-                    "simplePenetration" | "strokeEngine" => patterns.play(0),
-                    "menu" => patterns.stop(),
+                    "simplePenetration" | "strokeEngine" => patterns.send(PatternEvent::Play(0)),
+                    "menu" => patterns.send(PatternEvent::Stop),
                     _ => {
                         error!("Unknown go action: {}", action);
                         fail = true;

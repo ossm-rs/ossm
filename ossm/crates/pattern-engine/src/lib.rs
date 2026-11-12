@@ -1,6 +1,5 @@
 #![no_std]
 
-pub mod commands;
 mod engine;
 mod input;
 mod observer;
@@ -11,7 +10,7 @@ mod sender;
 mod util;
 
 pub use engine::{EnginePhase, PatternEngine};
-pub use input::{PatternState, SharedPatternState};
+pub use input::{PatternEvent, PatternState, PatternUpdate, SharedPatternState};
 pub use observer::PatternObserver;
 pub use pattern::{Pattern, PatternCtx};
 pub use runner::PatternRunner;
@@ -23,6 +22,18 @@ pub use util::scale;
 pub struct PatternMeta {
     pub name: &'static str,
     pub description: &'static str,
+}
+
+/// Static list of built-in pattern metadata.
+pub fn pattern_list() -> &'static [PatternMeta] {
+    &AnyPattern::BUILTIN_PATTERNS
+}
+
+/// Pattern description by index, if present.
+pub fn pattern_description(idx: usize) -> Option<&'static str> {
+    AnyPattern::BUILTIN_PATTERNS
+        .get(idx)
+        .map(|m| m.description)
 }
 
 use embedded_hal_async::delay::DelayNs;
