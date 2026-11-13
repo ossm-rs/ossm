@@ -22,7 +22,7 @@ indicator-ws2812b = [
 indicator-led = ["dep:status-indicator"]
 
 [dependencies]
-ossm = { path = "../core" }
+ossm = { package = "ossm-core", path = "../core" }
 esp-hal = { version = "~1.0", default-features = false, features = ["unstable"] }
 embedded-io = "0.6.1"
 embassy-time = "0.5.1"
