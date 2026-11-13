@@ -1,5 +1,4 @@
 use core::cell::Cell;
-use core::convert::Infallible;
 use core::fmt::{self, Debug};
 use core::future::Future;
 use core::marker::PhantomData;
@@ -119,55 +118,20 @@ pub struct Modes<K, L> {
     start: ModeKey<K>,
 }
 
-impl Modes<Infallible, ()> {
+impl<K> Modes<K, ()> {
     /// No modes besides the built-in ones, starting in
     /// [`Idle`](ModeKey::Idle).
-    ///
-    /// The first [`mode`](Self::mode) picks the key type, so a firmware
-    /// that only needs the built-in modes never names one.
     pub const fn new() -> Self {
         Self {
             list: (),
             start: ModeKey::Idle,
         }
     }
-
-    /// Register the first mode under `key`, which picks the key type for
-    /// the rest.
-    pub fn mode<K, F, Args>(self, key: K, mode: F) -> Modes<K, (Entry<K, F, Args>, ())>
-    where
-        K: Copy + PartialEq + Debug + 'static,
-        F: Mode<Args>,
-    {
-        // Before any mode is registered, only Idle can be the start mode.
-        Modes {
-            list: (Entry::new(key, mode), ()),
-            start: ModeKey::Idle,
-        }
-    }
 }
 
-impl Default for Modes<Infallible, ()> {
+impl<K> Default for Modes<K, ()> {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl<K, E, Rest> Modes<K, (E, Rest)>
-where
-    K: Copy + PartialEq + Debug + 'static,
-    (E, Rest): ModeList<K>,
-{
-    /// Register `mode` under `key`. Registering a key again replaces the
-    /// earlier mode.
-    pub fn mode<F, Args>(self, key: K, mode: F) -> Modes<K, (Entry<K, F, Args>, (E, Rest))>
-    where
-        F: Mode<Args>,
-    {
-        Modes {
-            list: (Entry::new(key, mode), self.list),
-            start: self.start,
-        }
     }
 }
 
@@ -176,6 +140,18 @@ where
     K: Copy + PartialEq + Debug + 'static,
     L: ModeList<K>,
 {
+    /// Register `mode` under `key`. Registering a key again replaces the
+    /// earlier mode.
+    pub fn mode<F, Args>(self, key: K, mode: F) -> Modes<K, (Entry<K, F, Args>, L)>
+    where
+        F: Mode<Args>,
+    {
+        Modes {
+            list: (Entry::new(key, mode), self.list),
+            start: self.start,
+        }
+    }
+
     /// The mode to enter at boot. Defaults to [`Idle`](ModeKey::Idle).
     pub fn start_in(self, key: impl Into<ModeKey<K>>) -> Self {
         Self {

@@ -36,6 +36,7 @@ use esp_hal::{
 use esp_rtos::embassy::InterruptExecutor;
 use log::info;
 use ossm::motion::{MechanicalConfig, MotionController, MotionLimits, MotionObserver};
+use ossm::OssmMode;
 use ossm::platform::{Fault, Hardware, Platform};
 use pattern_engine::{PatternObserver, PatternSender};
 use static_cell::StaticCell;
@@ -106,6 +107,7 @@ where
     ChannelCreator<'static, Blocking, RMT_CHANNEL>: TxChannelCreator<'static, Blocking>,
 {
     type Board = board::Board;
+    type Key = OssmMode;
 
     async fn init(&mut self) -> Result<Hardware<board::Board>, Fault> {
         let config = self.config.take().expect("init runs once");

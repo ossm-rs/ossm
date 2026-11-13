@@ -1,5 +1,7 @@
 //! What a platform implements to run OSSM on its target.
 
+use core::fmt::Debug;
+
 use ossm_core::{Board, MotionController, MotionLimits, MotionObserver};
 
 pub use ossm_core::fault::Fault;
@@ -20,6 +22,10 @@ pub struct Hardware<B> {
 #[allow(async_fn_in_trait)]
 pub trait Platform {
     type Board: Board;
+
+    /// The keys modes are registered under, which the platform's remotes
+    /// will switch modes by.
+    type Key: Copy + PartialEq + Debug + 'static;
 
     /// Set up the hardware, before anything else runs.
     async fn init(&mut self) -> Result<Hardware<Self::Board>, Fault>;
