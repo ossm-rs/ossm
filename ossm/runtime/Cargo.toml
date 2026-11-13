@@ -1,0 +1,10 @@
+[package]
+name = "ossm"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ossm-core = { path = "../core" }
+modes = { path = "../crates/modes" }
+pattern-engine = { path = "../crates/pattern-engine" }
+static_cell = "2.1.1"
