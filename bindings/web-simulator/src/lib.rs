@@ -78,7 +78,7 @@ impl Simulator {
     }
 
     pub fn get_engine_state(&self) -> u8 {
-        self.pattern_observer.state().as_u8()
+        self.pattern_observer.phase().as_u8()
     }
 
     pub fn get_position(&self) -> f32 {

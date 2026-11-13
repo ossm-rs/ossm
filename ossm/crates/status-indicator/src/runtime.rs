@@ -45,7 +45,7 @@ pub async fn run_status<I: ColorIndicator>(
             let _ = indicator.set_color(PANIC_COLOR);
             diagnostic::blink(&mut indicator, fault).await;
         }
-        let desired = select(engine.state(), motion.state().phase);
+        let desired = select(engine.phase(), motion.state().phase);
         if let Err(error) = output.apply(desired) {
             let now = Instant::now();
             if now >= next_failure_log {
