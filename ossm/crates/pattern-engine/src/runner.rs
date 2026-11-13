@@ -6,7 +6,7 @@ use log::info;
 use ossm::{MotionSender, StateResponse};
 
 use crate::AnyPattern;
-use crate::engine::{EngineCommand, EngineState, PatternEngine};
+use crate::engine::{EngineCommand, EnginePhase, PatternEngine};
 use crate::pattern::{Pattern, PatternCtx};
 
 /// Internal runner state.
@@ -19,12 +19,12 @@ enum RunnerState {
 }
 
 impl RunnerState {
-    fn as_engine_state(self) -> EngineState {
+    fn as_engine_phase(self) -> EnginePhase {
         match self {
-            Self::Idle => EngineState::Idle,
-            Self::Homing(_) => EngineState::Homing,
-            Self::Ready => EngineState::Ready,
-            Self::Playing(idx) => EngineState::Playing(idx),
+            Self::Idle => EnginePhase::Idle,
+            Self::Homing(_) => EnginePhase::Homing,
+            Self::Ready => EnginePhase::Ready,
+            Self::Playing(idx) => EnginePhase::Playing(idx),
         }
     }
 }
@@ -126,7 +126,7 @@ impl PatternRunner {
                             Either::First(_result) => {
                                 if matches!(state, RunnerState::Playing(_)) {
                                     state = RunnerState::Idle;
-                                    store_and_publish(engine, EngineState::Idle);
+                                    store_and_publish(engine, EnginePhase::Idle);
                                 }
                                 break;
                             }
@@ -135,24 +135,24 @@ impl PatternRunner {
                                     if motion.pause().await != StateResponse::Completed {
                                         log::error!("Pause failed, stopping engine");
                                         state = RunnerState::Idle;
-                                        store_and_publish(engine, EngineState::Idle);
+                                        store_and_publish(engine, EnginePhase::Idle);
                                         break;
                                     }
-                                    store_and_publish(engine, EngineState::Paused(idx));
+                                    store_and_publish(engine, EnginePhase::Paused(idx));
                                 }
                                 EngineCommand::Resume => {
                                     if motion.resume().await != StateResponse::Completed {
                                         log::error!("Resume failed, stopping engine");
                                         state = RunnerState::Idle;
-                                        store_and_publish(engine, EngineState::Idle);
+                                        store_and_publish(engine, EnginePhase::Idle);
                                         break;
                                     }
-                                    store_and_publish(engine, EngineState::Playing(idx));
+                                    store_and_publish(engine, EnginePhase::Playing(idx));
                                 }
                                 EngineCommand::Play(i) if i == idx => {}
                                 EngineCommand::Play(new_idx) if new_idx < N => {
                                     state = RunnerState::Playing(new_idx);
-                                    store_and_publish(engine, EngineState::Playing(new_idx));
+                                    store_and_publish(engine, EnginePhase::Playing(new_idx));
                                     break;
                                 }
                                 EngineCommand::Stop => {
@@ -160,7 +160,7 @@ impl PatternRunner {
                                         log::error!("Board fault during disable");
                                     }
                                     state = RunnerState::Idle;
-                                    store_and_publish(engine, EngineState::Idle);
+                                    store_and_publish(engine, EnginePhase::Idle);
                                     break;
                                 }
                                 _ => {}
@@ -175,17 +175,17 @@ impl PatternRunner {
 
 fn set_state(engine: &PatternEngine, current: &mut RunnerState, new_state: RunnerState) {
     *current = new_state;
-    let engine_state = new_state.as_engine_state();
-    info!("Engine state: {:?}", engine_state);
-    store_and_publish(engine, engine_state);
+    let engine_phase = new_state.as_engine_phase();
+    info!("Engine phase: {:?}", engine_phase);
+    store_and_publish(engine, engine_phase);
 }
 
-fn store_and_publish(engine: &PatternEngine, state: EngineState) {
-    engine.state.store(state.encode(), Ordering::Relaxed);
+fn store_and_publish(engine: &PatternEngine, phase: EnginePhase) {
+    engine.phase.store(phase.encode(), Ordering::Relaxed);
     engine
-        .state_channel
+        .phase_channel
         .immediate_publisher()
-        .publish_immediate(state);
+        .publish_immediate(phase);
 }
 
 async fn handle_command<const N: usize>(

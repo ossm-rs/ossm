@@ -4,7 +4,7 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::pubsub::{self, Subscriber};
 
 use crate::commands::PatternCommand;
-use crate::engine::{EngineCommand, EngineState, PatternEngine};
+use crate::engine::{EngineCommand, EnginePhase, PatternEngine};
 use crate::input::PatternInput;
 
 /// Sender half of the pattern engine.
@@ -110,13 +110,13 @@ impl PatternSender {
         }
     }
 
-    /// Current engine state (idle, homing, playing, paused, ready).
+    /// Current engine phase (idle, homing, playing, paused, ready).
     ///
     /// `PatternSender` carries [`PatternObserver`](crate::PatternObserver)'s
     /// read capability so command-issuing code can plan against current
     /// state without also being handed an observer.
-    pub fn state(&self) -> EngineState {
-        EngineState::decode(self.engine.state.load(Ordering::Relaxed))
+    pub fn phase(&self) -> EnginePhase {
+        EnginePhase::decode(self.engine.phase.load(Ordering::Relaxed))
     }
 
     /// Current pattern input (depth, stroke, velocity, sensation).
@@ -124,13 +124,13 @@ impl PatternSender {
         self.engine.input.try_get().unwrap_or(PatternInput::DEFAULT)
     }
 
-    /// Subscribe to [`EngineState`] transitions.
+    /// Subscribe to [`EnginePhase`] transitions.
     ///
     /// Returns `Err` if all subscriber slots are in use.
     pub fn subscribe(
         &self,
-    ) -> Result<Subscriber<'static, CriticalSectionRawMutex, EngineState, 1, 8, 0>, pubsub::Error>
+    ) -> Result<Subscriber<'static, CriticalSectionRawMutex, EnginePhase, 1, 8, 0>, pubsub::Error>
     {
-        self.engine.state_channel.subscriber()
+        self.engine.phase_channel.subscriber()
     }
 }
