@@ -17,7 +17,7 @@ use embassy_time::{Duration, Ticker, Timer};
 use esp_radio::ble::controller::BleConnector;
 use heapless::String;
 use log::{debug, error, info, warn};
-use pattern_engine::{EngineState, PatternInput, PatternSender, commands};
+use pattern_engine::{EnginePhase, PatternInput, PatternSender, commands};
 use static_cell::StaticCell;
 use trouble_host::prelude::*;
 
@@ -234,7 +234,7 @@ async fn gatt_events_task<P: PacketPool>(
                 match &event {
                     GattEvent::Read(event) => {
                         if event.handle() == server.ossm_service.current_state.handle {
-                            let engine_state = patterns.state();
+                            let engine_state = patterns.phase();
                             let input = patterns.input();
                             let state_json = state_to_json(engine_state, &input);
                             debug!("Read State: {}", state_json);
@@ -340,11 +340,11 @@ async fn state_notifications<P: PacketPool>(
         .subscribe()
         .expect("No state subscriber slots available");
     let mut heartbeat = Ticker::every(Duration::from_secs(1));
-    let mut old_state: (EngineState, PatternInput) = (EngineState::Idle, PatternInput::DEFAULT);
+    let mut old_state: (EnginePhase, PatternInput) = (EnginePhase::Idle, PatternInput::DEFAULT);
     loop {
         let engine_state = match select(sub.next_message_pure(), heartbeat.next()).await {
             Either::First(state) => state,
-            Either::Second(_) => patterns.state(),
+            Either::Second(_) => patterns.phase(),
         };
 
         let input = patterns.input();
@@ -361,9 +361,9 @@ async fn state_notifications<P: PacketPool>(
     }
 }
 
-fn state_to_json(state: EngineState, input: &PatternInput) -> String<MAX_STATE_LENGTH> {
+fn state_to_json(state: EnginePhase, input: &PatternInput) -> String<MAX_STATE_LENGTH> {
     let pattern_name = match state {
-        EngineState::Playing(idx) | EngineState::Paused(idx) => commands::pattern_list()
+        EnginePhase::Playing(idx) | EnginePhase::Paused(idx) => commands::pattern_list()
             .get(idx)
             .map(|m| m.name)
             .unwrap_or(""),
@@ -371,14 +371,14 @@ fn state_to_json(state: EngineState, input: &PatternInput) -> String<MAX_STATE_L
     };
     let mut out: String<MAX_STATE_LENGTH> = String::new();
     let state_str = match state {
-        EngineState::Idle => "idle",
-        EngineState::Homing => "homing",
-        EngineState::Ready => "ready",
-        EngineState::Playing(_) => "playing",
-        EngineState::Paused(_) => "paused",
+        EnginePhase::Idle => "idle",
+        EnginePhase::Homing => "homing",
+        EnginePhase::Ready => "ready",
+        EnginePhase::Playing(_) => "playing",
+        EnginePhase::Paused(_) => "paused",
     };
     let idx = match state {
-        EngineState::Playing(i) | EngineState::Paused(i) => i,
+        EnginePhase::Playing(i) | EnginePhase::Paused(i) => i,
         _ => 0,
     };
     let speed = (input.velocity * 100.0) as u32;

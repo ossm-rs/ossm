@@ -20,9 +20,9 @@ pub(crate) enum EngineCommand {
 
 pub(crate) type EngineCommandChannel = Channel<CriticalSectionRawMutex, EngineCommand, 4>;
 
-/// Observable state of the pattern engine.
+/// Lifecycle phase of the pattern engine.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EngineState {
+pub enum EnginePhase {
     Idle,
     Homing,
     Ready,
@@ -30,7 +30,7 @@ pub enum EngineState {
     Paused(usize),
 }
 
-impl EngineState {
+impl EnginePhase {
     const TAG_IDLE: u8 = 0;
     const TAG_HOMING: u8 = 1;
     const TAG_PLAYING: u8 = 2;
@@ -67,12 +67,12 @@ impl EngineState {
     }
 }
 
-/// Broadcast channel for [`EngineState`].
+/// Broadcast channel for [`EnginePhase`].
 ///
 /// - `CAP = 1`: only the latest transition matters.
 /// - `SUBS = 8`: up to 8 concurrent async subscribers.
 /// - `PUBS = 0`: publishing uses `immediate_publisher`.
-pub(crate) type StateChannel = PubSubChannel<CriticalSectionRawMutex, EngineState, 1, 8, 0>;
+pub(crate) type PhaseChannel = PubSubChannel<CriticalSectionRawMutex, EnginePhase, 1, 8, 0>;
 
 /// Root container for a pattern engine.
 ///
@@ -84,18 +84,18 @@ pub(crate) type StateChannel = PubSubChannel<CriticalSectionRawMutex, EngineStat
 /// role.
 pub struct PatternEngine {
     pub(crate) commands: EngineCommandChannel,
-    pub(crate) state: AtomicU16,
+    pub(crate) phase: AtomicU16,
     pub(crate) input: SharedPatternInput,
-    pub(crate) state_channel: StateChannel,
+    pub(crate) phase_channel: PhaseChannel,
 }
 
 impl PatternEngine {
     pub const fn new() -> Self {
         Self {
             commands: EngineCommandChannel::new(),
-            state: AtomicU16::new(EngineState::Idle.encode()),
+            phase: AtomicU16::new(EnginePhase::Idle.encode()),
             input: SharedPatternInput::new_with(PatternInput::DEFAULT),
-            state_channel: StateChannel::new(),
+            phase_channel: PhaseChannel::new(),
         }
     }
 

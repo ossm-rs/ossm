@@ -10,7 +10,7 @@ mod runner;
 mod sender;
 mod util;
 
-pub use engine::{EngineState, PatternEngine};
+pub use engine::{EnginePhase, PatternEngine};
 pub use input::{PatternInput, SharedPatternInput};
 pub use observer::PatternObserver;
 pub use pattern::{Pattern, PatternCtx};
