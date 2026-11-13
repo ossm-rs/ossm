@@ -32,7 +32,7 @@ use esp_hal::{
 };
 use esp_rtos::embassy::InterruptExecutor;
 use log::info;
-use ossm::{MechanicalConfig, MotionController, MotionLimits, Ossm, fault};
+use ossm::{MechanicalConfig, MotionController, MotionLimits, MotionChannels, fault};
 use pattern_engine::{AnyPattern, PatternEngine, PatternSender};
 use static_cell::StaticCell;
 
@@ -48,7 +48,7 @@ macro_rules! mk_static {
 
 const UPDATE_INTERVAL_SECS: f64 = 0.01;
 
-static OSSM_CELL: StaticCell<Ossm> = StaticCell::new();
+static OSSM_CELL: StaticCell<MotionChannels> = StaticCell::new();
 static PATTERNS_CELL: StaticCell<PatternEngine> = StaticCell::new();
 
 static EXECUTOR_CORE_1: StaticCell<InterruptExecutor<2>> = StaticCell::new();
@@ -91,7 +91,7 @@ pub async fn run(spawner: Spawner, config: Config) {
     esp_rtos::start(timg0.timer0);
 
     let indicator = indicator::build(config.indicator);
-    let (receiver, motion_observer, motion) = OSSM_CELL.init(Ossm::new()).split();
+    let (receiver, motion_observer, motion) = OSSM_CELL.init(MotionChannels::new()).split();
     let (runner, pattern_observer, patterns) = PATTERNS_CELL.init(PatternEngine::new()).split();
 
     let motor = match motor::build(config.motor).await {

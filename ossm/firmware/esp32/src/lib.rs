@@ -35,7 +35,7 @@ use esp_hal::{
 };
 use esp_rtos::embassy::InterruptExecutor;
 use log::info;
-use ossm::{MechanicalConfig, MotionController, MotionLimits, Ossm};
+use ossm::{MechanicalConfig, MotionController, MotionLimits, MotionChannels};
 use pattern_engine::{AnyPattern, PatternEngine, PatternSender};
 use static_cell::StaticCell;
 
@@ -51,7 +51,7 @@ macro_rules! mk_static {
 
 const UPDATE_INTERVAL_SECS: f64 = 0.01;
 
-static OSSM_CELL: StaticCell<Ossm> = StaticCell::new();
+static OSSM_CELL: StaticCell<MotionChannels> = StaticCell::new();
 static PATTERNS_CELL: StaticCell<PatternEngine> = StaticCell::new();
 
 static EXECUTOR_CORE_1: StaticCell<InterruptExecutor<2>> = StaticCell::new();
@@ -108,7 +108,7 @@ where
     };
     let limits = MotionLimits::default();
 
-    let (receiver, motion_observer, motion) = OSSM_CELL.init(Ossm::new()).split();
+    let (receiver, motion_observer, motion) = OSSM_CELL.init(MotionChannels::new()).split();
 
     let board = board::build(motor, config.board, &MECHANICAL);
     let controller = receiver.into_controller(board, limits.clone(), UPDATE_INTERVAL_SECS);

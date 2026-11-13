@@ -23,7 +23,7 @@ path = "src/bin/ossm-reference.rs"
 
 [dependencies]
 status-indicator = { path = "../../crates/status-indicator", optional = true }
-ossm = { path = "../../core" }
+ossm = { package = "ossm-core", path = "../../core" }
 ossm-esp = { path = "../../esp", features = ["esp32"] }
 pattern-engine = { path = "../../crates/pattern-engine" }
 ble-remote = { path = "../../crates/ble-remote", features = ["esp32"] }

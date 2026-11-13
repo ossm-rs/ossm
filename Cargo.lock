@@ -1113,7 +1113,7 @@ dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-async",
  "log",
- "ossm",
+ "ossm-core",
 ]
 
 [[package]]
@@ -1180,7 +1180,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
-name = "ossm"
+name = "ossm-core"
 version = "0.1.0"
 dependencies = [
  "crc",
@@ -1233,7 +1233,7 @@ dependencies = [
  "embassy-time",
  "embedded-hal-async",
  "log",
- "ossm",
+ "ossm-core",
 ]
 
 [[package]]
@@ -1388,7 +1388,7 @@ name = "rs485-board"
 version = "0.1.0"
 dependencies = [
  "m57aim-motor",
- "ossm",
+ "ossm-core",
 ]
 
 [[package]]
@@ -1489,7 +1489,7 @@ dependencies = [
 name = "sim-board"
 version = "0.1.0"
 dependencies = [
- "ossm",
+ "ossm-core",
  "sim-motor",
 ]
 
@@ -1551,7 +1551,7 @@ version = "0.1.0"
 dependencies = [
  "embassy-time",
  "log",
- "ossm",
+ "ossm-core",
  "pattern-engine",
  "smart-leds",
 ]
@@ -1562,7 +1562,7 @@ version = "0.1.0"
 dependencies = [
  "embedded-hal-async",
  "log",
- "ossm",
+ "ossm-core",
 ]
 
 [[package]]

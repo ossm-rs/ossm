@@ -2,7 +2,7 @@ extern crate alloc;
 use alloc::string::String;
 
 use embassy_time::{Delay, Duration, Ticker};
-use ossm::{MechanicalConfig, MotionLimits, MotionObserver, Ossm};
+use ossm::{MechanicalConfig, MotionLimits, MotionObserver, MotionChannels};
 use pattern_engine::{
     AnyPattern, PatternEngine, PatternObserver, PatternSender,
     commands,
@@ -12,7 +12,7 @@ use sim_motor::SimMotor;
 use static_cell::StaticCell;
 use wasm_bindgen::prelude::*;
 
-static OSSM_CELL: StaticCell<Ossm> = StaticCell::new();
+static OSSM_CELL: StaticCell<MotionChannels> = StaticCell::new();
 static PATTERNS_CELL: StaticCell<PatternEngine> = StaticCell::new();
 
 static MECHANICAL: MechanicalConfig = MechanicalConfig {
@@ -38,7 +38,7 @@ impl Simulator {
 
         ossm::build_info!();
 
-        let (receiver, motion_observer, motion) = OSSM_CELL.init(Ossm::new()).split();
+        let (receiver, motion_observer, motion) = OSSM_CELL.init(MotionChannels::new()).split();
         let (runner, pattern_observer, patterns) =
             PATTERNS_CELL.init(PatternEngine::new()).split();
 
