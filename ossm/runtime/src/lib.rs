@@ -13,9 +13,6 @@
 //! platform uses [`platform`] and the motion vocabulary in [`motion`].
 #![no_std]
 
-use core::convert::Infallible;
-use core::fmt::Debug;
-
 use modes::{Entry, ModeList, Modes};
 use ossm_core::MotionChannels;
 use ossm_core::fault;
@@ -44,12 +41,12 @@ static ENGINE: StaticCell<PatternEngine> = StaticCell::new();
 static PATTERN_SENDER: StaticCell<PatternSender> = StaticCell::new();
 
 /// OSSM firmware on platform `P`, with the modes registered so far.
-pub struct Ossm<P, K, L> {
+pub struct Ossm<P: Platform, L> {
     platform: P,
-    modes: Modes<K, L>,
+    modes: Modes<P::Key, L>,
 }
 
-impl<P: Platform> Ossm<P, Infallible, ()> {
+impl<P: Platform> Ossm<P, ()> {
     /// OSSM on `platform` with only the built-in modes, starting in
     /// [`Idle`](ModeKey::Idle).
     pub fn new(platform: P) -> Self {
@@ -58,30 +55,16 @@ impl<P: Platform> Ossm<P, Infallible, ()> {
             modes: Modes::new(),
         }
     }
-
-    /// Register the first mode under `key`, which picks the key type for
-    /// the rest.
-    pub fn mode<K, F, Args>(self, key: K, mode: F) -> Ossm<P, K, (Entry<K, F, Args>, ())>
-    where
-        K: Copy + PartialEq + Debug + 'static,
-        F: Mode<Args>,
-    {
-        Ossm {
-            platform: self.platform,
-            modes: self.modes.mode(key, mode),
-        }
-    }
 }
 
-impl<P, K, E, Rest> Ossm<P, K, (E, Rest)>
+impl<P, L> Ossm<P, L>
 where
     P: Platform,
-    K: Copy + PartialEq + Debug + 'static,
-    (E, Rest): ModeList<K>,
+    L: ModeList<P::Key>,
 {
     /// Register `mode` under `key`. Registering a key again replaces the
     /// earlier mode.
-    pub fn mode<F, Args>(self, key: K, mode: F) -> Ossm<P, K, (Entry<K, F, Args>, (E, Rest))>
+    pub fn mode<F, Args>(self, key: P::Key, mode: F) -> Ossm<P, (Entry<P::Key, F, Args>, L)>
     where
         F: Mode<Args>,
     {
@@ -90,16 +73,9 @@ where
             modes: self.modes.mode(key, mode),
         }
     }
-}
 
-impl<P, K, L> Ossm<P, K, L>
-where
-    P: Platform,
-    K: Copy + PartialEq + Debug + 'static,
-    L: ModeList<K>,
-{
     /// The mode to enter at boot. Defaults to [`Idle`](ModeKey::Idle).
-    pub fn start_in(self, key: impl Into<ModeKey<K>>) -> Self {
+    pub fn start_in(self, key: impl Into<ModeKey<P::Key>>) -> Self {
         Self {
             modes: self.modes.start_in(key),
             ..self
@@ -112,7 +88,8 @@ where
     /// it creates are unique to the program.
     pub async fn run(mut self) -> ! {
         let (receiver, motion_observer, motion) = CHANNELS.init(MotionChannels::new()).split();
-        let (runner, pattern_observer, patterns) = ENGINE.init(PatternEngine::new()).split();
+        let (pattern_runner, pattern_observer, patterns) =
+            ENGINE.init(PatternEngine::new()).split();
 
         let hardware = match self.platform.init().await {
             Ok(hardware) => hardware,
@@ -133,6 +110,6 @@ where
         let patterns = PATTERN_SENDER.init(patterns);
         self.platform.start_remotes(patterns, &hardware.limits);
 
-        self.modes.run(motion, runner).await
+        self.modes.run(motion, pattern_runner).await
     }
 }
