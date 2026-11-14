@@ -1227,7 +1227,7 @@ dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-async",
  "log",
- "ossm",
+ "ossm-core",
 ]
 
 [[package]]
@@ -1235,6 +1235,18 @@ name = "memchr"
 version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8ca58f447f06ed17d5fc4043ce1b10dd205e060fb3ce5b979b8ed8e59ff3f79"
+
+[[package]]
+name = "modes"
+version = "0.1.0"
+dependencies = [
+ "embassy-futures",
+ "embassy-sync 0.7.2",
+ "embassy-time",
+ "log",
+ "ossm-core",
+ "pattern-engine",
+]
 
 [[package]]
 name = "nb"
@@ -1282,6 +1294,16 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 name = "ossm"
 version = "0.1.0"
 dependencies = [
+ "modes",
+ "ossm-core",
+ "pattern-engine",
+ "static_cell",
+]
+
+[[package]]
+name = "ossm-core"
+version = "0.1.0"
+dependencies = [
  "crc",
  "embassy-sync 0.7.2",
  "embassy-time",
@@ -1307,7 +1329,7 @@ dependencies = [
  "esp-hal-smartled",
  "m57aim-motor",
  "nb 1.1.0",
- "ossm",
+ "ossm-core",
  "sim-board",
  "sim-motor",
  "static_cell",
@@ -1334,7 +1356,7 @@ dependencies = [
  "embassy-time",
  "embedded-hal-async",
  "log",
- "ossm",
+ "ossm-core",
 ]
 
 [[package]]
@@ -1613,7 +1635,7 @@ dependencies = [
 name = "sim-board"
 version = "0.1.0"
 dependencies = [
- "ossm",
+ "ossm-core",
  "sim-motor",
 ]
 
@@ -1675,7 +1697,7 @@ version = "0.1.0"
 dependencies = [
  "embassy-time",
  "log",
- "ossm",
+ "ossm-core",
  "pattern-engine",
  "smart-leds",
 ]
@@ -1686,7 +1708,7 @@ version = "0.1.0"
 dependencies = [
  "embedded-hal-async",
  "log",
- "ossm",
+ "ossm-core",
 ]
 
 [[package]]

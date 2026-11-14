@@ -1,11 +1,12 @@
-use crate::{Board, MotionController, MotionLimits, Ossm};
+use crate::{Board, MotionController, MotionLimits, MotionChannels};
 
 /// Receiver half of the motion channels.
 ///
 /// Counterpart to [`MotionSender`](crate::MotionSender). Produced by
-/// [`Ossm::split`](crate::Ossm::split), and in the standard firmware
-/// path immediately consumed by [`into_controller`](Self::into_controller)
-/// to build the running [`MotionController`].
+/// [`MotionChannels::split`](crate::MotionChannels::split), and in the
+/// standard firmware path immediately consumed by
+/// [`into_controller`](Self::into_controller) to build the running
+/// [`MotionController`].
 ///
 /// Sim / test builds can instead hold a `MotionReceiver` long-term and
 /// drive the receiver-side dance manually (see the methods gated under
@@ -13,11 +14,11 @@ use crate::{Board, MotionController, MotionLimits, Ossm};
 ///
 /// Not [`Clone`] and not publicly constructible.
 pub struct MotionReceiver {
-    channels: &'static Ossm,
+    channels: &'static MotionChannels,
 }
 
 impl MotionReceiver {
-    pub(crate) fn new(channels: &'static Ossm) -> Self {
+    pub(crate) fn new(channels: &'static MotionChannels) -> Self {
         Self { channels }
     }
 

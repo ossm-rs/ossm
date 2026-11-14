@@ -11,7 +11,7 @@ edition = "2024"
 crate-type = ["cdylib"]
 
 [dependencies]
-ossm = { path = "../../ossm/core", features = ["sim"] }
+ossm = { package = "ossm-core", path = "../../ossm/core", features = ["sim"] }
 sim-motor = { path = "../../ossm/drivers/sim-motor" }
 sim-board = { path = "../../ossm/boards/sim-board" }
 pattern-engine = { path = "../../ossm/crates/pattern-engine" }

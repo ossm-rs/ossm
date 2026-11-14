@@ -5,7 +5,7 @@ use esp_hal::peripherals::{BT, WIFI};
 use esp_radio::ble::controller::BleConnector;
 use esp_radio::esp_now::{EspNowManager, EspNowSender};
 use log::info;
-use ossm::MotionLimits;
+use ossm::motion::MotionLimits;
 use ossm_m5_remote::RemoteConfig;
 use pattern_engine::PatternSender;
 
