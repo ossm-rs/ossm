@@ -27,7 +27,7 @@ Install the following:
 | Tool                                                       | Purpose                               |
 | ---------------------------------------------------------- | ------------------------------------- |
 | [Rust](https://rustup.rs/)                                 | Compiler toolchain                    |
-| [wasm-bindgen-cli](https://crates.io/crates/wasm-bindgen-cli) (`cargo install wasm-bindgen-cli`) | Generates JS bindings for the WASM module |
+| [wasm-bindgen-cli](https://crates.io/crates/wasm-bindgen-cli) (`cargo install wasm-bindgen-cli --locked --version "$(bash scripts/wasm-bindgen-version.sh)"`, must match the bindings' `Cargo.lock`) | Generates JS bindings for the WASM module |
 | [binaryen](https://github.com/WebAssembly/binaryen) (`wasm-opt`) | Optimises the WASM output |
 | [Node.js](https://nodejs.org/en/download) (v24 LTS)        | Runs the simulator dev server         |
 | [pnpm](https://pnpm.io/installation#using-corepack)        | Package manager for the simulator app |

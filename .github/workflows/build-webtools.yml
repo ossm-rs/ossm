@@ -18,7 +18,6 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  WASM_BINDGEN_VERSION: "0.2.118"
 
 jobs:
   build:
@@ -35,8 +34,12 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      # The CLI must exactly match the wasm-bindgen crate the bindings lock.
       - name: Install wasm-bindgen-cli
-        run: cargo install wasm-bindgen-cli --version ${{ env.WASM_BINDGEN_VERSION }}
+        shell: bash
+        run: |
+          version="$(bash scripts/wasm-bindgen-version.sh)"
+          cargo install wasm-bindgen-cli --locked --version "$version"
 
       - name: Install binaryen
         run: sudo apt-get install -y binaryen

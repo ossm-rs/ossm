@@ -11,7 +11,6 @@ on:
 env:
   CARGO_TERM_COLOR: always
   ESP_TOOLCHAIN_VERSION: "1.94.0.2"
-  WASM_BINDGEN_VERSION: "0.2.118"
 
 jobs:
   build-windows:
@@ -49,8 +48,12 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
 
+      # The CLI must exactly match the wasm-bindgen crate the bindings lock.
       - name: Install wasm-bindgen-cli
-        run: cargo install wasm-bindgen-cli --version ${{ env.WASM_BINDGEN_VERSION }}
+        shell: bash
+        run: |
+          version="$(bash scripts/wasm-bindgen-version.sh)"
+          cargo install wasm-bindgen-cli --locked --version "$version"
 
       - name: Install binaryen
         shell: bash
