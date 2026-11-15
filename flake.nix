@@ -10,6 +10,34 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
+        lib = pkgs.lib;
+
+        # The wasm-bindgen CLI must exactly match the crate version the
+        # bindings lock, so take it from their Cargo.lock files (as
+        # scripts/wasm-bindgen-version.sh does) rather than nixpkgs' latest.
+        wasmBindgenVersion =
+          let
+            bindings = lib.attrNames (lib.filterAttrs (_: type: type == "directory") (builtins.readDir ./bindings));
+            locked = lib.concatMap (dir:
+              let lock = ./bindings + "/${dir}/Cargo.lock"; in
+              if builtins.pathExists lock then
+                map (p: { inherit dir; inherit (p) version; })
+                  (lib.filter (p: p.name == "wasm-bindgen") (builtins.fromTOML (builtins.readFile lock)).package)
+              else [ ]) bindings;
+            versions = lib.unique (map (l: l.version) locked);
+          in
+          if versions == [ ] then
+            throw "no Cargo.lock under bindings/ depends on wasm-bindgen"
+          else if builtins.length versions > 1 then
+            throw "bindings lock different wasm-bindgen versions: ${lib.concatMapStringsSep ", " (l: "bindings/${l.dir} ${l.version}") locked}"
+          else
+            builtins.head versions;
+
+        wasmBindgenAttr = "wasm-bindgen-cli_${builtins.replaceStrings [ "." ] [ "_" ] wasmBindgenVersion}";
+        wasmBindgenCli =
+          if pkgs.wasm-bindgen-cli.version == wasmBindgenVersion then pkgs.wasm-bindgen-cli
+          else pkgs.${wasmBindgenAttr} or (throw
+            "nixpkgs has no ${wasmBindgenAttr} for the bindings' wasm-bindgen ${wasmBindgenVersion}; run `nix flake update` or change the bindings' wasm-bindgen version");
 
         # Pinned VSCodium extensions, bump with `nix flake update`
         pinnedExtensions = with pkgs.vscode-extensions; [
@@ -70,7 +98,7 @@
             espup
             espflash
 
-            wasm-bindgen-cli
+            wasmBindgenCli
             binaryen
 
             nodejs_22

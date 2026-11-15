@@ -20,7 +20,7 @@ RUN . "$NVM_DIR/nvm.sh" \
 ENV PATH="$NVM_DIR/current:$PATH"
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 
-# Add wasm target and install build tools
+# Add wasm target and install build tools. wasm-bindgen-cli is installed in
+# postCreateCommand instead, as it must match the bindings' Cargo.lock.
 RUN rustup target add wasm32-unknown-unknown \
-    && cargo install wasm-bindgen-cli \
     && apt-get update && apt-get install -y --no-install-recommends binaryen && rm -rf /var/lib/apt/lists/*
