@@ -3,7 +3,7 @@
   "build": {
     "dockerfile": "Dockerfile"
   },
-  "postCreateCommand": "pnpm install --force --dir apps/web-tools",
+  "postCreateCommand": "cargo install wasm-bindgen-cli --locked --version \"$(bash scripts/wasm-bindgen-version.sh)\" && pnpm install --force --dir apps/web-tools",
   "customizations": {
     "vscode": {
       "extensions": [

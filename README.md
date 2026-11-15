@@ -229,23 +229,7 @@ The command regenerates editor settings from their templates. Put persistent cus
 
 #### In a dev container
 
-The dev container comes with Rust and all required tooling pre-installed, so you can start building straight away.
-
-However, to flash firmware you need to expose the UART device to the container. Add a `runArgs` entry to `.devcontainer/devcontainer.json` with the path to your serial device:
-
-```json
-{
-  "name": "Rust",
-  "image": "mcr.microsoft.com/devcontainers/rust:2-1-trixie",
-
-  // Expose the UART device to the container
-  "runArgs": ["--device=/dev/ttyUSB0"]
-}
-```
-
-Replace `/dev/ttyUSB0` with the actual path to your device (e.g. `/dev/ttyACM0` on some systems, or `/dev/cu.usbserial-*` on macOS).
-
-> **Note:** If the UART device is disconnected and reconnected while the container is running, the container will lose access to it. You will need to restart the container for the device to become available again.
+For pattern and web simulator work there's a dev container with everything the simulator needs. See [So You Want to Add a Pattern](docs/so-you-want-to-add-a-pattern.md). It doesn't include the ESP toolchain, so build and flash firmware on the host.
 
 ## Shoulders of giants
 
