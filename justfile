@@ -60,3 +60,11 @@ focus crate:
 [windows]
 focus crate:
     powershell.exe -NoLogo -ExecutionPolicy Bypass -File scripts/focus.ps1 -Crate {{ crate }}
+
+# Inspect upstream CAD (STEP files). Run `just cad --help` for subcommands.
+[unix]
+[positional-arguments]
+cad *args:
+    #!/usr/bin/env bash
+    set -eu
+    LD_LIBRARY_PATH="${OSSM_CAD_LD_LIBRARY_PATH:-}" exec uv run --quiet --project tools/cad ossm-cad "$@"

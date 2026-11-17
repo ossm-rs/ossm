@@ -1,0 +1,247 @@
+{
+  "ossm-alt-heavy": {
+    "title": "OSSM ALT Edition: Heavy (MGN15H)",
+    "repo": "reference/OSSM-ALT-Edition",
+    "assembly": "Hardware-Design/Complete Assembly/OSSM ALT Edition Heavy MGN15.step",
+    "print_files": {
+      "dirs": [
+        "Hardware-Design",
+        "Print-Files"
+      ],
+      "formats": [
+        "step",
+        "stp",
+        "stl",
+        "3mf"
+      ],
+      "exclude": [
+        "*Complete Assembly*",
+        "*Light Version*",
+        "*Light MGN12*",
+        "*/Templates/*"
+      ]
+    },
+    "electronics": [
+      "^OSSM PCB$"
+    ],
+    "rigid": [
+      "OSSM PCB",
+      "57AIM30",
+      "Rail",
+      "Bearing"
+    ],
+    "web": {
+      "out": "apps/web-tools/public/models/ossm-alt.glb",
+      "catalog": "apps/web-tools/src/model/ossm-alt.parts.json",
+      "appearance": "tools/cad/appearance/ossm-alt.json",
+      "frame": [[0.001, 0, 0, 0], [0, 0, 0.001, 0], [0, -0.001, 0, 0]],
+      "exclude": [
+        "Pitclamp Redesign"
+      ],
+      "merge": [
+        "OSSM PCB"
+      ],
+      "uncap": {
+        "mgn15h-400mm-rail-part-1": {
+          "_about": "The rail model has its plastic hole caps fitted (0.5 mm green discs); the build bolts through those holes.",
+          "volume": 55572.3,
+          "color": [0.051, 0.76, 0.0],
+          "wall": [0.723, 0.723, 0.723]
+        }
+      },
+      "groups": {
+        "rail": [
+          "mgn15h-400mm-rail-part-1",
+          "Front Mount",
+          "Rear Mount"
+        ],
+        "belt": [
+          "gt2-belt"
+        ]
+      },
+      "default_group": "housing"
+    },
+    "additions": {
+      "shcs-m3x8": {
+        "name": "SHCS M3x8",
+        "kind": "fastener",
+        "shape": {
+          "type": "shcs",
+          "d": 3,
+          "length": 8
+        },
+        "placements": [
+          {
+            "head": [84.31, -16.9, 25.07],
+            "dir": [-1, 0, 0]
+          },
+          {
+            "head": [84.31, 23.15, -20.98],
+            "dir": [-1, 0, 0]
+          }
+        ]
+      },
+      "shcs-m3x16": {
+        "name": "SHCS M3x16",
+        "kind": "fastener",
+        "shape": {
+          "type": "shcs",
+          "d": 3,
+          "length": 16
+        },
+        "placements": [
+          {
+            "head": [-17.43, -180.0, 27.9],
+            "dir": [0, 0, 1],
+            "path": [
+              "Front Mount"
+            ]
+          }
+        ]
+      },
+      "gt2-belt": {
+        "name": "GT2 belt",
+        "kind": "belt",
+        "shape": {
+          "type": "belt",
+          "width": 15,
+          "thickness": 1.4,
+          "length": 450,
+          "pitch_diameter": 12.73,
+          "pulley": "gt2-20t-sh8",
+          "idlers": "bearing-625-2rs",
+          "ends": [
+            "tightener#1",
+            "nut#2"
+          ],
+          "leads": {
+            "_about": "How an end runs inside its clamp, from the belt's tip to where it joins the run: points and bend circles in the belt plane (mm), riding on `node`. Front: out of the bottom of the toy mount head, up between the tightener and the head, round the bend into the slot towards the rail.",
+            "front": {
+              "node": "thread#1",
+              "path": [
+                [-156.75, -3.0],
+                [-156.75, 2.0],
+                [-157.5, 3.2],
+                {"centre": [-154.5, 4.8], "radius": 3.0, "ccw": false}
+              ]
+            },
+            "rear": {
+              "_about": "The back stop's channel mirrors the front one (measured the same way).",
+              "node": "rear-mount-thread#1",
+              "path": [
+                [186.25, -3.0],
+                [186.25, 2.0],
+                [187.0, 3.2],
+                {"centre": [184.0, 4.8], "radius": 3.0, "ccw": true}
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "ossm-alt-light": {
+    "title": "OSSM ALT Edition: Light (MGN12H)",
+    "repo": "reference/OSSM-ALT-Edition",
+    "assembly": "Hardware-Design/Complete Assembly/OSSM ALT Edition Light MGN12.step",
+    "print_files": {
+      "dirs": [
+        "Hardware-Design",
+        "Print-Files"
+      ],
+      "formats": [
+        "step",
+        "stp",
+        "stl",
+        "3mf"
+      ],
+      "exclude": [
+        "*Complete Assembly*",
+        "*Heavy Version*",
+        "*Heavy MGN15*",
+        "*/Templates/*"
+      ]
+    },
+    "electronics": [
+      "^OSSM PCB$"
+    ],
+    "rigid": [
+      "OSSM PCB",
+      "57AIM30",
+      "Rail",
+      "Bearing"
+    ],
+    "additions": {
+      "shcs-m3x8": {
+        "name": "SHCS M3x8",
+        "kind": "fastener",
+        "shape": {
+          "type": "shcs",
+          "d": 3,
+          "length": 8
+        },
+        "placements": [
+          {
+            "head": [84.31, -16.9, 25.07],
+            "dir": [-1, 0, 0]
+          },
+          {
+            "head": [84.31, 23.15, -20.98],
+            "dir": [-1, 0, 0]
+          }
+        ]
+      },
+      "shcs-m3x16": {
+        "name": "SHCS M3x16",
+        "kind": "fastener",
+        "shape": {
+          "type": "shcs",
+          "d": 3,
+          "length": 16
+        },
+        "placements": [
+          {
+            "head": [-17.43, -180.0, 27.9],
+            "dir": [0, 0, 1],
+            "path": [
+              "Front Mount"
+            ]
+          }
+        ]
+      },
+      "gt2-belt": {
+        "name": "GT2 belt",
+        "kind": "belt",
+        "shape": {
+          "type": "belt",
+          "width": 15,
+          "thickness": 1.4,
+          "pitch_diameter": 12.73,
+          "pulley": "gt2-20t-sh8",
+          "idlers": "bearing-625-2rs",
+          "ends": [
+            "tightener#1",
+            "nut#2"
+          ]
+        }
+      },
+      "nut-m3": {
+        "name": "M3 hex nut",
+        "kind": "fastener",
+        "shape": {
+          "type": "hex-nut",
+          "size": 3
+        },
+        "placements": [
+          {
+            "head": [-17.45, -180.0, 45.8],
+            "dir": [0, 0, 1],
+            "path": [
+              "Front Mount"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

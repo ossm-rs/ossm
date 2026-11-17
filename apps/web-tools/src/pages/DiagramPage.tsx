@@ -15,6 +15,8 @@ import remarkGfm from "remark-gfm";
 import AssemblyScene from "../AssemblyScene";
 import type { AssemblySceneHandle } from "../AssemblyScene";
 import { PART_CATALOG } from "../parts";
+import { indexPartsFor } from "../model/catalog";
+import PartFiles from "../components/PartFiles";
 import { useIsMobile } from "../hooks/useIsMobile";
 import styles from "./DiagramPage.module.css";
 
@@ -153,6 +155,16 @@ export default function DiagramPage() {
                   No description yet.
                 </Text>
               )}
+              {selectedPart.instances.length > 1 &&
+                indexPartsFor(selectedPart.instances).length <= 1 && (
+                  <Text size="2" color="gray">
+                    Quantity: {selectedPart.instances.length}
+                  </Text>
+                )}
+              <PartFiles
+                instances={selectedPart.instances}
+                className={styles.markdown}
+              />
             </Flex>
           </Card>
         )}

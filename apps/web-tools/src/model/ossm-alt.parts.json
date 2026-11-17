@@ -1,0 +1,803 @@
+{
+  "variant": "ossm-alt-heavy",
+  "title": "OSSM ALT Edition: Heavy (MGN15H)",
+  "source": {
+    "repo": "https://github.com/jollydodo/OSSM-ALT-Edition",
+    "commit": "3d58b9e3bdfebabb69f2b715e4aa67881035d217",
+    "assembly": "Hardware-Design/Complete Assembly/OSSM ALT Edition Heavy MGN15.step"
+  },
+  "instances": {
+    "57aim-clamp#1": "57aim-clamp",
+    "bearing-625-2rs#1": "bearing-625-2rs",
+    "bearing-625-2rs#2": "bearing-625-2rs",
+    "bearing-625-2rs#3": "bearing-625-2rs",
+    "bearing-625-2rs#4": "bearing-625-2rs",
+    "bearing-625-2rs#5": "bearing-625-2rs",
+    "bearing-625-2rs#6": "bearing-625-2rs",
+    "c-0402#1": "c-0402",
+    "c-0402#10": "c-0402",
+    "c-0402#2": "c-0402",
+    "c-0402#3": "c-0402",
+    "c-0402#4": "c-0402",
+    "c-0402#5": "c-0402",
+    "c-0402#6": "c-0402",
+    "c-0402#7": "c-0402",
+    "c-0402#8": "c-0402",
+    "c-0402#9": "c-0402",
+    "c-0603#1": "c-0603",
+    "c-0603#2": "c-0603",
+    "c-0603#3": "c-0603",
+    "c-0805#1": "c-0805",
+    "c-0805#2": "c-0805",
+    "c-1206#1": "c-1206",
+    "c-1206#2": "c-1206",
+    "c-1206#3": "c-1206",
+    "c-1206#4": "c-1206",
+    "cap-smd-bd10-0-l10-3-w10-3-ls11-3-fd#1": "cap-smd-bd10-0-l10-3-w10-3-ls11-3-fd",
+    "cap-smd-bd10-0-l10-3-w10-3-ls11-3-fd#2": "cap-smd-bd10-0-l10-3-w10-3-ls11-3-fd",
+    "cover#1": "cover",
+    "d-0603#1": "d-0603",
+    "d-0805#1": "d-0805",
+    "d-sma#1": "d-sma",
+    "d-sma#2": "d-sma",
+    "d-sod-123fl#1": "d-sod-123fl",
+    "d-sod-123fl#2": "d-sod-123fl",
+    "d-sod-323#1": "d-sod-323",
+    "degsonplug#1": "degsonplug",
+    "gt2-20t-sh8#1": "gt2-20t-sh8",
+    "gt2-belt#1": "gt2-belt",
+    "ind-smd-l7-2-w6-6-h3-0-gpsr0730#1": "ind-smd-l7-2-w6-6-h3-0-gpsr0730",
+    "jst-sm04b-srss-tb#1": "jst-sm04b-srss-tb",
+    "led-ws2812b-plcc4-5-0x5-0mm-p3-2mm#1": "led-ws2812b-plcc4-5-0x5-0mm-p3-2mm",
+    "ledcover#1": "ledcover",
+    "main-mount-motor-side#1": "main-mount-motor-side",
+    "main-mount-top#1": "main-mount-top",
+    "mgn15h-400mm-rail-part-1#1": "mgn15h-400mm-rail-part-1",
+    "mgn15h-400mm-rail-part-2#1": "mgn15h-400mm-rail-part-2",
+    "motor#1": "motor",
+    "motor-cover#1": "motor-cover",
+    "nut#1": "nut",
+    "nut#2": "nut",
+    "nut-m3#1": "nut-m3",
+    "nut-m3#2": "nut-m3",
+    "nut-m3#3": "nut-m3",
+    "nut-m3#4": "nut-m3",
+    "nut-m3#5": "nut-m3",
+    "nut-m3#6": "nut-m3",
+    "nut-m5#1": "nut-m5",
+    "nut-m5#2": "nut-m5",
+    "nut-m5#3": "nut-m5",
+    "nut-m5#4": "nut-m5",
+    "nut-m5#5": "nut-m5",
+    "nut-m5#6": "nut-m5",
+    "nut-m5#7": "nut-m5",
+    "nut-m5#8": "nut-m5",
+    "ossm-28v-minimal-pcb#1": "ossm-28v-minimal-pcb",
+    "pcbholder#1": "pcbholder",
+    "pinheader-1x03-p2-54mm-vertical#1": "pinheader-1x03-p2-54mm-vertical",
+    "pinheader-1x04-p2-54mm-vertical#1": "pinheader-1x04-p2-54mm-vertical",
+    "pinheader-1x04-p2-54mm-vertical#2": "pinheader-1x04-p2-54mm-vertical",
+    "precisiondowel#1": "precisiondowel",
+    "r-0402#1": "r-0402",
+    "r-0402#10": "r-0402",
+    "r-0402#11": "r-0402",
+    "r-0402#12": "r-0402",
+    "r-0402#13": "r-0402",
+    "r-0402#14": "r-0402",
+    "r-0402#15": "r-0402",
+    "r-0402#16": "r-0402",
+    "r-0402#17": "r-0402",
+    "r-0402#18": "r-0402",
+    "r-0402#19": "r-0402",
+    "r-0402#2": "r-0402",
+    "r-0402#20": "r-0402",
+    "r-0402#3": "r-0402",
+    "r-0402#4": "r-0402",
+    "r-0402#5": "r-0402",
+    "r-0402#6": "r-0402",
+    "r-0402#7": "r-0402",
+    "r-0402#8": "r-0402",
+    "r-0402#9": "r-0402",
+    "r-0603#1": "r-0603",
+    "r-0603#2": "r-0603",
+    "r-0603#3": "r-0603",
+    "r-0603#4": "r-0603",
+    "r-0603#5": "r-0603",
+    "r1206-l3-2-w1-6-h0-6#1": "r1206-l3-2-w1-6-h0-6",
+    "rear-mount-thread#1": "rear-mount-thread",
+    "shcs-m3x12#1": "shcs-m3x12",
+    "shcs-m3x12#2": "shcs-m3x12",
+    "shcs-m3x12#5": "shcs-m3x12",
+    "shcs-m3x12-mirrored#1": "shcs-m3x12-mirrored",
+    "shcs-m3x12-mirrored#2": "shcs-m3x12-mirrored",
+    "shcs-m3x16#1": "shcs-m3x16",
+    "shcs-m3x40#1": "shcs-m3x40",
+    "shcs-m3x40#2": "shcs-m3x40",
+    "shcs-m3x8#1": "shcs-m3x8",
+    "shcs-m3x8#2": "shcs-m3x8",
+    "shcs-m5x16#1": "shcs-m5x16",
+    "shcs-m5x20#1": "shcs-m5x20",
+    "shcs-m5x30#1": "shcs-m5x30",
+    "shcs-m5x30#2": "shcs-m5x30",
+    "shcs-m5x30#3": "shcs-m5x30",
+    "shcs-m5x30#4": "shcs-m5x30",
+    "shcs-m5x30#5": "shcs-m5x30",
+    "shcs-m5x30#6": "shcs-m5x30",
+    "smbf-l4-3-w3-6-ls5-3-rd#1": "smbf-l4-3-w3-6-ls5-3-rd",
+    "soic-8-l5-0-w4-0-p1-27-ls6-0-bl#1": "soic-8-l5-0-w4-0-p1-27-ls6-0-bl",
+    "soic-8-l5-0-w4-0-p1-27-ls6-0-bl#2": "soic-8-l5-0-w4-0-p1-27-ls6-0-bl",
+    "son-10-l2-0-w2-0-h0-9-p0-40-tl-ep#1": "son-10-l2-0-w2-0-h0-9-p0-40-tl-ep",
+    "sot-143-4-l2-9-w1-3-p1-90-ls2-4-bl-1#1": "sot-143-4-l2-9-w1-3-p1-90-ls2-4-bl-1",
+    "sot-143-4-l2-9-w1-3-p1-90-ls2-4-bl-1#2": "sot-143-4-l2-9-w1-3-p1-90-ls2-4-bl-1",
+    "terminalblock-phoenix-mkds-1-5-2-5-08-1x02-p5-08mm-horizontal#1": "terminalblock-phoenix-mkds-1-5-2-5-08-1x02-p5-08mm-horizontal",
+    "terminalblock-phoenix-mpt-0-5-4-2-54-1x04-p2-54mm-horizontal#1": "terminalblock-phoenix-mpt-0-5-4-2-54-1x04-p2-54mm-horizontal",
+    "thread#1": "thread",
+    "tightener#1": "tightener",
+    "tightener#2": "tightener",
+    "topcover#1": "topcover",
+    "ts-1088-ar02016#1": "ts-1088-ar02016",
+    "ts-1088-ar02016#2": "ts-1088-ar02016",
+    "tssop-8-l4-4-w3-0-p0-65-ls6-4-bl-2#1": "tssop-8-l4-4-w3-0-p0-65-ls6-4-bl-2",
+    "type-c-smd-hx-type-c-16pin#1": "type-c-smd-hx-type-c-16pin",
+    "type-c-smd-hx-type-c-16pin#2": "type-c-smd-hx-type-c-16pin",
+    "wifim-smd-61p-l16-6-w13-2-p0-80-esp32-c6-mini-1-n4#1": "wifim-smd-61p-l16-6-w13-2-p0-80-esp32-c6-mini-1-n4"
+  },
+  "parts": {
+    "57aim-clamp": {
+      "name": "57AIM Clamp",
+      "kind": "printed",
+      "count": 1,
+      "files": [
+        {
+          "name": "Motor Mount - Main Clamp.stl",
+          "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Heavy%20MGN15/Strength%20Parts/Motor%20Mount%20-%20Main%20Clamp.stl",
+          "format": "stl",
+          "exact": false,
+          "category": "strength"
+        },
+        {
+          "name": "Motor Mount - Main Motor Clamp.step",
+          "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Motor%20and%20PCB%20Housing/STEP/Motor%20Mount%20-%20Main%20Motor%20Clamp.step",
+          "format": "step",
+          "exact": false
+        }
+      ]
+    },
+    "bearing-625-2rs": {
+      "name": "Bearing 625 2RS",
+      "kind": "hardware",
+      "count": 6,
+      "files": []
+    },
+    "c-0402": {
+      "name": "C_0402",
+      "kind": "electronics",
+      "count": 10,
+      "files": []
+    },
+    "c-0603": {
+      "name": "C_0603",
+      "kind": "electronics",
+      "count": 3,
+      "files": []
+    },
+    "c-0805": {
+      "name": "C_0805",
+      "kind": "electronics",
+      "count": 2,
+      "files": []
+    },
+    "c-1206": {
+      "name": "C_1206",
+      "kind": "electronics",
+      "count": 4,
+      "files": []
+    },
+    "cap-smd-bd10-0-l10-3-w10-3-ls11-3-fd": {
+      "name": "CAP-SMD_BD10.0-L10.3-W10.3-LS11.3-FD",
+      "kind": "electronics",
+      "count": 2,
+      "files": []
+    },
+    "cover": {
+      "name": "Cover",
+      "kind": "printed",
+      "count": 1,
+      "files": [
+        {
+          "name": "Belt Tension Cover.stl",
+          "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Heavy%20MGN15/Decorative%20Parts/Belt%20Tension%20Cover.stl",
+          "format": "stl",
+          "exact": true,
+          "category": "decorative"
+        },
+        {
+          "name": "Belt Tension Cover.step",
+          "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Heavy%20Version/MGN15H%20Belt%20Clamp%20and%20Toy%20Mount/STEP/Belt%20Tension%20Cover.step",
+          "format": "step",
+          "exact": true
+        }
+      ]
+    },
+    "d-0603": {
+      "name": "D_0603",
+      "kind": "electronics",
+      "count": 1,
+      "files": []
+    },
+    "d-0805": {
+      "name": "D_0805",
+      "kind": "electronics",
+      "count": 1,
+      "files": []
+    },
+    "d-sma": {
+      "name": "D_SMA",
+      "kind": "electronics",
+      "count": 2,
+      "files": []
+    },
+    "d-sod-123fl": {
+      "name": "D_SOD-123FL",
+      "kind": "electronics",
+      "count": 2,
+      "files": []
+    },
+    "d-sod-323": {
+      "name": "D_SOD-323",
+      "kind": "electronics",
+      "count": 1,
+      "files": []
+    },
+    "degsonplug": {
+      "name": "DegsonPlug",
+      "kind": "hardware",
+      "count": 1,
+      "files": []
+    },
+    "gt2-20t-sh8": {
+      "name": "GT2_20T-sh8",
+      "kind": "hardware",
+      "count": 1,
+      "files": []
+    },
+    "gt2-belt": {
+      "name": "GT2 belt",
+      "kind": "belt",
+      "count": 1,
+      "files": []
+    },
+    "ind-smd-l7-2-w6-6-h3-0-gpsr0730": {
+      "name": "IND-SMD_L7.2-W6.6-H3.0_GPSR0730",
+      "kind": "electronics",
+      "count": 1,
+      "files": []
+    },
+    "jst-sm04b-srss-tb": {
+      "name": "JST SM04B-SRSS-TB",
+      "kind": "electronics",
+      "count": 1,
+      "files": []
+    },
+    "led-ws2812b-plcc4-5-0x5-0mm-p3-2mm": {
+      "name": "LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm",
+      "kind": "electronics",
+      "count": 1,
+      "files": []
+    },
+    "ledcover": {
+      "name": "ledCover",
+      "kind": "printed",
+      "count": 1,
+      "files": [
+        {
+          "name": "Motor Mount - Transparant LED Cover.stl",
+          "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Heavy%20MGN15/Decorative%20Parts/Motor%20Mount%20-%20Transparant%20LED%20Cover.stl",
+          "format": "stl",
+          "exact": true,
+          "category": "decorative"
+        }
+      ]
+    },
+    "main-mount-motor-side": {
+      "name": "Main Mount Motor Side",
+      "kind": "printed",
+      "count": 1,
+      "files": [
+        {
+          "name": "Belt Mechanics - Rear.stl",
+          "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Heavy%20MGN15/Strength%20Parts/Belt%20Mechanics%20-%20Rear.stl",
+          "format": "stl",
+          "exact": true,
+          "category": "strength"
+        },
+        {
+          "name": "Belt Mechanics - Rear.step",
+          "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Heavy%20Version/MGN15H%20Main%20Mechanics/STEP/Belt%20Mechanics%20-%20Rear.step",
+          "format": "step",
+          "exact": true
+        }
+      ]
+    },
+    "main-mount-top": {
+      "name": "Main Mount Top",
+      "kind": "printed",
+      "count": 1,
+      "files": [
+        {
+          "name": "Belt Mechanics - Front - Multicolor.3mf",
+          "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Heavy%20MGN15/Strength%20Parts/Belt%20Mechanics%20-%20Front%20-%20Multicolor.3mf",
+          "format": "3mf",
+          "exact": true,
+          "category": "strength"
+        },
+        {
+          "name": "Belt Mechanics - Front - Single Color - No Branding.stl",
+          "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Heavy%20MGN15/Strength%20Parts/Belt%20Mechanics%20-%20Front%20-%20Single%20Color%20-%20No%20Branding.stl",
+          "format": "stl",
+          "exact": false,
+          "category": "strength"
+        }
+      ]
+    },
+    "mgn15h-400mm-rail-part-1": {
+      "name": "MGN15H 400mm Rail part 1",
+      "kind": "hardware",
+      "count": 1,
+      "files": []
+    },
+    "mgn15h-400mm-rail-part-2": {
+      "name": "MGN15H 400mm Rail part 2",
+      "kind": "hardware",
+      "count": 1,
+      "files": []
+    },
+    "motor": {
+      "name": "Motor",
+      "kind": "hardware",
+      "count": 1,
+      "files": []
+    },
+    "motor-cover": {
+      "name": "Motor Cover",
+      "kind": "printed",
+      "count": 1,
+      "files": [
+        {
+          "name": "Motor Mount - Spacer Ring.stl",
+          "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Heavy%20MGN15/Decorative%20Parts/Motor%20Mount%20-%20Spacer%20Ring.stl",
+          "format": "stl",
+          "exact": false,
+          "category": "decorative"
+        },
+        {
+          "name": "Motor Mount - Spacer Ring.step",
+          "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Motor%20and%20PCB%20Housing/STEP/Motor%20Mount%20-%20Spacer%20Ring.step",
+          "format": "step",
+          "exact": false
+        }
+      ]
+    },
+    "nut": {
+      "name": "Nut",
+      "kind": "printed",
+      "count": 2,
+      "files": [
+        {
+          "name": "Nut (x2).stl",
+          "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Heavy%20MGN15/Strength%20Parts/Nut%20%28x2%29.stl",
+          "format": "stl",
+          "exact": true,
+          "category": "strength",
+          "quantity": 2
+        },
+        {
+          "name": "Nut.step",
+          "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Heavy%20Version/MGN15H%20Belt%20Clamp%20and%20Toy%20Mount/STEP/Nut.step",
+          "format": "step",
+          "exact": true
+        }
+      ]
+    },
+    "nut-m3": {
+      "name": "M3 hex nut",
+      "kind": "fastener",
+      "count": 6,
+      "files": []
+    },
+    "nut-m5": {
+      "name": "M5 hex nut",
+      "kind": "fastener",
+      "count": 8,
+      "files": []
+    },
+    "ossm-28v-minimal-pcb": {
+      "name": "OSSM 28V Minimal_PCB",
+      "kind": "electronics",
+      "count": 1,
+      "files": []
+    },
+    "pcbholder": {
+      "name": "pcbholder",
+      "kind": "printed",
+      "count": 1,
+      "files": [
+        {
+          "name": "Motor Mount - PCB Holder.stl",
+          "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Heavy%20MGN15/Decorative%20Parts/Motor%20Mount%20-%20PCB%20Holder.stl",
+          "format": "stl",
+          "exact": false,
+          "category": "decorative"
+        }
+      ]
+    },
+    "pinheader-1x03-p2-54mm-vertical": {
+      "name": "PinHeader_1x03_P2.54mm_Vertical",
+      "kind": "electronics",
+      "count": 1,
+      "files": []
+    },
+    "pinheader-1x04-p2-54mm-vertical": {
+      "name": "PinHeader_1x04_P2.54mm_Vertical",
+      "kind": "electronics",
+      "count": 2,
+      "files": []
+    },
+    "precisiondowel": {
+      "name": "precisionDowel",
+      "kind": "fastener",
+      "count": 1,
+      "files": []
+    },
+    "r-0402": {
+      "name": "R_0402",
+      "kind": "electronics",
+      "count": 20,
+      "files": []
+    },
+    "r-0603": {
+      "name": "R_0603",
+      "kind": "electronics",
+      "count": 5,
+      "files": []
+    },
+    "r1206-l3-2-w1-6-h0-6": {
+      "name": "R1206_L3.2-W1.6-H0.6",
+      "kind": "electronics",
+      "count": 1,
+      "files": []
+    },
+    "rear-mount-thread": {
+      "name": "Rear Mount Thread",
+      "kind": "printed",
+      "count": 1,
+      "files": [
+        {
+          "name": "Belt Tensioner.stl",
+          "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Heavy%20MGN15/Strength%20Parts/Belt%20Tensioner.stl",
+          "format": "stl",
+          "exact": true,
+          "category": "strength"
+        },
+        {
+          "name": "Belt Tensioner.step",
+          "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Heavy%20Version/MGN15H%20Belt%20Clamp%20and%20Toy%20Mount/STEP/Belt%20Tensioner.step",
+          "format": "step",
+          "exact": true
+        }
+      ]
+    },
+    "shcs-m3x12": {
+      "name": "SHCS M3x12",
+      "kind": "fastener",
+      "count": 3,
+      "files": []
+    },
+    "shcs-m3x12-mirrored": {
+      "name": "SHCS M3x12 (mirrored)",
+      "kind": "fastener",
+      "count": 2,
+      "files": []
+    },
+    "shcs-m3x16": {
+      "name": "SHCS M3x16",
+      "kind": "fastener",
+      "count": 1,
+      "files": []
+    },
+    "shcs-m3x40": {
+      "name": "SHCS M3x40",
+      "kind": "fastener",
+      "count": 2,
+      "files": []
+    },
+    "shcs-m3x8": {
+      "name": "SHCS M3x8",
+      "kind": "fastener",
+      "count": 2,
+      "files": []
+    },
+    "shcs-m5x16": {
+      "name": "SHCS M5x16",
+      "kind": "fastener",
+      "count": 1,
+      "files": []
+    },
+    "shcs-m5x20": {
+      "name": "SHCS M5x20",
+      "kind": "fastener",
+      "count": 3,
+      "files": []
+    },
+    "shcs-m5x30": {
+      "name": "SHCS M5x30",
+      "kind": "fastener",
+      "count": 6,
+      "files": []
+    },
+    "smbf-l4-3-w3-6-ls5-3-rd": {
+      "name": "SMBF_L4.3-W3.6-LS5.3-RD",
+      "kind": "electronics",
+      "count": 1,
+      "files": []
+    },
+    "soic-8-l5-0-w4-0-p1-27-ls6-0-bl": {
+      "name": "SOIC-8_L5.0-W4.0-P1.27-LS6.0-BL",
+      "kind": "electronics",
+      "count": 2,
+      "files": []
+    },
+    "son-10-l2-0-w2-0-h0-9-p0-40-tl-ep": {
+      "name": "SON-10_L2.0-W2.0-H0.9-P0.40-TL-EP",
+      "kind": "electronics",
+      "count": 1,
+      "files": []
+    },
+    "sot-143-4-l2-9-w1-3-p1-90-ls2-4-bl-1": {
+      "name": "SOT-143-4_L2.9-W1.3-P1.90-LS2.4-BL-1",
+      "kind": "electronics",
+      "count": 2,
+      "files": []
+    },
+    "terminalblock-phoenix-mkds-1-5-2-5-08-1x02-p5-08mm-horizontal": {
+      "name": "TerminalBlock_Phoenix_MKDS-1,5-2-5.08_1x02_P5.08mm_Horizontal",
+      "kind": "electronics",
+      "count": 1,
+      "files": []
+    },
+    "terminalblock-phoenix-mpt-0-5-4-2-54-1x04-p2-54mm-horizontal": {
+      "name": "TerminalBlock_Phoenix_MPT-0,5-4-2.54_1x04_P2.54mm_Horizontal",
+      "kind": "electronics",
+      "count": 1,
+      "files": []
+    },
+    "thread": {
+      "name": "Thread",
+      "kind": "printed",
+      "count": 1,
+      "files": [
+        {
+          "name": "Toy Mount Thread.stl",
+          "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Heavy%20MGN15/Strength%20Parts/Toy%20Mount%20Thread.stl",
+          "format": "stl",
+          "exact": true,
+          "category": "strength"
+        },
+        {
+          "name": "Main Toy Thread.step",
+          "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Heavy%20Version/MGN15H%20Belt%20Clamp%20and%20Toy%20Mount/STEP/Main%20Toy%20Thread.step",
+          "format": "step",
+          "exact": true
+        }
+      ]
+    },
+    "tightener": {
+      "name": "Tightener",
+      "kind": "printed",
+      "count": 2,
+      "files": [
+        {
+          "name": "Belt Clamp (x2).stl",
+          "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Heavy%20MGN15/Strength%20Parts/Belt%20Clamp%20%28x2%29.stl",
+          "format": "stl",
+          "exact": true,
+          "category": "strength",
+          "quantity": 2
+        },
+        {
+          "name": "Clamp.step",
+          "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Heavy%20Version/MGN15H%20Belt%20Clamp%20and%20Toy%20Mount/STEP/Clamp.step",
+          "format": "step",
+          "exact": true
+        }
+      ]
+    },
+    "topcover": {
+      "name": "topcover",
+      "kind": "printed",
+      "count": 1,
+      "files": [
+        {
+          "name": "Motor Mount - Top Cover - Multicolor.3mf",
+          "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Heavy%20MGN15/Decorative%20Parts/Motor%20Mount%20-%20Top%20Cover%20-%20Multicolor.3mf",
+          "format": "3mf",
+          "exact": false,
+          "category": "decorative"
+        },
+        {
+          "name": "Motor Mount - Top Cover - Single Color - No Branding - No LED.stl",
+          "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Heavy%20MGN15/Decorative%20Parts/Motor%20Mount%20-%20Top%20Cover%20-%20Single%20Color%20-%20No%20Branding%20-%20No%20LED.stl",
+          "format": "stl",
+          "exact": false,
+          "category": "decorative"
+        },
+        {
+          "name": "Motor Mount - Top Cover - Single Color - No Branding.stl",
+          "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Heavy%20MGN15/Decorative%20Parts/Motor%20Mount%20-%20Top%20Cover%20-%20Single%20Color%20-%20No%20Branding.stl",
+          "format": "stl",
+          "exact": false,
+          "category": "decorative"
+        }
+      ]
+    },
+    "ts-1088-ar02016": {
+      "name": "TS-1088-AR02016",
+      "kind": "electronics",
+      "count": 2,
+      "files": []
+    },
+    "tssop-8-l4-4-w3-0-p0-65-ls6-4-bl-2": {
+      "name": "TSSOP-8_L4.4-W3.0-P0.65-LS6.4-BL-2",
+      "kind": "electronics",
+      "count": 1,
+      "files": []
+    },
+    "type-c-smd-hx-type-c-16pin": {
+      "name": "TYPE-C-SMD_HX-TYPE-C-16PIN",
+      "kind": "electronics",
+      "count": 2,
+      "files": []
+    },
+    "wifim-smd-61p-l16-6-w13-2-p0-80-esp32-c6-mini-1-n4": {
+      "name": "WIFIM-SMD_61P-L16.6-W13.2-P0.80-ESP32-C6-MINI-1-N4",
+      "kind": "electronics",
+      "count": 1,
+      "files": []
+    }
+  },
+  "belt": {
+    "node": "gt2-belt#1",
+    "plane": {
+      "origin": [
+        -0.01745,
+        0.021,
+        0.0
+      ],
+      "x": [
+        0.0,
+        0.000135,
+        -1.0
+      ],
+      "y": [
+        0.0,
+        1.0,
+        0.000135
+      ],
+      "z": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    "width": 0.015,
+    "thickness": 0.0014,
+    "length": 0.45,
+    "route": [
+      {
+        "anchor": "thread#1",
+        "at": [
+          -0.15675,
+          -0.003
+        ]
+      },
+      {
+        "anchor": "thread#1",
+        "at": [
+          -0.15675,
+          0.002
+        ]
+      },
+      {
+        "anchor": "thread#1",
+        "at": [
+          -0.1575,
+          0.0032
+        ]
+      },
+      {
+        "wrap": [
+          "thread#1"
+        ],
+        "centre": [
+          -0.1545,
+          0.0048
+        ],
+        "radius": 0.003,
+        "ccw": false
+      },
+      {
+        "wrap": [
+          "bearing-625-2rs#1",
+          "bearing-625-2rs#3",
+          "bearing-625-2rs#5"
+        ],
+        "centre": [
+          -0.01401,
+          2e-06
+        ],
+        "radius": 0.008723,
+        "ccw": false
+      },
+      {
+        "wrap": [
+          "gt2-20t-sh8#1"
+        ],
+        "centre": [
+          8e-06,
+          -0.021
+        ],
+        "radius": 0.006365,
+        "ccw": true
+      },
+      {
+        "wrap": [
+          "bearing-625-2rs#2",
+          "bearing-625-2rs#4",
+          "bearing-625-2rs#6"
+        ],
+        "centre": [
+          0.01401,
+          -2e-06
+        ],
+        "radius": 0.008723,
+        "ccw": false
+      },
+      {
+        "wrap": [
+          "rear-mount-thread#1"
+        ],
+        "centre": [
+          0.184,
+          0.0048
+        ],
+        "radius": 0.003,
+        "ccw": false
+      },
+      {
+        "anchor": "rear-mount-thread#1",
+        "at": [
+          0.187,
+          0.0032
+        ]
+      },
+      {
+        "anchor": "rear-mount-thread#1",
+        "at": [
+          0.18625,
+          0.002
+        ]
+      },
+      {
+        "anchor": "rear-mount-thread#1",
+        "at": [
+          0.18625,
+          -0.003
+        ]
+      }
+    ],
+    "leads": {
+      "front": 4,
+      "rear": 4
+    }
+  }
+}

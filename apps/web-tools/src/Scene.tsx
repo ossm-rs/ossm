@@ -11,46 +11,17 @@ import {
   Environment,
   OrbitControls,
   OrthographicCamera,
-  useGLTF,
 } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import {
-  ACESFilmicToneMapping,
-  BufferGeometry,
-  MeshStandardMaterial,
-  Mesh as ThreeMesh,
-  Vector3,
-} from "three";
-import type { Object3D } from "three";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { ACESFilmicToneMapping, Box3, Vector3 } from "three";
 import type { Simulator } from "@ossm-rs/web-simulator";
 import { useAppearance } from "./hooks/useAppearance";
-
-const MODEL_URL = "/models/ossm-alt.gltf";
+import { useOssmModel } from "./model/useOssmModel";
 
 const RAIL_TRAVEL = 0.25;
-
-const purpleMaterial = new MeshStandardMaterial({ color: 0x6a1b9a });
-const railMaterial = new MeshStandardMaterial({
-  color: 0x888888,
-  metalness: 0.8,
-  roughness: 0.2,
-});
-
-function collectGeometries(root: Object3D): BufferGeometry | null {
-  const geometries: BufferGeometry[] = [];
-  root.updateWorldMatrix(true, true);
-  root.traverse((child) => {
-    if ((child as ThreeMesh).isMesh) {
-      const mesh = child as ThreeMesh;
-      const geo = mesh.geometry.clone();
-      geo.applyMatrix4(mesh.matrixWorld);
-      geometries.push(geo);
-    }
-  });
-  if (geometries.length === 0) return null;
-  return mergeGeometries(geometries);
-}
+// The model has the rail at its assembled (centred) position; at full extension
+// it sits this much further out.
+const RAIL_EXTENDED_OFFSET = 0.14;
 
 function Model({
   simulator,
@@ -61,42 +32,29 @@ function Model({
   onOrbitTarget?: (center: Vector3) => void;
   overridePosition?: number | null;
 }) {
-  const { scene } = useGLTF(MODEL_URL);
-  const railRef = useRef<ThreeMesh>(null);
+  const scene = useOssmModel();
 
-  const { housingGeo, railGeo } = useMemo(() => {
-    const housingNode = scene.getObjectByName("housing");
-    const railNode = scene.getObjectByName("rail");
-    const hGeo = housingNode ? collectGeometries(housingNode) : null;
-
-    if (hGeo) {
-      hGeo.computeBoundingBox();
+  const rail = useMemo(() => {
+    const housing = scene.getObjectByName("housing");
+    if (housing) {
       const center = new Vector3();
-      hGeo.boundingBox!.getCenter(center);
+      new Box3().setFromObject(housing).getCenter(center);
       onOrbitTarget?.(center);
     }
-
-    return {
-      housingGeo: hGeo,
-      railGeo: railNode ? collectGeometries(railNode) : null,
-    };
+    // The belt is modelled in its assembled shape; it can't follow the stroke.
+    const belt = scene.getObjectByName("belt");
+    if (belt) belt.visible = false;
+    return scene.getObjectByName("rail") ?? null;
   }, [scene, onOrbitTarget]);
 
   useFrame(() => {
-    if (railRef.current) {
-      const pos = overridePosition != null ? overridePosition : simulator.get_position();
-      railRef.current.position.z = -(1 - pos) * RAIL_TRAVEL;
-    }
+    if (!rail) return;
+    const pos =
+      overridePosition != null ? overridePosition : simulator.get_position();
+    rail.position.z = RAIL_EXTENDED_OFFSET - (1 - pos) * RAIL_TRAVEL;
   });
 
-  return (
-    <>
-      {housingGeo && <mesh geometry={housingGeo} material={purpleMaterial} />}
-      {railGeo && (
-        <mesh ref={railRef} geometry={railGeo} material={railMaterial} />
-      )}
-    </>
-  );
+  return <primitive object={scene} />;
 }
 
 export interface SceneHandle {

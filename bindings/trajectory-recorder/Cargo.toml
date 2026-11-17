@@ -14,7 +14,7 @@ crate-type = ["cdylib"]
 ossm = { path = "../../ossm/core", features = ["sim"] }
 pattern-engine = { path = "../../ossm/crates/pattern-engine" }
 
-wasm-bindgen = "=0.2.118"
+wasm-bindgen = "=0.2.121"
 embedded-hal-async = "1.0"
 embassy-time = { version = "0.5.1", features = ["wasm", "generic-queue-32"] }
 critical-section = { version = "1.2", features = ["std"] }

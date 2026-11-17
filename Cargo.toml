@@ -1,6 +1,8 @@
 [workspace]
 resolver = "3"
 members = ["ossm/core", "ossm/drivers/*", "ossm/boards/*", "ossm/crates/*", "tools/*"]
+# tools/cad is a Python (uv) project, not a crate.
+exclude = ["tools/cad"]
 
 [profile.dev]
 opt-level = "s"

@@ -88,8 +88,21 @@
           fi
           exec ${pkgs.gh}/bin/gh "$@"
         '';
+
+        # Shared libs the cadquery-ocp/vtk wheels dlopen. Exposed via a
+        # dedicated var (not LD_LIBRARY_PATH) so only the CAD recipes see them.
+        cadLibPath = pkgs.lib.makeLibraryPath (with pkgs; [
+          libGL
+          libx11
+          libxrender
+          expat
+          zlib
+          stdenv.cc.cc.lib
+        ]);
       in {
         devShells.default = pkgs.mkShell {
+          OSSM_CAD_LD_LIBRARY_PATH = cadLibPath;
+
           packages = with pkgs; [
             just
 
@@ -106,6 +119,9 @@
 
             jq
             gh-local
+
+            # CAD tooling (tools/cad): uv manages Python + OCP wheels
+            uv
 
             # Editor
             codium-local

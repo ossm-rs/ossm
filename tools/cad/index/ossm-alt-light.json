@@ -1,0 +1,3898 @@
+{
+  "schema": 1,
+  "variant": "ossm-alt-light",
+  "title": "OSSM ALT Edition: Light (MGN12H)",
+  "source": {
+    "repo": "https://github.com/jollydodo/OSSM-ALT-Edition",
+    "commit": "3d58b9e3bdfebabb69f2b715e4aa67881035d217",
+    "assembly": "Hardware-Design/Complete Assembly/OSSM ALT Edition Light MGN12.step"
+  },
+  "units": "mm",
+  "duplicates_dropped": 88,
+  "parts": {
+    "25mm-lower": {
+      "name": "25mm lower",
+      "upstream": [
+        "lower"
+      ],
+      "count": 1,
+      "size": [5.0, 5.0, 25.0],
+      "fingerprint": {
+        "volume": 487.209,
+        "area": 422.117,
+        "moments": [1513.87, 25766.0, 25766.0]
+      },
+      "kind": "hardware",
+      "print_files": [],
+      "holes": []
+    },
+    "3030-100mm": {
+      "name": "3030 100mm",
+      "upstream": [
+        "3030 100mm v2"
+      ],
+      "count": 1,
+      "size": [30.0, 30.0, 100.0],
+      "fingerprint": {
+        "volume": 30913.1,
+        "area": 33919.8,
+        "moments": [5359370.0, 28440600.0, 28440600.0]
+      },
+      "kind": "hardware",
+      "print_files": [],
+      "holes": []
+    },
+    "57aim-clamp": {
+      "name": "57AIM Clamp",
+      "upstream": [
+        "57AIM Clamp"
+      ],
+      "count": 1,
+      "size": [91.7, 80.1, 52.7],
+      "fingerprint": {
+        "volume": 68697.1,
+        "area": 32758.9,
+        "moments": [59556500.0, 61598800.0, 91695100.0]
+      },
+      "kind": "printed",
+      "print_files": [
+        "Hardware-Design/Motor and PCB Housing/STEP/Motor Mount - Main Motor Clamp.step",
+        "Hardware-Design/Motor and PCB Housing/STL/Motor Mount - Main Clamp.stl",
+        "Print-Files/Light MGN12/Strength Parts/Motor Mount - Main Clamp.stl"
+      ],
+      "holes": [
+        "+Y: Ø2.00 bore 1.2mm → Ø2.00 bore 1.2mm",
+        "2× +Z: Ø3.30 bore 10.0mm → Ø3.30 bore 5.0mm  [M3 clearance]",
+        "4× +Z: Ø5.20 bore 12.3mm  [M5 clearance / Ø5 pin]"
+      ]
+    },
+    "bearing-625-2rs": {
+      "name": "Bearing 625 2RS",
+      "upstream": [
+        "Bearing 625 2RS v1"
+      ],
+      "count": 6,
+      "size": [16.0, 16.0, 5.0],
+      "fingerprint": {
+        "volume": 889.857,
+        "area": 1274.31,
+        "moments": [17447.3, 17447.3, 31322.4]
+      },
+      "kind": "hardware",
+      "print_files": [],
+      "holes": []
+    },
+    "c-0402": {
+      "name": "C_0402",
+      "upstream": [
+        "C_0402"
+      ],
+      "count": 10,
+      "size": [1.0, 0.5, 0.5],
+      "fingerprint": {
+        "volume": 0.226617,
+        "area": 2.44578,
+        "moments": [0.00860659, 0.0244168, 0.0244168]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "c-0603": {
+      "name": "C_0603",
+      "upstream": [
+        "C_0603"
+      ],
+      "count": 3,
+      "size": [1.6, 0.8, 0.8],
+      "fingerprint": {
+        "volume": 0.930364,
+        "area": 6.26085,
+        "moments": [0.0905902, 0.255785, 0.255785]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "c-0805": {
+      "name": "C_0805",
+      "upstream": [
+        "C_0805"
+      ],
+      "count": 2,
+      "size": [2.0, 1.3, 1.3],
+      "fingerprint": {
+        "volume": 2.88993,
+        "area": 12.9881,
+        "moments": [0.69837, 1.36206, 1.36206]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "c-1206": {
+      "name": "C_1206",
+      "upstream": [
+        "C_1206"
+      ],
+      "count": 4,
+      "size": [3.2, 1.6, 1.6],
+      "fingerprint": {
+        "volume": 7.58856,
+        "area": 25.1087,
+        "moments": [3.0039, 8.20117, 8.20117]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "cap-smd-bd10-0-l10-3-w10-3-ls11-3-fd": {
+      "name": "CAP-SMD_BD10.0-L10.3-W10.3-LS11.3-FD",
+      "upstream": [
+        "CAP-SMD_BD10.0-L10.3-W10.3-LS11.3-FD"
+      ],
+      "count": 2,
+      "size": [11.0, 10.4, 10.1],
+      "fingerprint": {
+        "volume": 813.495,
+        "area": 584.657,
+        "moments": [10731.6, 12446.2, 12475.8]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "cover": {
+      "name": "Cover",
+      "upstream": [
+        "Cover"
+      ],
+      "count": 1,
+      "size": [35.0, 22.1, 35.0],
+      "fingerprint": {
+        "volume": 9344.83,
+        "area": 5186.98,
+        "moments": [1174310.0, 1174320.0, 1523890.0]
+      },
+      "kind": "printed",
+      "print_files": [
+        "Hardware-Design/Light Version/MGN12H Belt Clamp and Toy Mount/STEP/Belt Tension Cover.step",
+        "Hardware-Design/Light Version/MGN12H Belt Clamp and Toy Mount/STL/Belt Tension Cover.stl",
+        "Print-Files/Light MGN12/Decorative Parts/Belt Tension Cover.stl"
+      ],
+      "holes": [
+        "+Y: Ø10.00 bore 6.5mm → Ø24.35 bore 15.0mm  [M5 head counterbore]"
+      ]
+    },
+    "d-0603": {
+      "name": "D_0603",
+      "upstream": [
+        "D_0603"
+      ],
+      "count": 1,
+      "size": [1.6, 0.8, 1.1],
+      "fingerprint": {
+        "volume": 1.02844,
+        "area": 6.98458,
+        "moments": [0.154394, 0.200973, 0.24198]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "d-0805": {
+      "name": "D_0805",
+      "upstream": [
+        "D_0805"
+      ],
+      "count": 1,
+      "size": [2.0, 1.3, 1.1],
+      "fingerprint": {
+        "volume": 2.04528,
+        "area": 10.9942,
+        "moments": [0.468025, 0.652356, 0.732305]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "d-sma": {
+      "name": "D_SMA",
+      "upstream": [
+        "D_SMA"
+      ],
+      "count": 2,
+      "size": [5.0, 2.7, 2.2],
+      "fingerprint": {
+        "volume": 26.19,
+        "area": 62.2219,
+        "moments": [24.7404, 56.1261, 60.4057]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "d-sod-123fl": {
+      "name": "D_SOD-123FL",
+      "upstream": [
+        "D_SOD-123FL"
+      ],
+      "count": 2,
+      "size": [3.5, 1.6, 1.1],
+      "fingerprint": {
+        "volume": 4.44449,
+        "area": 18.3034,
+        "moments": [1.32208, 3.06844, 3.48264]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "d-sod-323": {
+      "name": "D_SOD-323",
+      "upstream": [
+        "D_SOD-323"
+      ],
+      "count": 1,
+      "size": [2.5, 1.3, 1.1],
+      "fingerprint": {
+        "volume": 1.98815,
+        "area": 10.6728,
+        "moments": [0.37976, 0.665537, 0.726525]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "degsonplug": {
+      "name": "DegsonPlug",
+      "upstream": [
+        "DegsonPlug"
+      ],
+      "count": 1,
+      "size": [15.6, 32.7, 11.1],
+      "fingerprint": {
+        "volume": 2753.7,
+        "area": 2549.19,
+        "moments": [54454.8, 205435.0, 219524.0]
+      },
+      "kind": "hardware",
+      "print_files": [],
+      "holes": [
+        "6× +X: Ø2.00 bore 1.0mm"
+      ]
+    },
+    "dogbone-left": {
+      "name": "Dogbone Left",
+      "upstream": [
+        "Dogbone Left"
+      ],
+      "count": 1,
+      "size": [38.9, 31.8, 6.1],
+      "fingerprint": {
+        "volume": 2277.47,
+        "area": 1554.98,
+        "moments": [30190.1, 388164.0, 407103.0]
+      },
+      "kind": "printed",
+      "print_files": [
+        "Hardware-Design/Alternative Pitclamp Mini Mount/STEP/Dogbone.step",
+        "Hardware-Design/Alternative Pitclamp Mini Mount/STL/Dogbone (x2).stl"
+      ],
+      "holes": []
+    },
+    "dogbone-right": {
+      "name": "Dogbone Right",
+      "upstream": [
+        "Dogbone Right"
+      ],
+      "count": 1,
+      "size": [38.9, 31.8, 6.1],
+      "fingerprint": {
+        "volume": 2277.47,
+        "area": 1554.98,
+        "moments": [30190.1, 388164.0, 407103.0]
+      },
+      "kind": "printed",
+      "print_files": [
+        "Hardware-Design/Alternative Pitclamp Mini Mount/STEP/Dogbone.step",
+        "Hardware-Design/Alternative Pitclamp Mini Mount/STL/Dogbone (x2).stl"
+      ],
+      "holes": []
+    },
+    "dowels-16mm": {
+      "name": "Dowels 16mm",
+      "upstream": [
+        "16mm"
+      ],
+      "count": 1,
+      "size": [5.0, 5.0, 16.0],
+      "fingerprint": {
+        "volume": 310.494,
+        "area": 280.745,
+        "moments": [961.642, 6958.1, 6958.1]
+      },
+      "kind": "fastener",
+      "print_files": []
+    },
+    "dowels-25mm": {
+      "name": "Dowels 25mm",
+      "upstream": [
+        "COMPOUND"
+      ],
+      "count": 1,
+      "size": [29.9, 22.8, 25.0],
+      "fingerprint": {
+        "volume": 974.417,
+        "area": 844.234,
+        "moments": [51532.0, 229641.0, 278145.0]
+      },
+      "kind": "fastener",
+      "print_files": []
+    },
+    "gt2-20t-sh8": {
+      "name": "GT2_20T-sh8",
+      "upstream": [
+        "GT2_20T-sh8 v3"
+      ],
+      "count": 1,
+      "size": [25.1, 16.1, 16.1],
+      "fingerprint": {
+        "volume": 2093.75,
+        "area": 2552.5,
+        "moments": [70149.1, 159950.0, 159958.0]
+      },
+      "kind": "hardware",
+      "print_files": [],
+      "holes": []
+    },
+    "handle": {
+      "name": "Handle",
+      "upstream": [
+        "Handle"
+      ],
+      "count": 1,
+      "size": [79.4, 19.4, 16.1],
+      "fingerprint": {
+        "volume": 11385.2,
+        "area": 4624.26,
+        "moments": [442505.0, 5149980.0, 5210620.0]
+      },
+      "kind": "printed",
+      "print_files": [
+        "Hardware-Design/Alternative Pitclamp Mini Mount/STEP/Handle.step",
+        "Hardware-Design/Alternative Pitclamp Mini Mount/STL/Handle.stl"
+      ],
+      "holes": [
+        "+Z: Ø5.30 bore 15.5mm  [M5 clearance / Ø5 pin]"
+      ]
+    },
+    "ind-smd-l7-2-w6-6-h3-0-gpsr0730": {
+      "name": "IND-SMD_L7.2-W6.6-H3.0_GPSR0730",
+      "upstream": [
+        "IND-SMD_L7.2-W6.6-H3.0_GPSR0730"
+      ],
+      "count": 1,
+      "size": [7.2, 6.6, 3.0],
+      "fingerprint": {
+        "volume": 124.247,
+        "area": 237.138,
+        "moments": [529.954, 548.047, 906.103]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "jst-sm04b-srss-tb": {
+      "name": "JST SM04B-SRSS-TB",
+      "upstream": [
+        "JST SM04B-SRSS-TB"
+      ],
+      "count": 1,
+      "size": [6.0, 3.0, 5.0],
+      "fingerprint": {
+        "volume": 44.0376,
+        "area": 163.833,
+        "moments": [107.143, 197.429, 224.978]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "led-ws2812b-plcc4-5-0x5-0mm-p3-2mm": {
+      "name": "LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm",
+      "upstream": [
+        "LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm"
+      ],
+      "count": 1,
+      "size": [5.4, 5.0, 1.6],
+      "fingerprint": {
+        "volume": 34.2263,
+        "area": 91.2435,
+        "moments": [81.6247, 84.3304, 154.504]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "ledcover": {
+      "name": "ledCover",
+      "upstream": [
+        "ledCover"
+      ],
+      "count": 1,
+      "size": [4.5, 27.0, 19.0],
+      "fingerprint": {
+        "volume": 1142.79,
+        "area": 958.213,
+        "moments": [21932.9, 36244.0, 54505.5]
+      },
+      "kind": "printed",
+      "print_files": [
+        "Hardware-Design/Motor and PCB Housing/STL/Motor Mount - Transparant LED Cover.stl",
+        "Print-Files/Light MGN12/Decorative Parts/Motor Mount - Transparant LED Cover.stl"
+      ],
+      "holes": []
+    },
+    "lower": {
+      "name": "Lower",
+      "upstream": [
+        "Lower"
+      ],
+      "count": 1,
+      "size": [105.7, 97.8, 28.1],
+      "fingerprint": {
+        "volume": 66956.7,
+        "area": 17063.3,
+        "moments": [30718700.0, 64234300.0, 86707400.0]
+      },
+      "kind": "printed",
+      "print_files": [
+        "Hardware-Design/Alternative Pitclamp Mini Mount/STEP/Lower.step",
+        "Hardware-Design/Alternative Pitclamp Mini Mount/STL/Lower.stl"
+      ],
+      "holes": [
+        "+Y: Ø9.00 bore 5.0mm → Ø5.30 bore 12.0mm  [M5 clearance / Ø5 pin, M5 head counterbore]",
+        "+Y: Ø9.00 bore 7.1mm → Ø5.30 bore 12.0mm  [M5 clearance / Ø5 pin, M5 head counterbore]",
+        "+Z: Ø3.00 bore 2.5mm → Ø5.20 bore 5.4mm → Ø5.20 bore 5.4mm  [M3 clearance, M5 clearance / Ø5 pin]"
+      ]
+    },
+    "main-mount-motor-side": {
+      "name": "Main Mount Motor Side",
+      "upstream": [
+        "SOLID"
+      ],
+      "count": 1,
+      "size": [17.5, 80.1, 98.2],
+      "fingerprint": {
+        "volume": 53963.0,
+        "area": 22023.0,
+        "moments": [30290000.0, 48446100.0, 76757900.0]
+      },
+      "kind": "printed",
+      "print_files": [
+        "Hardware-Design/Light Version/MGN12H Main Mechanics/STEP/Belt Mechanics - Rear.step",
+        "Hardware-Design/Light Version/MGN12H Main Mechanics/STL/Belt Mechanics - Rear.stl",
+        "Print-Files/Light MGN12/Strength Parts/Belt Mechanics - Rear.stl"
+      ],
+      "holes": [
+        "2× +X: Ø5.30 bore 4.8mm → Ø5.30 bore 5.5mm  [M5 clearance / Ø5 pin]",
+        "2× +X: Ø9.00 bore 13.8mm → Ø5.70 bore 3.0mm  [M5 clearance / Ø5 pin, M5 head counterbore]",
+        "+X: Ø9.00 bore 5.0mm → Ø5.30 bore 3.0mm  [M5 clearance / Ø5 pin, M5 head counterbore]",
+        "+X: Ø9.00 bore 5.0mm → Ø5.70 bore 3.0mm  [M5 clearance / Ø5 pin, M5 head counterbore]",
+        "2× +Z: Ø3.30 bore 8.6mm → Ø5.50 bore 3.5mm  [M3 clearance, M5 clearance / Ø5 pin]"
+      ]
+    },
+    "main-mount-top": {
+      "name": "Main Mount Top",
+      "upstream": [
+        "COMPOUND"
+      ],
+      "count": 1,
+      "size": [22.6, 81.1, 99.3],
+      "fingerprint": {
+        "volume": 72645.6,
+        "area": 30716.2,
+        "moments": [39508200.0, 56214200.0, 91731000.0]
+      },
+      "kind": "printed",
+      "print_files": [
+        "Hardware-Design/Light Version/MGN12H Main Mechanics/STEP/Belt Mechanics - Front.step",
+        "Hardware-Design/Light Version/MGN12H Main Mechanics/STL/Belt Mechanics - Front - Multicolor.3mf",
+        "Hardware-Design/Light Version/MGN12H Main Mechanics/STL/Belt Mechanics - Front - Single - Nobranding.stl",
+        "Print-Files/Light MGN12/Strength Parts/Belt Mechanics - Front - Multicolor.3mf",
+        "Print-Files/Light MGN12/Strength Parts/Belt Mechanics - Front - Single - Nobranding.stl"
+      ],
+      "holes": [
+        "2× +X: Ø5.30 bore 16.0mm → Ø9.00 bore 5.0mm  [M5 clearance / Ø5 pin, M5 head counterbore]",
+        "2× +Z: Ø5.50 bore 3.5mm → Ø3.30 bore 8.6mm  [M3 clearance, M5 clearance / Ø5 pin]"
+      ]
+    },
+    "mgn12h-400mm-rail-part-1": {
+      "name": "MGN12H 400mm Rail part 1",
+      "upstream": [
+        "2025_11_20_10_33_05_0613"
+      ],
+      "count": 1,
+      "size": [12.0, 400.0, 8.0],
+      "fingerprint": {
+        "volume": 34258.7,
+        "area": 20029.3,
+        "moments": [592137.0, 457088000.0, 457304000.0]
+      },
+      "kind": "hardware",
+      "print_files": [],
+      "holes": [
+        "16× +Z: Ø3.50 bore 3.5mm → Ø6.00 bore 4.0mm → Ø6.00 bore 0.0mm  [M3 clearance, M3 head counterbore]"
+      ]
+    },
+    "mgn12h-400mm-rail-part-2": {
+      "name": "MGN12H 400mm Rail part 2",
+      "upstream": [
+        "2025_11_20_10_33_05_0617"
+      ],
+      "count": 1,
+      "size": [27.1, 46.5, 10.1],
+      "fingerprint": {
+        "volume": 9140.66,
+        "area": 4546.33,
+        "moments": [743689.0, 1547460.0, 2152730.0]
+      },
+      "kind": "hardware",
+      "print_files": [],
+      "holes": [
+        "+Y: Ø2.40 bore 0.5mm (180°) → Ø2.30 bore 0.5mm → Ø2.30 bore 0.5mm → Ø2.40 bore 0.5mm (180°)  [M3 tap/self-thread]",
+        "2× +Y: Ø3.50 bore 0.5mm → Ø2.50 bore 0.5mm → Ø3.50 bore 0.5mm  [M3 tap/self-thread, M3 clearance]",
+        "4× +Z: Ø2.50 bore 3.5mm  [M3 tap/self-thread]"
+      ]
+    },
+    "motor": {
+      "name": "Motor",
+      "upstream": [
+        "Motor"
+      ],
+      "count": 1,
+      "size": [58.6, 57.0, 98.0],
+      "fingerprint": {
+        "volume": 206873.0,
+        "area": 39834.3,
+        "moments": [94624600.0, 141117000.0, 142278000.0]
+      },
+      "kind": "hardware",
+      "print_files": [],
+      "holes": [
+        "6× +X: Ø1.25 bore 2.0mm",
+        "2× +Z: Ø3.00 bore 2.0mm  [M3 clearance]",
+        "4× +Z: Ø5.20 bore 5.8mm  [M5 clearance / Ø5 pin]"
+      ]
+    },
+    "motor-cover": {
+      "name": "Motor Cover",
+      "upstream": [
+        "SOLID"
+      ],
+      "count": 1,
+      "size": [28.1, 80.1, 91.7],
+      "fingerprint": {
+        "volume": 26996.0,
+        "area": 17762.0,
+        "moments": [19929700.0, 24902900.0, 42085900.0]
+      },
+      "kind": "printed",
+      "print_files": [
+        "Hardware-Design/Motor and PCB Housing/STEP/Motor Mount - Spacer Ring.step",
+        "Hardware-Design/Motor and PCB Housing/STL/Motor Mount - Spacer Ring.stl",
+        "Print-Files/Light MGN12/Decorative Parts/Motor Mount - Spacer Ring.stl"
+      ],
+      "holes": [
+        "+X: Ø3.30 bore 2.5mm → Ø3.30 bore 1.4mm  [M3 clearance]",
+        "2× +X: Ø3.30 bore 21.2mm  [M3 clearance]",
+        "+Z: Ø2.00 bore 2.2mm"
+      ]
+    },
+    "nut": {
+      "name": "Nut",
+      "upstream": [
+        "Nut"
+      ],
+      "count": 2,
+      "size": [44.1, 10.3, 44.1],
+      "fingerprint": {
+        "volume": 7799.61,
+        "area": 4976.71,
+        "moments": [1302280.0, 1302560.0, 2485140.0]
+      },
+      "kind": "printed",
+      "print_files": [
+        "Hardware-Design/Light Version/MGN12H Belt Clamp and Toy Mount/STEP/Nut.step",
+        "Hardware-Design/Light Version/MGN12H Belt Clamp and Toy Mount/STL/Nut (x2).stl",
+        "Print-Files/Light MGN12/Strength Parts/Nut (x2).stl"
+      ],
+      "holes": [
+        "+Y: Ø24.55 bore 5.0mm → Ø21.00 bore 5.0mm → Ø33.50 bore 5.2mm"
+      ]
+    },
+    "ossm-28v-minimal-pcb": {
+      "name": "OSSM 28V Minimal_PCB",
+      "upstream": [
+        "OSSM 28V Minimal_PCB"
+      ],
+      "count": 1,
+      "size": [55.0, 46.0, 1.5],
+      "fingerprint": {
+        "volume": 3340.6,
+        "area": 4902.33,
+        "moments": [467648.0, 854275.0, 1320650.0]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "pcbholder": {
+      "name": "pcbholder",
+      "upstream": [
+        "pcbholder"
+      ],
+      "count": 1,
+      "size": [9.3, 76.6, 87.2],
+      "fingerprint": {
+        "volume": 16730.0,
+        "area": 12468.1,
+        "moments": [5382830.0, 8389500.0, 13694800.0]
+      },
+      "kind": "printed",
+      "print_files": [
+        "Hardware-Design/Motor and PCB Housing/STL/Motor Mount - PCB Holder.stl",
+        "Print-Files/Light MGN12/Decorative Parts/Motor Mount - PCB Holder.stl"
+      ],
+      "holes": [
+        "5× +X: Ø3.30 bore 3.0mm  [M3 clearance]"
+      ]
+    },
+    "pinheader-1x03-p2-54mm-vertical": {
+      "name": "PinHeader_1x03_P2.54mm_Vertical",
+      "upstream": [
+        "PinHeader_1x03_P2.54mm_Vertical"
+      ],
+      "count": 1,
+      "size": [2.5, 7.6, 11.5],
+      "fingerprint": {
+        "volume": 59.0733,
+        "area": 157.6,
+        "moments": [225.712, 304.908, 479.79]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "pinheader-1x04-p2-54mm-vertical": {
+      "name": "PinHeader_1x04_P2.54mm_Vertical",
+      "upstream": [
+        "PinHeader_1x04_P2.54mm_Vertical"
+      ],
+      "count": 2,
+      "size": [2.5, 10.2, 11.5],
+      "fingerprint": {
+        "volume": 78.7644,
+        "area": 206.693,
+        "moments": [300.949, 702.969, 936.145]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "precisiondowel": {
+      "name": "precisionDowel",
+      "upstream": [
+        "precisionDowel"
+      ],
+      "count": 1,
+      "size": [5.0, 33.1, 30.0],
+      "fingerprint": {
+        "volume": 1150.87,
+        "area": 979.006,
+        "moments": [84283.8, 229442.0, 310177.0]
+      },
+      "kind": "fastener",
+      "print_files": []
+    },
+    "r-0402": {
+      "name": "R_0402",
+      "upstream": [
+        "R_0402"
+      ],
+      "count": 20,
+      "size": [1.0, 0.5, 0.4],
+      "fingerprint": {
+        "volume": 0.163448,
+        "area": 2.04871,
+        "moments": [0.00488393, 0.0155699, 0.0174963]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "r-0603": {
+      "name": "R_0603",
+      "upstream": [
+        "R_0603"
+      ],
+      "count": 5,
+      "size": [1.6, 0.8, 0.5],
+      "fingerprint": {
+        "volume": 0.537219,
+        "area": 4.71544,
+        "moments": [0.0366617, 0.12666, 0.147302]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "r1206-l3-2-w1-6-h0-6": {
+      "name": "R1206_L3.2-W1.6-H0.6",
+      "upstream": [
+        "R1206_L3.2-W1.6-H0.6"
+      ],
+      "count": 1,
+      "size": [3.2, 1.6, 0.6],
+      "fingerprint": {
+        "volume": 4.8049,
+        "area": 36.5809,
+        "moments": [1.02143, 4.11763, 4.9286]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "rear-mount-mgn12h-thread": {
+      "name": "Rear Mount MGN12H Thread",
+      "upstream": [
+        "SOLID"
+      ],
+      "count": 1,
+      "size": [33.2, 33.2, 25.7],
+      "fingerprint": {
+        "volume": 12050.3,
+        "area": 5614.17,
+        "moments": [1160670.0, 1652440.0, 1859620.0]
+      },
+      "kind": "printed",
+      "print_files": [
+        "Hardware-Design/Light Version/MGN12H Belt Clamp and Toy Mount/STEP/Belt Tensioner.step",
+        "Hardware-Design/Light Version/MGN12H Belt Clamp and Toy Mount/STL/Belt Tensioner.stl",
+        "Print-Files/Light MGN12/Strength Parts/Belt Tensioner.stl"
+      ],
+      "holes": []
+    },
+    "shcs-m3x12": {
+      "name": "SHCS M3x12",
+      "upstream": [
+        "Broached Hexagon Socket Head Cap Screw ANSI B18.3.1M - M3x0.5 x 12 Steel Grade 2 Plain v2"
+      ],
+      "count": 5,
+      "size": [5.5, 5.5, 15.0],
+      "fingerprint": {
+        "volume": 143.091,
+        "area": 218.976,
+        "moments": [345.937, 3092.99, 3092.99]
+      },
+      "kind": "fastener",
+      "print_files": []
+    },
+    "shcs-m3x40": {
+      "name": "SHCS M3x40",
+      "upstream": [
+        "Broached Hexagon Socket Head Cap Screw ANSI B18.3.1M - M3x0.5 x 40 Steel Grade 2 Plain v1"
+      ],
+      "count": 2,
+      "size": [5.5, 5.5, 43.0],
+      "fingerprint": {
+        "volume": 331.497,
+        "area": 476.449,
+        "moments": [547.704, 59300.5, 59300.5]
+      },
+      "kind": "fastener",
+      "print_files": []
+    },
+    "shcs-m5x20": {
+      "name": "SHCS M5x20",
+      "upstream": [
+        "Broached Hexagon Socket Head Cap Screw ANSI B18.3.1M - M5x0.8 x 20 Steel Grade 2 Plain v2"
+      ],
+      "count": 3,
+      "size": [8.5, 8.5, 25.0],
+      "fingerprint": {
+        "volume": 622.904,
+        "area": 579.799,
+        "moments": [3586.42, 37212.8, 37212.8]
+      },
+      "kind": "fastener",
+      "print_files": []
+    },
+    "shcs-m5x30": {
+      "name": "SHCS M5x30",
+      "upstream": [
+        "Broached Hexagon Socket Head Cap Screw ANSI B18.3.1M - M5x0.8 x 30 Steel Grade 2 Plain v2"
+      ],
+      "count": 6,
+      "size": [8.5, 8.5, 35.0],
+      "fingerprint": {
+        "volume": 811.555,
+        "area": 733.769,
+        "moments": [4152.84, 96020.3, 96020.3]
+      },
+      "kind": "fastener",
+      "print_files": []
+    },
+    "smbf-l4-3-w3-6-ls5-3-rd": {
+      "name": "SMBF_L4.3-W3.6-LS5.3-RD",
+      "upstream": [
+        "SMBF_L4.3-W3.6-LS5.3-RD"
+      ],
+      "count": 1,
+      "size": [5.4, 3.6, 2.1],
+      "fingerprint": {
+        "volume": 32.2697,
+        "area": 75.5047,
+        "moments": [41.6336, 70.9486, 91.6079]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "soic-8-l5-0-w4-0-p1-27-ls6-0-bl": {
+      "name": "SOIC-8_L5.0-W4.0-P1.27-LS6.0-BL",
+      "upstream": [
+        "SOIC-8_L5.0-W4.0-P1.27-LS6.0-BL"
+      ],
+      "count": 2,
+      "size": [4.9, 6.1, 1.8],
+      "fingerprint": {
+        "volume": 31.7255,
+        "area": 77.9375,
+        "moments": [50.2497, 68.0294, 103.591]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "son-10-l2-0-w2-0-h0-9-p0-40-tl-ep": {
+      "name": "SON-10_L2.0-W2.0-H0.9-P0.40-TL-EP",
+      "upstream": [
+        "SON-10_L2.0-W2.0-H0.9-P0.40-TL-EP"
+      ],
+      "count": 1,
+      "size": [2.0, 2.0, 0.9],
+      "fingerprint": {
+        "volume": 3.27416,
+        "area": 14.8318,
+        "moments": [1.25651, 1.26391, 2.15107]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "sot-143-4-l2-9-w1-3-p1-90-ls2-4-bl-1": {
+      "name": "SOT-143-4_L2.9-W1.3-P1.90-LS2.4-BL-1",
+      "upstream": [
+        "SOT-143-4_L2.9-W1.3-P1.90-LS2.4-BL-1"
+      ],
+      "count": 2,
+      "size": [2.9, 2.4, 1.0],
+      "fingerprint": {
+        "volume": 3.57578,
+        "area": 19.6289,
+        "moments": [0.919044, 2.73039, 3.16259]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "terminalblock-phoenix-mkds-1-5-2-5-08-1x02-p5-08mm-horizontal": {
+      "name": "TerminalBlock_Phoenix_MKDS-1,5-2-5.08_1x02_P5.08mm_Horizontal",
+      "upstream": [
+        "TerminalBlock_Phoenix_MKDS-1,5-2-5.08_1x02_P5.08mm_Horizontal"
+      ],
+      "count": 1,
+      "size": [10.9, 9.8, 17.3],
+      "fingerprint": {
+        "volume": 1018.36,
+        "area": 1355.39,
+        "moments": [15296.1, 21992.5, 24582.5]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "terminalblock-phoenix-mpt-0-5-4-2-54-1x04-p2-54mm-horizontal": {
+      "name": "TerminalBlock_Phoenix_MPT-0,5-4-2.54_1x04_P2.54mm_Horizontal",
+      "upstream": [
+        "TerminalBlock_Phoenix_MPT-0,5-4-2.54_1x04_P2.54mm_Horizontal"
+      ],
+      "count": 1,
+      "size": [10.6, 6.2, 12.0],
+      "fingerprint": {
+        "volume": 397.762,
+        "area": 854.92,
+        "moments": [3282.17, 4760.78, 6135.42]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "thread": {
+      "name": "Thread",
+      "upstream": [
+        "SOLID"
+      ],
+      "count": 1,
+      "size": [33.2, 53.2, 25.7],
+      "fingerprint": {
+        "volume": 16621.4,
+        "area": 8715.36,
+        "moments": [1522110.0, 4990880.0, 5220270.0]
+      },
+      "kind": "printed",
+      "print_files": [
+        "Hardware-Design/Light Version/MGN12H Belt Clamp and Toy Mount/STEP/Toy Mount Thread.step",
+        "Hardware-Design/Light Version/MGN12H Belt Clamp and Toy Mount/STL/Toy Mount Thread.stl",
+        "Print-Files/Light MGN12/Strength Parts/Toy Mount Thread.stl"
+      ],
+      "holes": [
+        "[0.707, -0.000, -0.707]: Ø5.50 bore 5.1mm → Ø3.30 bore 1.5mm → Ø3.30 bore 1.5mm  [M3 clearance, M5 clearance / Ø5 pin]"
+      ]
+    },
+    "tightener": {
+      "name": "Tightener",
+      "upstream": [
+        "Tightener"
+      ],
+      "count": 2,
+      "size": [33.1, 13.1, 33.1],
+      "fingerprint": {
+        "volume": 2728.06,
+        "area": 2230.18,
+        "moments": [230689.0, 291084.0, 465481.0]
+      },
+      "kind": "printed",
+      "print_files": [
+        "Hardware-Design/Light Version/MGN12H Belt Clamp and Toy Mount/STEP/Belt Clamp.step",
+        "Hardware-Design/Light Version/MGN12H Belt Clamp and Toy Mount/STL/Belt Clamp (x2).stl",
+        "Print-Files/Light MGN12/Strength Parts/Belt Clamp (x2).stl"
+      ],
+      "holes": []
+    },
+    "topcover": {
+      "name": "topcover",
+      "upstream": [
+        "COMPOUND"
+      ],
+      "count": 1,
+      "size": [25.8, 80.6, 92.2],
+      "fingerprint": {
+        "volume": 30877.3,
+        "area": 21024.1,
+        "moments": [19761600.0, 20042800.0, 36872100.0]
+      },
+      "kind": "printed",
+      "print_files": [
+        "Hardware-Design/Motor and PCB Housing/STL/Motor Mount - Top Cover - Multicolor.3mf",
+        "Hardware-Design/Motor and PCB Housing/STL/Motor Mount - Top Cover - Single Color - No Branding - No LED.stl",
+        "Hardware-Design/Motor and PCB Housing/STL/Motor Mount - Top Cover - Single Color - No Branding.stl",
+        "Print-Files/Light MGN12/Decorative Parts/Motor Mount - Top Cover - Multicolor.3mf",
+        "Print-Files/Light MGN12/Decorative Parts/Motor Mount - Top Cover - Single Color - No Branding - No LED.stl",
+        "Print-Files/Light MGN12/Decorative Parts/Motor Mount - Top Cover - Single Color - No Branding.stl"
+      ],
+      "holes": [
+        "+X: Ø15.00 bore 2.5mm",
+        "+X: Ø3.30 bore 3.1mm → Ø5.50 bore 9.7mm  [M3 clearance, M5 clearance / Ø5 pin]"
+      ]
+    },
+    "ts-1088-ar02016": {
+      "name": "TS-1088-AR02016",
+      "upstream": [
+        "TS-1088-AR02016"
+      ],
+      "count": 2,
+      "size": [4.8, 2.0, 2.9],
+      "fingerprint": {
+        "volume": 17.4305,
+        "area": 79.6538,
+        "moments": [14.6514, 24.9829, 31.5922]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "tssop-8-l4-4-w3-0-p0-65-ls6-4-bl-2": {
+      "name": "TSSOP-8_L4.4-W3.0-P0.65-LS6.4-BL-2",
+      "upstream": [
+        "TSSOP-8_L4.4-W3.0-P0.65-LS6.4-BL-2"
+      ],
+      "count": 1,
+      "size": [3.0, 6.4, 1.2],
+      "fingerprint": {
+        "volume": 14.4096,
+        "area": 48.3626,
+        "moments": [11.7275, 26.316, 35.1537]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "type-c-smd-hx-type-c-16pin": {
+      "name": "TYPE-C-SMD_HX-TYPE-C-16PIN",
+      "upstream": [
+        "TYPE-C-SMD_HX-TYPE-C-16PIN"
+      ],
+      "count": 2,
+      "size": [9.0, 7.8, 4.7],
+      "fingerprint": {
+        "volume": 118.777,
+        "area": 535.129,
+        "moments": [642.349, 884.466, 1307.67]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "upper": {
+      "name": "Upper",
+      "upstream": [
+        "Upper"
+      ],
+      "count": 1,
+      "size": [87.5, 103.4, 22.1],
+      "fingerprint": {
+        "volume": 34590.1,
+        "area": 11087.3,
+        "moments": [9186080.0, 43444200.0, 50146700.0]
+      },
+      "kind": "printed",
+      "print_files": [
+        "Hardware-Design/Alternative Pitclamp Mini Mount/STEP/Upper.step",
+        "Hardware-Design/Alternative Pitclamp Mini Mount/STL/Upper.stl"
+      ],
+      "holes": [
+        "+Z: Ø5.30 bore 6.2mm  [M5 clearance / Ø5 pin]"
+      ]
+    },
+    "wifim-smd-61p-l16-6-w13-2-p0-80-esp32-c6-mini-1-n4": {
+      "name": "WIFIM-SMD_61P-L16.6-W13.2-P0.80-ESP32-C6-MINI-1-N4",
+      "upstream": [
+        "WIFIM-SMD_61P-L16.6-W13.2-P0.80-ESP32-C6-MINI-1-N4"
+      ],
+      "count": 1,
+      "size": [13.2, 16.6, 2.5],
+      "fingerprint": {
+        "volume": 377.557,
+        "area": 567.991,
+        "moments": [5042.18, 6384.16, 11061.0]
+      },
+      "kind": "electronics",
+      "print_files": []
+    },
+    "nut-m5": {
+      "name": "M5 hex nut",
+      "upstream": [],
+      "count": 7,
+      "size": [8.0, 9.2, 4.0],
+      "fingerprint": {
+        "volume": 143.163,
+        "area": 245.264,
+        "moments": [1053.51, 1053.51, 1725.25]
+      },
+      "kind": "fastener",
+      "print_files": [],
+      "source": "derived: nut pocket",
+      "shape": {
+        "type": "hex-nut",
+        "size": 5
+      }
+    },
+    "nut-m3": {
+      "name": "M3 hex nut",
+      "upstream": [],
+      "count": 6,
+      "size": [5.5, 6.4, 2.4],
+      "fingerprint": {
+        "volume": 45.9088,
+        "area": 106.603,
+        "moments": [144.572, 144.572, 245.071]
+      },
+      "kind": "fastener",
+      "print_files": [],
+      "source": "derived: nut pocket",
+      "shape": {
+        "type": "hex-nut",
+        "size": 3
+      }
+    },
+    "shcs-m3x8": {
+      "name": "SHCS M3x8",
+      "upstream": [],
+      "count": 2,
+      "size": [5.5, 5.5, 11.0],
+      "fingerprint": {
+        "volume": 118.09,
+        "area": 189.171,
+        "moments": [324.256, 1368.52, 1368.52]
+      },
+      "kind": "fastener",
+      "print_files": [],
+      "source": "authored",
+      "shape": {
+        "type": "shcs",
+        "d": 3,
+        "length": 8
+      }
+    },
+    "shcs-m3x16": {
+      "name": "SHCS M3x16",
+      "upstream": [],
+      "count": 1,
+      "size": [5.5, 5.5, 19.0],
+      "fingerprint": {
+        "volume": 174.639,
+        "area": 264.569,
+        "moments": [387.873, 6172.49, 6172.49]
+      },
+      "kind": "fastener",
+      "print_files": [],
+      "source": "authored",
+      "shape": {
+        "type": "shcs",
+        "d": 3,
+        "length": 16
+      }
+    },
+    "gt2-belt": {
+      "name": "GT2 belt",
+      "upstream": [],
+      "count": 1,
+      "size": [15.0, 347.9, 37.5],
+      "fingerprint": {
+        "volume": 8593.51,
+        "area": 13466.4,
+        "moments": [881220.0, 74235000.0, 74793900.0]
+      },
+      "kind": "belt",
+      "print_files": [],
+      "source": "authored",
+      "shape": {
+        "type": "belt",
+        "width": 15,
+        "thickness": 1.4,
+        "pitch_diameter": 12.73,
+        "pulley": "gt2-20t-sh8",
+        "idlers": "bearing-625-2rs",
+        "ends": [
+          "tightener#1",
+          "nut#2"
+        ],
+        "path": [[-17.45, -156.0, 29.724], [-17.45, -156.0, 29.724], [-17.45, -14.01, 29.723], [-17.45, -13.068, 29.672], [-17.45, -12.138, 29.519], [-17.45, -11.229, 29.267], [-17.45, -10.353, 28.919], [-17.45, -9.519, 28.478], [-17.45, -8.738, 27.949], [-17.45, -8.019, 27.339], [-17.45, -7.369, 26.656], [-17.45, -6.798, 25.906], [-17.45, -6.31, 25.098], [-17.45, -5.913, 24.243], [-17.45, -5.61, 23.35], [-17.45, -5.405, 22.43], [-17.45, -5.301, 21.492], [-17.45, -5.299, 20.549], [-17.45, -5.299, 20.549], [-17.45, -6.345, 0.329], [-17.45, -6.344, -0.359], [-17.45, -6.268, -1.044], [-17.45, -6.118, -1.716], [-17.45, -5.897, -2.367], [-17.45, -5.607, -2.992], [-17.45, -5.251, -3.581], [-17.45, -4.833, -4.128], [-17.45, -4.359, -4.627], [-17.45, -3.834, -5.072], [-17.45, -3.264, -5.458], [-17.45, -2.655, -5.78], [-17.45, -2.016, -6.034], [-17.45, -1.352, -6.217], [-17.45, -0.673, -6.328], [-17.45, 0.015, -6.365], [-17.45, 0.702, -6.327], [-17.45, 1.381, -6.216], [-17.45, 2.045, -6.031], [-17.45, 2.684, -5.777], [-17.45, 3.292, -5.454], [-17.45, 3.862, -5.068], [-17.45, 4.387, -4.622], [-17.45, 4.86, -4.123], [-17.45, 5.277, -3.575], [-17.45, 5.633, -2.985], [-17.45, 5.922, -2.361], [-17.45, 6.143, -1.709], [-17.45, 6.291, -1.037], [-17.45, 6.366, -0.352], [-17.45, 6.367, 0.336], [-17.45, 6.367, 0.336], [-17.45, 5.3, 20.54], [-17.45, 5.301, 21.483], [-17.45, 5.404, 22.421], [-17.45, 5.608, 23.343], [-17.45, 5.91, 24.237], [-17.45, 6.307, 25.093], [-17.45, 6.794, 25.901], [-17.45, 7.366, 26.652], [-17.45, 8.016, 27.336], [-17.45, 8.735, 27.947], [-17.45, 9.516, 28.476], [-17.45, 10.35, 28.918], [-17.45, 11.227, 29.267], [-17.45, 12.137, 29.519], [-17.45, 13.068, 29.672], [-17.45, 14.01, 29.723], [-17.45, 14.01, 29.723], [-17.45, 191.875, 29.721]],
+        "plane": [[0.0, 0.0, 1.0, -17.45], [1.0, 9e-06, 0.0, 0.0], [-9e-06, 1.0, 0.0, 21.0]],
+        "route": [
+          {
+            "anchor": "tightener#1",
+            "at": [-156.0, 8.722]
+          },
+          {
+            "wrap": [
+              "bearing-625-2rs#1",
+              "bearing-625-2rs#3",
+              "bearing-625-2rs#5"
+            ],
+            "centre": [-14.01, 0.0],
+            "radius": 8.723,
+            "ccw": false
+          },
+          {
+            "wrap": [
+              "gt2-20t-sh8#1"
+            ],
+            "centre": [0.011, -21.0],
+            "radius": 6.365,
+            "ccw": true
+          },
+          {
+            "wrap": [
+              "bearing-625-2rs#2",
+              "bearing-625-2rs#4",
+              "bearing-625-2rs#6"
+            ],
+            "centre": [14.01, 0.0],
+            "radius": 8.723,
+            "ccw": false
+          },
+          {
+            "anchor": "nut#2",
+            "at": [191.875, 8.722]
+          }
+        ],
+        "length": 409.29,
+        "lead_counts": {
+          "front": 0,
+          "rear": 0
+        }
+      }
+    }
+  },
+  "instances": [
+    {
+      "id": "25mm-lower#1",
+      "part": "25mm-lower",
+      "path": [
+        "Pitclamp Redesign",
+        "Dowels",
+        "25mm"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 5.4], [-1.0, 0.0, 0.0, 0.227], [0.0, -1.0, 0.0, 0.194]]
+    },
+    {
+      "id": "3030-100mm#1",
+      "part": "3030-100mm",
+      "path": [
+        "Pitclamp Redesign"
+      ],
+      "transform": [[0.0, 1.0, 0.0, 19.4], [0.0, 0.0, 1.0, -10.054], [1.0, 0.0, 0.0, -69.714]]
+    },
+    {
+      "id": "57aim-clamp#1",
+      "part": "57aim-clamp",
+      "path": [
+        "Motor Mount / PCB Housing"
+      ],
+      "transform": [[0.0, 0.0, 1.0, -21.703], [0.0, -1.0, 0.0, 46.982], [1.0, 0.0, 0.0, 51.713]]
+    },
+    {
+      "id": "bearing-625-2rs#1",
+      "part": "bearing-625-2rs",
+      "path": [
+        "Belt Mechanics MGN12H",
+        "Hardware"
+      ],
+      "transform": [[0.0, 0.0, 1.0, -24.95], [0.0, 1.0, 0.0, -14.01], [-1.0, 0.0, 0.0, 21.0]]
+    },
+    {
+      "id": "bearing-625-2rs#2",
+      "part": "bearing-625-2rs",
+      "path": [
+        "Belt Mechanics MGN12H",
+        "Hardware"
+      ],
+      "transform": [[0.0, 0.0, 1.0, -24.95], [0.0, 1.0, 0.0, 14.01], [-1.0, 0.0, 0.0, 21.0]]
+    },
+    {
+      "id": "bearing-625-2rs#3",
+      "part": "bearing-625-2rs",
+      "path": [
+        "Belt Mechanics MGN12H",
+        "Hardware"
+      ],
+      "transform": [[0.0, 0.0, 1.0, -19.95], [0.0, 1.0, 0.0, -14.01], [-1.0, 0.0, 0.0, 21.0]]
+    },
+    {
+      "id": "bearing-625-2rs#4",
+      "part": "bearing-625-2rs",
+      "path": [
+        "Belt Mechanics MGN12H",
+        "Hardware"
+      ],
+      "transform": [[0.0, 0.0, 1.0, -19.95], [0.0, 1.0, 0.0, 14.01], [-1.0, 0.0, 0.0, 21.0]]
+    },
+    {
+      "id": "bearing-625-2rs#5",
+      "part": "bearing-625-2rs",
+      "path": [
+        "Belt Mechanics MGN12H",
+        "Hardware"
+      ],
+      "transform": [[0.0, 0.0, 1.0, -14.95], [0.0, 1.0, 0.0, -14.01], [-1.0, 0.0, 0.0, 21.0]]
+    },
+    {
+      "id": "bearing-625-2rs#6",
+      "part": "bearing-625-2rs",
+      "path": [
+        "Belt Mechanics MGN12H",
+        "Hardware"
+      ],
+      "transform": [[0.0, 0.0, 1.0, -14.95], [0.0, 1.0, 0.0, 14.01], [-1.0, 0.0, 0.0, 21.0]]
+    },
+    {
+      "id": "c-0402#1",
+      "part": "c-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, 1.0, 0.0, -14.6], [-1.0, 0.0, 0.0, -11.497]]
+    },
+    {
+      "id": "c-0402#2",
+      "part": "c-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, -13.1], [0.0, 1.0, 0.0, -10.997]]
+    },
+    {
+      "id": "c-0402#3",
+      "part": "c-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, -11.2], [0.0, 1.0, 0.0, -18.797]]
+    },
+    {
+      "id": "c-0402#4",
+      "part": "c-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, -10.8], [0.0, 1.0, 0.0, -11.997]]
+    },
+    {
+      "id": "c-0402#5",
+      "part": "c-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [-1.0, 0.0, 0.0, -9.1], [0.0, -1.0, 0.0, -18.797]]
+    },
+    {
+      "id": "c-0402#6",
+      "part": "c-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, 1.0, 0.0, -1.8], [-1.0, 0.0, 0.0, -9.897]]
+    },
+    {
+      "id": "c-0402#7",
+      "part": "c-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, -1.0, 0.0, -1.8], [1.0, 0.0, 0.0, -7.897]]
+    },
+    {
+      "id": "c-0402#8",
+      "part": "c-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, -1.0, 0.0, 9.4], [1.0, 0.0, 0.0, 17.603]]
+    },
+    {
+      "id": "c-0402#9",
+      "part": "c-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, -1.0, 0.0, 17.85], [1.0, 0.0, 0.0, -10.647]]
+    },
+    {
+      "id": "c-0402#10",
+      "part": "c-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [-1.0, 0.0, 0.0, 18.1], [0.0, -1.0, 0.0, 11.303]]
+    },
+    {
+      "id": "c-0603#1",
+      "part": "c-0603",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, 0.3], [0.0, 1.0, 0.0, -10.21]]
+    },
+    {
+      "id": "c-0603#2",
+      "part": "c-0603",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [-1.0, 0.0, 0.0, 17.5], [0.0, -1.0, 0.0, 9.903]]
+    },
+    {
+      "id": "c-0603#3",
+      "part": "c-0603",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [-1.0, 0.0, 0.0, 20.5], [0.0, -1.0, 0.0, 9.903]]
+    },
+    {
+      "id": "c-0805#1",
+      "part": "c-0805",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, 1.0, 0.0, -6.2], [-1.0, 0.0, 0.0, -8.897]]
+    },
+    {
+      "id": "c-0805#2",
+      "part": "c-0805",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, 1.0, 0.0, -3.7], [-1.0, 0.0, 0.0, -8.897]]
+    },
+    {
+      "id": "c-1206#1",
+      "part": "c-1206",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, 1.0, 0.0, -9.2], [-1.0, 0.0, 0.0, -21.897]]
+    },
+    {
+      "id": "c-1206#2",
+      "part": "c-1206",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, 1.0, 0.0, -6.6], [-1.0, 0.0, 0.0, -21.897]]
+    },
+    {
+      "id": "c-1206#3",
+      "part": "c-1206",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, 6.35], [0.0, 1.0, 0.0, 18.503]]
+    },
+    {
+      "id": "c-1206#4",
+      "part": "c-1206",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, 6.37], [0.0, 1.0, 0.0, 21.303]]
+    },
+    {
+      "id": "cap-smd-bd10-0-l10-3-w10-3-ls11-3-fd#1",
+      "part": "cap-smd-bd10-0-l10-3-w10-3-ls11-3-fd",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [-1.0, 0.0, 0.0, 0.7], [0.0, -1.0, 0.0, 0.603]]
+    },
+    {
+      "id": "cap-smd-bd10-0-l10-3-w10-3-ls11-3-fd#2",
+      "part": "cap-smd-bd10-0-l10-3-w10-3-ls11-3-fd",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [-1.0, 0.0, 0.0, 0.7], [0.0, -1.0, 0.0, 11.603]]
+    },
+    {
+      "id": "cover#1",
+      "part": "cover",
+      "path": [
+        "Rear Mount MGN12H"
+      ],
+      "transform": [[1.0, 0.0, 0.0, -17.45], [0.0, -1.0, 0.0, 229.5], [0.0, 0.0, -1.0, 42.6]]
+    },
+    {
+      "id": "d-0603#1",
+      "part": "d-0603",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, -6.1], [0.0, 1.0, 0.0, -4.097]]
+    },
+    {
+      "id": "d-0805#1",
+      "part": "d-0805",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, 1.0, 0.0, 6.8], [-1.0, 0.0, 0.0, -23.457]]
+    },
+    {
+      "id": "d-sma#1",
+      "part": "d-sma",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, -14.1], [0.0, 1.0, 0.0, -22.397]]
+    },
+    {
+      "id": "d-sma#2",
+      "part": "d-sma",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, 1.0, 0.0, -4.0], [-1.0, 0.0, 0.0, -14.597]]
+    },
+    {
+      "id": "d-sod-123fl#1",
+      "part": "d-sod-123fl",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, -1.0, 0.0, 4.3], [1.0, 0.0, 0.0, -15.997]]
+    },
+    {
+      "id": "d-sod-123fl#2",
+      "part": "d-sod-123fl",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, -1.0, 0.0, 18.255], [1.0, 0.0, 0.0, -15.917]]
+    },
+    {
+      "id": "d-sod-323#1",
+      "part": "d-sod-323",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, 1.0, 0.0, 10.155], [-1.0, 0.0, 0.0, -16.067]]
+    },
+    {
+      "id": "degsonplug#1",
+      "part": "degsonplug",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "57AIM30"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 18.0], [0.0, 1.0, 0.0, 0.0], [-1.0, 0.0, 0.0, 0.0]]
+    },
+    {
+      "id": "dogbone-left#1",
+      "part": "dogbone-left",
+      "path": [
+        "Pitclamp Redesign"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 2.07], [1.0, 0.0, 0.0, -54.622], [0.0, 1.0, 0.0, 71.973]]
+    },
+    {
+      "id": "dogbone-right#1",
+      "part": "dogbone-right",
+      "path": [
+        "Pitclamp Redesign"
+      ],
+      "transform": [[0.0, 0.0, -1.0, 31.73], [-1.0, 0.0, 0.0, 0.233], [0.0, 1.0, 0.0, 62.241]]
+    },
+    {
+      "id": "dowels-16mm#1",
+      "part": "dowels-16mm",
+      "path": [
+        "Pitclamp Redesign",
+        "Dowels"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 5.4], [-1.0, 0.0, 0.0, 0.227], [0.0, -1.0, 0.0, 0.194]]
+    },
+    {
+      "id": "dowels-25mm#1",
+      "part": "dowels-25mm",
+      "path": [
+        "Pitclamp Redesign",
+        "Dowels",
+        "25mm"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 5.4], [-1.0, 0.0, 0.0, 0.227], [0.0, -1.0, 0.0, 0.194]]
+    },
+    {
+      "id": "gt2-20t-sh8#1",
+      "part": "gt2-20t-sh8",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "57AIM30"
+      ],
+      "transform": [[-1.0, 0.0, 0.0, -2.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, -1.0, 0.0]]
+    },
+    {
+      "id": "handle#1",
+      "part": "handle",
+      "path": [
+        "Pitclamp Redesign"
+      ],
+      "transform": [[0.0, 0.0, -1.0, 51.381], [-1.0, 0.0, 0.0, 0.233], [0.0, 1.0, 0.0, 33.892]]
+    },
+    {
+      "id": "ind-smd-l7-2-w6-6-h3-0-gpsr0730#1",
+      "part": "ind-smd-l7-2-w6-6-h3-0-gpsr0730",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, -11.7], [0.0, 1.0, 0.0, -6.797]]
+    },
+    {
+      "id": "jst-sm04b-srss-tb#1",
+      "part": "jst-sm04b-srss-tb",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 1.0, 0.0, 81.09], [0.0, 0.0, -1.0, -12.9], [-1.0, 0.0, 0.0, 1.353]]
+    },
+    {
+      "id": "led-ws2812b-plcc4-5-0x5-0mm-p3-2mm#1",
+      "part": "led-ws2812b-plcc4-5-0x5-0mm-p3-2mm",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, 13.65], [0.0, 1.0, 0.0, -10.597]]
+    },
+    {
+      "id": "ledcover#1",
+      "part": "ledcover",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "Motor Cover",
+        "topcover"
+      ],
+      "transform": [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]]
+    },
+    {
+      "id": "lower#1",
+      "part": "lower",
+      "path": [
+        "Pitclamp Redesign"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 5.4], [-1.0, 0.0, 0.0, 0.227], [0.0, -1.0, 0.0, 0.194]]
+    },
+    {
+      "id": "main-mount-motor-side#1",
+      "part": "main-mount-motor-side",
+      "path": [
+        "Belt Mechanics MGN12H",
+        "Main Mount Motor Side"
+      ],
+      "transform": [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]]
+    },
+    {
+      "id": "main-mount-top#1",
+      "part": "main-mount-top",
+      "path": [
+        "Belt Mechanics MGN12H",
+        "Main Mount Top"
+      ],
+      "transform": [[-1.0, 0.0, 0.0, -34.9], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, -1.0, 0.0]]
+    },
+    {
+      "id": "mgn12h-400mm-rail-part-1#1",
+      "part": "mgn12h-400mm-rail-part-1",
+      "path": [
+        "Belt Mechanics MGN12H",
+        "Main Mount Motor Side",
+        "MGN12H 400mm Rail"
+      ],
+      "transform": [[1.0, 0.0, 0.0, -17.5], [0.0, 1.0, 0.0, -200.0], [0.0, 0.0, 1.0, 32.5]]
+    },
+    {
+      "id": "mgn12h-400mm-rail-part-2#1",
+      "part": "mgn12h-400mm-rail-part-2",
+      "path": [
+        "Belt Mechanics MGN12H",
+        "Main Mount Motor Side",
+        "MGN12H 400mm Rail"
+      ],
+      "transform": [[1.0, 0.0, 0.0, -17.5], [0.0, 1.0, 0.0, -47.2], [0.0, 0.0, 1.0, 32.5]]
+    },
+    {
+      "id": "motor#1",
+      "part": "motor",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "57AIM30"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 18.0], [0.0, 1.0, 0.0, 0.0], [-1.0, 0.0, 0.0, 0.0]]
+    },
+    {
+      "id": "motor-cover#1",
+      "part": "motor-cover",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "Motor Cover"
+      ],
+      "transform": [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]]
+    },
+    {
+      "id": "nut#1",
+      "part": "nut",
+      "path": [
+        "Front Mount MGN12H",
+        "Thread"
+      ],
+      "transform": [[-0.707107, 0.0, -0.707107, -13.914], [0.0, 1.0, 0.0, -200.0], [0.707107, 0.0, -0.707107, 41.136]]
+    },
+    {
+      "id": "nut#2",
+      "part": "nut",
+      "path": [
+        "Rear Mount MGN12H",
+        "Thread"
+      ],
+      "transform": [[0.707107, 0.0, 0.707107, -20.986], [0.0, -1.0, 0.0, 229.5], [0.707107, 0.0, -0.707107, 41.136]]
+    },
+    {
+      "id": "ossm-28v-minimal-pcb#1",
+      "part": "ossm-28v-minimal-pcb",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 79.795], [0.0, 1.0, 0.0, 149.8], [-1.0, 0.0, 0.0, 66.403]]
+    },
+    {
+      "id": "pcbholder#1",
+      "part": "pcbholder",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "Motor Cover"
+      ],
+      "transform": [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]]
+    },
+    {
+      "id": "pinheader-1x03-p2-54mm-vertical#1",
+      "part": "pinheader-1x03-p2-54mm-vertical",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [-1.0, 0.0, 0.0, 20.1], [0.0, -1.0, 0.0, -11.737]]
+    },
+    {
+      "id": "pinheader-1x04-p2-54mm-vertical#1",
+      "part": "pinheader-1x04-p2-54mm-vertical",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, -14.9], [0.0, 1.0, 0.0, 15.473]]
+    },
+    {
+      "id": "pinheader-1x04-p2-54mm-vertical#2",
+      "part": "pinheader-1x04-p2-54mm-vertical",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, -10.15], [0.0, 1.0, 0.0, 15.523]]
+    },
+    {
+      "id": "precisiondowel#1",
+      "part": "precisiondowel",
+      "path": [
+        "Belt Mechanics MGN12H",
+        "Hardware"
+      ],
+      "transform": [[0.0, 0.0, 1.0, -14.95], [0.0, 1.0, 0.0, -14.01], [-1.0, 0.0, 0.0, -39.0]]
+    },
+    {
+      "id": "r-0402#1",
+      "part": "r-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, -13.3], [0.0, 1.0, 0.0, -19.897]]
+    },
+    {
+      "id": "r-0402#2",
+      "part": "r-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [-1.0, 0.0, 0.0, -13.3], [0.0, -1.0, 0.0, -18.797]]
+    },
+    {
+      "id": "r-0402#3",
+      "part": "r-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, -13.1], [0.0, 1.0, 0.0, -11.997]]
+    },
+    {
+      "id": "r-0402#4",
+      "part": "r-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, -9.95], [0.0, 1.0, 0.0, -1.347]]
+    },
+    {
+      "id": "r-0402#5",
+      "part": "r-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [-1.0, 0.0, 0.0, -9.95], [0.0, -1.0, 0.0, -0.247]]
+    },
+    {
+      "id": "r-0402#6",
+      "part": "r-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, -9.95], [0.0, 1.0, 0.0, 0.853]]
+    },
+    {
+      "id": "r-0402#7",
+      "part": "r-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, -9.95], [0.0, 1.0, 0.0, 2.053]]
+    },
+    {
+      "id": "r-0402#8",
+      "part": "r-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, 1.0, 0.0, -7.6], [-1.0, 0.0, 0.0, -13.897]]
+    },
+    {
+      "id": "r-0402#9",
+      "part": "r-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, 1.0, 0.0, -7.6], [-1.0, 0.0, 0.0, -11.797]]
+    },
+    {
+      "id": "r-0402#10",
+      "part": "r-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, 1.0, 0.0, -6.6], [-1.0, 0.0, 0.0, -11.797]]
+    },
+    {
+      "id": "r-0402#11",
+      "part": "r-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [-1.0, 0.0, 0.0, 4.1], [0.0, -1.0, 0.0, -9.297]]
+    },
+    {
+      "id": "r-0402#12",
+      "part": "r-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, 9.9], [0.0, 1.0, 0.0, 19.303]]
+    },
+    {
+      "id": "r-0402#13",
+      "part": "r-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, 1.0, 0.0, 10.0], [-1.0, 0.0, 0.0, -0.397]]
+    },
+    {
+      "id": "r-0402#14",
+      "part": "r-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, -1.0, 0.0, 11.755], [1.0, 0.0, 0.0, -16.817]]
+    },
+    {
+      "id": "r-0402#15",
+      "part": "r-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, 14.9], [0.0, 1.0, 0.0, 19.303]]
+    },
+    {
+      "id": "r-0402#16",
+      "part": "r-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, 1.0, 0.0, 15.5], [-1.0, 0.0, 0.0, -6.097]]
+    },
+    {
+      "id": "r-0402#17",
+      "part": "r-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, -1.0, 0.0, 16.455], [1.0, 0.0, 0.0, -16.717]]
+    },
+    {
+      "id": "r-0402#18",
+      "part": "r-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, 1.0, 0.0, 16.6], [-1.0, 0.0, 0.0, -6.097]]
+    },
+    {
+      "id": "r-0402#19",
+      "part": "r-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, 1.0, 0.0, 17.8], [-1.0, 0.0, 0.0, -6.097]]
+    },
+    {
+      "id": "r-0402#20",
+      "part": "r-0402",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [-1.0, 0.0, 0.0, 20.1], [0.0, -1.0, 0.0, 11.303]]
+    },
+    {
+      "id": "r-0603#1",
+      "part": "r-0603",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, -6.1], [0.0, 1.0, 0.0, -6.097]]
+    },
+    {
+      "id": "r-0603#2",
+      "part": "r-0603",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [-1.0, 0.0, 0.0, 4.2], [0.0, -1.0, 0.0, -12.21]]
+    },
+    {
+      "id": "r-0603#3",
+      "part": "r-0603",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [-1.0, 0.0, 0.0, 4.2], [0.0, -1.0, 0.0, -10.71]]
+    },
+    {
+      "id": "r-0603#4",
+      "part": "r-0603",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, -1.0, 0.0, 6.8], [1.0, 0.0, 0.0, -19.857]]
+    },
+    {
+      "id": "r-0603#5",
+      "part": "r-0603",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, 12.38], [0.0, 1.0, 0.0, 19.303]]
+    },
+    {
+      "id": "r1206-l3-2-w1-6-h0-6#1",
+      "part": "r1206-l3-2-w1-6-h0-6",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, -1.0, 0.0, 7.7], [1.0, 0.0, 0.0, -6.877]]
+    },
+    {
+      "id": "rear-mount-mgn12h-thread#1",
+      "part": "rear-mount-mgn12h-thread",
+      "path": [
+        "Rear Mount MGN12H",
+        "Thread"
+      ],
+      "transform": [[0.707107, 0.0, 0.707107, -20.986], [0.0, -1.0, 0.0, 229.5], [0.707107, 0.0, -0.707107, 41.136]]
+    },
+    {
+      "id": "shcs-m3x12#1",
+      "part": "shcs-m3x12",
+      "path": [
+        "Belt Mechanics MGN12H"
+      ],
+      "transform": [[-1.0, 0.0, 0.0, -27.4], [0.0, -1.0, 0.0, -9.999], [0.0, 0.0, 1.0, 54.1]]
+    },
+    {
+      "id": "shcs-m3x12#2",
+      "part": "shcs-m3x12",
+      "path": [
+        "Belt Mechanics MGN12H"
+      ],
+      "transform": [[-1.0, 0.0, 0.0, -27.4], [0.0, -1.0, 0.0, 10.001], [0.0, 0.0, 1.0, 54.1]]
+    },
+    {
+      "id": "shcs-m3x12#3",
+      "part": "shcs-m3x12",
+      "path": [
+        "Belt Mechanics MGN12H"
+      ],
+      "transform": [[1.0, 0.0, 0.0, -7.5], [0.0, 1.0, 0.0, -9.999], [0.0, 0.0, 1.0, 54.1]]
+    },
+    {
+      "id": "shcs-m3x12#4",
+      "part": "shcs-m3x12",
+      "path": [
+        "Belt Mechanics MGN12H"
+      ],
+      "transform": [[1.0, 0.0, 0.0, -7.5], [0.0, 1.0, 0.0, 10.001], [0.0, 0.0, 1.0, 54.1]]
+    },
+    {
+      "id": "shcs-m3x12#5",
+      "part": "shcs-m3x12",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "Motor Cover",
+        "topcover"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 80.05], [0.0, -1.0, 0.0, 0.0], [1.0, 0.0, 0.0, 40.911]]
+    },
+    {
+      "id": "shcs-m3x40#1",
+      "part": "shcs-m3x40",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "Motor Cover"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 76.75], [0.0, -1.0, 0.0, -35.5], [1.0, 0.0, 0.0, 0.0]]
+    },
+    {
+      "id": "shcs-m3x40#2",
+      "part": "shcs-m3x40",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "Motor Cover"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 76.75], [0.0, -1.0, 0.0, 35.5], [1.0, 0.0, 0.0, 0.0]]
+    },
+    {
+      "id": "shcs-m5x20#1",
+      "part": "shcs-m5x20",
+      "path": [
+        "Belt Mechanics MGN12H",
+        "Main Mount Top"
+      ],
+      "transform": [[0.0, 0.0, -1.0, -20.4], [0.0, -1.0, 0.0, -0.159], [-1.0, 0.0, 0.0, -30.0]]
+    },
+    {
+      "id": "shcs-m5x20#2",
+      "part": "shcs-m5x20",
+      "path": [
+        "Pitclamp Redesign"
+      ],
+      "transform": [[0.0, 1.0, 0.0, 19.4], [-1.0, 0.0, 0.0, -54.469], [0.0, 0.0, 1.0, -42.714]]
+    },
+    {
+      "id": "shcs-m5x20#3",
+      "part": "shcs-m5x20",
+      "path": [
+        "Pitclamp Redesign"
+      ],
+      "transform": [[0.0, 1.0, 0.0, 19.4], [-1.0, 0.0, 0.0, 16.287], [0.0, 0.0, 1.0, -42.714]]
+    },
+    {
+      "id": "shcs-m5x30#1",
+      "part": "shcs-m5x30",
+      "path": [
+        "Belt Mechanics MGN12H",
+        "Main Mount Motor Side"
+      ],
+      "transform": [[0.0, 0.0, -1.0, -3.0], [0.0, 1.0, 0.0, -23.5], [1.0, 0.0, 0.0, -23.5]]
+    },
+    {
+      "id": "shcs-m5x30#2",
+      "part": "shcs-m5x30",
+      "path": [
+        "Belt Mechanics MGN12H",
+        "Main Mount Motor Side"
+      ],
+      "transform": [[0.0, 0.0, -1.0, -3.0], [0.0, 1.0, 0.0, -23.5], [1.0, 0.0, 0.0, 23.5]]
+    },
+    {
+      "id": "shcs-m5x30#3",
+      "part": "shcs-m5x30",
+      "path": [
+        "Belt Mechanics MGN12H",
+        "Main Mount Motor Side"
+      ],
+      "transform": [[0.0, 0.0, -1.0, -3.0], [0.0, 1.0, 0.0, 23.5], [1.0, 0.0, 0.0, -23.5]]
+    },
+    {
+      "id": "shcs-m5x30#4",
+      "part": "shcs-m5x30",
+      "path": [
+        "Belt Mechanics MGN12H",
+        "Main Mount Motor Side"
+      ],
+      "transform": [[0.0, 0.0, -1.0, -3.0], [0.0, 1.0, 0.0, 23.5], [1.0, 0.0, 0.0, 23.5]]
+    },
+    {
+      "id": "shcs-m5x30#5",
+      "part": "shcs-m5x30",
+      "path": [
+        "Belt Mechanics MGN12H",
+        "Main Mount Top"
+      ],
+      "transform": [[0.0, 0.0, -1.0, -31.4], [0.0, -1.0, 0.0, -22.499], [-1.0, 0.0, 0.0, 51.6]]
+    },
+    {
+      "id": "shcs-m5x30#6",
+      "part": "shcs-m5x30",
+      "path": [
+        "Belt Mechanics MGN12H",
+        "Main Mount Top"
+      ],
+      "transform": [[0.0, 0.0, -1.0, -31.4], [0.0, -1.0, 0.0, 22.501], [-1.0, 0.0, 0.0, 51.6]]
+    },
+    {
+      "id": "smbf-l4-3-w3-6-ls5-3-rd#1",
+      "part": "smbf-l4-3-w3-6-ls5-3-rd",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.49], [1.0, 0.0, 0.0, 6.6], [0.0, 1.0, 0.0, 25.603]]
+    },
+    {
+      "id": "soic-8-l5-0-w4-0-p1-27-ls6-0-bl#1",
+      "part": "soic-8-l5-0-w4-0-p1-27-ls6-0-bl",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, -1.0, 0.0, -11.9], [1.0, 0.0, 0.0, -15.297]]
+    },
+    {
+      "id": "soic-8-l5-0-w4-0-p1-27-ls6-0-bl#2",
+      "part": "soic-8-l5-0-w4-0-p1-27-ls6-0-bl",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, 12.6], [0.0, 1.0, 0.0, 14.203]]
+    },
+    {
+      "id": "son-10-l2-0-w2-0-h0-9-p0-40-tl-ep#1",
+      "part": "son-10-l2-0-w2-0-h0-9-p0-40-tl-ep",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, 1.0, 0.0, 0.5], [-1.0, 0.0, 0.0, -12.51]]
+    },
+    {
+      "id": "sot-143-4-l2-9-w1-3-p1-90-ls2-4-bl-1#1",
+      "part": "sot-143-4-l2-9-w1-3-p1-90-ls2-4-bl-1",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.89], [1.0, 0.0, 0.0, 0.5], [0.0, 1.0, 0.0, -15.81]]
+    },
+    {
+      "id": "sot-143-4-l2-9-w1-3-p1-90-ls2-4-bl-1#2",
+      "part": "sot-143-4-l2-9-w1-3-p1-90-ls2-4-bl-1",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.89], [1.0, 0.0, 0.0, 14.255], [0.0, 1.0, 0.0, -16.117]]
+    },
+    {
+      "id": "terminalblock-phoenix-mkds-1-5-2-5-08-1x02-p5-08mm-horizontal#1",
+      "part": "terminalblock-phoenix-mkds-1-5-2-5-08-1x02-p5-08mm-horizontal",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [-1.0, 0.0, 0.0, -0.17], [0.0, -1.0, 0.0, 22.903]]
+    },
+    {
+      "id": "terminalblock-phoenix-mpt-0-5-4-2-54-1x04-p2-54mm-horizontal#1",
+      "part": "terminalblock-phoenix-mpt-0-5-4-2-54-1x04-p2-54mm-horizontal",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [-1.0, 0.0, 0.0, 19.5], [0.0, -1.0, 0.0, 24.403]]
+    },
+    {
+      "id": "thread#1",
+      "part": "thread",
+      "path": [
+        "Front Mount MGN12H",
+        "Thread"
+      ],
+      "transform": [[-0.707107, 0.0, -0.707107, -13.914], [0.0, 1.0, 0.0, -200.0], [0.707107, 0.0, -0.707107, 41.136]]
+    },
+    {
+      "id": "tightener#1",
+      "part": "tightener",
+      "path": [
+        "Front Mount MGN12H",
+        "Thread"
+      ],
+      "transform": [[-0.707107, 0.0, -0.707107, -13.914], [0.0, 1.0, 0.0, -200.0], [0.707107, 0.0, -0.707107, 41.136]]
+    },
+    {
+      "id": "tightener#2",
+      "part": "tightener",
+      "path": [
+        "Rear Mount MGN12H",
+        "Thread"
+      ],
+      "transform": [[0.707107, 0.0, 0.707107, -20.986], [0.0, -1.0, 0.0, 229.5], [0.707107, 0.0, -0.707107, 41.136]]
+    },
+    {
+      "id": "topcover#1",
+      "part": "topcover",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "Motor Cover",
+        "topcover"
+      ],
+      "transform": [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]]
+    },
+    {
+      "id": "ts-1088-ar02016#1",
+      "part": "ts-1088-ar02016",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 1.0, 0.0, 81.39], [1.0, 0.0, 0.0, 19.1], [0.0, 0.0, -1.0, 13.803]]
+    },
+    {
+      "id": "ts-1088-ar02016#2",
+      "part": "ts-1088-ar02016",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 1.0, 0.0, 81.39], [1.0, 0.0, 0.0, 19.1], [0.0, 0.0, -1.0, 18.003]]
+    },
+    {
+      "id": "tssop-8-l4-4-w3-0-p0-65-ls6-4-bl-2#1",
+      "part": "tssop-8-l4-4-w3-0-p0-65-ls6-4-bl-2",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, -1.0, 0.0, 2.63], [1.0, 0.0, 0.0, -6.877]]
+    },
+    {
+      "id": "type-c-smd-hx-type-c-16pin#1",
+      "part": "type-c-smd-hx-type-c-16pin",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, -22.673]]
+    },
+    {
+      "id": "type-c-smd-hx-type-c-16pin#2",
+      "part": "type-c-smd-hx-type-c-16pin",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [1.0, 0.0, 0.0, 13.355], [0.0, 1.0, 0.0, -22.68]]
+    },
+    {
+      "id": "upper#1",
+      "part": "upper",
+      "path": [
+        "Pitclamp Redesign"
+      ],
+      "transform": [[0.0, 0.0, -1.0, 27.5], [-1.0, 0.0, 0.0, 0.233], [0.0, 1.0, 0.0, -13.972]]
+    },
+    {
+      "id": "wifim-smd-61p-l16-6-w13-2-p0-80-esp32-c6-mini-1-n4#1",
+      "part": "wifim-smd-61p-l16-6-w13-2-p0-80-esp32-c6-mini-1-n4",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "OSSM PCB"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 81.39], [0.0, 1.0, 0.0, 19.225], [-1.0, 0.0, 0.0, 2.278]]
+    },
+    {
+      "id": "nut-m5#1",
+      "part": "nut-m5",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "57AIM Clamp"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 20.278], [-0.258926, -0.965897, 0.0, 23.509], [0.965897, -0.258926, 0.0, 23.496]],
+      "host": "57aim-clamp#1/A3"
+    },
+    {
+      "id": "nut-m5#2",
+      "part": "nut-m5",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "57AIM Clamp"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 20.279], [-0.707185, -0.707028, 0.0, 23.509], [0.707028, -0.707185, 0.0, -23.504]],
+      "host": "57aim-clamp#1/A4"
+    },
+    {
+      "id": "nut-m5#3",
+      "part": "nut-m5",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "57AIM Clamp"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 20.268], [-0.965897, -0.258926, 0.0, -23.491], [0.258926, -0.965897, 0.0, -23.504]],
+      "host": "57aim-clamp#1/A5"
+    },
+    {
+      "id": "nut-m5#4",
+      "part": "nut-m5",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "57AIM Clamp"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 20.27], [-0.965897, 0.258926, 0.0, -23.491], [-0.258926, -0.965897, 0.0, 23.496]],
+      "host": "57aim-clamp#1/A6"
+    },
+    {
+      "id": "nut-m3#1",
+      "part": "nut-m3",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "57AIM Clamp"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 46.3], [0.0, -1.0, 0.0, 35.5], [1.0, 0.0, 0.0, 0.0]],
+      "host": "57aim-clamp#1/A7"
+    },
+    {
+      "id": "nut-m3#2",
+      "part": "nut-m3",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "57AIM Clamp"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 46.3], [0.0, -1.0, 0.0, -35.5], [1.0, 0.0, 0.0, 0.0]],
+      "host": "57aim-clamp#1/A8"
+    },
+    {
+      "id": "nut-m5#5",
+      "part": "nut-m5",
+      "path": [
+        "Belt Mechanics MGN12H",
+        "Main Mount Motor Side",
+        "Main Mount Motor Side"
+      ],
+      "transform": [[0.0, 0.0, 1.0, -5.0], [0.0, -1.0, 0.0, -0.159], [1.0, 0.0, 0.0, -30.0]],
+      "host": "main-mount-motor-side#1/A2"
+    },
+    {
+      "id": "nut-m5#6",
+      "part": "nut-m5",
+      "path": [
+        "Belt Mechanics MGN12H",
+        "Main Mount Motor Side",
+        "Main Mount Motor Side"
+      ],
+      "transform": [[0.0, 0.0, 1.0, -8.45], [0.5, -0.866025, 0.0, 22.501], [0.866025, 0.5, 0.0, 51.6]],
+      "host": "main-mount-motor-side#1/A9"
+    },
+    {
+      "id": "nut-m3#3",
+      "part": "nut-m3",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "Motor Cover",
+        "Motor Cover"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 71.05], [-0.5, 0.866025, 0.0, 0.0], [-0.866025, -0.5, 0.0, 40.911]],
+      "host": "motor-cover#1/A1"
+    },
+    {
+      "id": "nut-m3#4",
+      "part": "nut-m3",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "Motor Cover",
+        "pcbholder"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 75.25], [-1.0, 0.0, 0.0, -12.8], [0.0, -1.0, 0.0, 24.953]],
+      "host": "pcbholder#1/A3"
+    },
+    {
+      "id": "nut-m3#5",
+      "part": "nut-m3",
+      "path": [
+        "Motor Mount / PCB Housing",
+        "Motor Cover",
+        "pcbholder"
+      ],
+      "transform": [[0.0, 0.0, 1.0, 75.25], [0.5, 0.866025, 0.0, 23.15], [-0.866025, 0.5, 0.0, -20.997]],
+      "host": "pcbholder#1/A4"
+    },
+    {
+      "id": "nut-m5#7",
+      "part": "nut-m5",
+      "path": [
+        "Rear Mount MGN12H",
+        "Thread",
+        "Rear Mount MGN12H Thread"
+      ],
+      "transform": [[0.5, 0.866026, 0.0, -17.45], [0.0, 0.0, -1.0, 203.0], [-0.866026, 0.5, 0.0, 37.6]],
+      "host": "rear-mount-mgn12h-thread#1/A1"
+    },
+    {
+      "id": "shcs-m3x8#1",
+      "part": "shcs-m3x8",
+      "path": [],
+      "transform": [[0.0, 0.0, -1.0, 84.31], [1.0, 0.0, 0.0, -12.8], [0.0, -1.0, 0.0, 24.953]],
+      "source": "authored"
+    },
+    {
+      "id": "shcs-m3x8#2",
+      "part": "shcs-m3x8",
+      "path": [],
+      "transform": [[0.0, 0.0, -1.0, 84.31], [1.0, 0.0, 0.0, 23.15], [0.0, -1.0, 0.0, -20.997]],
+      "source": "authored"
+    },
+    {
+      "id": "shcs-m3x16#1",
+      "part": "shcs-m3x16",
+      "path": [
+        "Front Mount"
+      ],
+      "transform": [[0.0, -1.0, 0.0, -17.43], [1.0, 0.0, 0.0, -180.0], [0.0, 0.0, 1.0, 27.9]],
+      "source": "authored"
+    },
+    {
+      "id": "gt2-belt#1",
+      "part": "gt2-belt",
+      "path": [
+        "belt"
+      ],
+      "transform": [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]]
+    },
+    {
+      "id": "nut-m3#6",
+      "part": "nut-m3",
+      "path": [
+        "Front Mount"
+      ],
+      "transform": [[0.0, -1.0, 0.0, -17.45], [1.0, 0.0, 0.0, -180.0], [0.0, 0.0, 1.0, 45.8]],
+      "source": "authored"
+    }
+  ],
+  "assembly_units": [
+    {
+      "id": "57aim-clamp#1",
+      "members": [
+        "57aim-clamp#1"
+      ],
+      "touches": [
+        "lower#1",
+        "main-mount-motor-side#1",
+        "motor-cover#1",
+        "upper#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "57aim30",
+      "members": [
+        "degsonplug#1",
+        "gt2-20t-sh8#1",
+        "motor#1"
+      ],
+      "touches": [
+        "main-mount-motor-side#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "ossm-pcb",
+      "members": [
+        "c-0402#1",
+        "c-0402#10",
+        "c-0402#2",
+        "c-0402#3",
+        "c-0402#4",
+        "c-0402#5",
+        "c-0402#6",
+        "c-0402#7",
+        "c-0402#8",
+        "c-0402#9",
+        "c-0603#1",
+        "c-0603#2",
+        "c-0603#3",
+        "c-0805#1",
+        "c-0805#2",
+        "c-1206#1",
+        "c-1206#2",
+        "c-1206#3",
+        "c-1206#4",
+        "cap-smd-bd10-0-l10-3-w10-3-ls11-3-fd#1",
+        "cap-smd-bd10-0-l10-3-w10-3-ls11-3-fd#2",
+        "d-0603#1",
+        "d-0805#1",
+        "d-sma#1",
+        "d-sma#2",
+        "d-sod-123fl#1",
+        "d-sod-123fl#2",
+        "d-sod-323#1",
+        "ind-smd-l7-2-w6-6-h3-0-gpsr0730#1",
+        "jst-sm04b-srss-tb#1",
+        "led-ws2812b-plcc4-5-0x5-0mm-p3-2mm#1",
+        "ossm-28v-minimal-pcb#1",
+        "pinheader-1x03-p2-54mm-vertical#1",
+        "pinheader-1x04-p2-54mm-vertical#1",
+        "pinheader-1x04-p2-54mm-vertical#2",
+        "r-0402#1",
+        "r-0402#10",
+        "r-0402#11",
+        "r-0402#12",
+        "r-0402#13",
+        "r-0402#14",
+        "r-0402#15",
+        "r-0402#16",
+        "r-0402#17",
+        "r-0402#18",
+        "r-0402#19",
+        "r-0402#2",
+        "r-0402#20",
+        "r-0402#3",
+        "r-0402#4",
+        "r-0402#5",
+        "r-0402#6",
+        "r-0402#7",
+        "r-0402#8",
+        "r-0402#9",
+        "r-0603#1",
+        "r-0603#2",
+        "r-0603#3",
+        "r-0603#4",
+        "r-0603#5",
+        "r1206-l3-2-w1-6-h0-6#1",
+        "smbf-l4-3-w3-6-ls5-3-rd#1",
+        "soic-8-l5-0-w4-0-p1-27-ls6-0-bl#1",
+        "soic-8-l5-0-w4-0-p1-27-ls6-0-bl#2",
+        "son-10-l2-0-w2-0-h0-9-p0-40-tl-ep#1",
+        "sot-143-4-l2-9-w1-3-p1-90-ls2-4-bl-1#1",
+        "sot-143-4-l2-9-w1-3-p1-90-ls2-4-bl-1#2",
+        "terminalblock-phoenix-mkds-1-5-2-5-08-1x02-p5-08mm-horizontal#1",
+        "terminalblock-phoenix-mpt-0-5-4-2-54-1x04-p2-54mm-horizontal#1",
+        "ts-1088-ar02016#1",
+        "ts-1088-ar02016#2",
+        "tssop-8-l4-4-w3-0-p0-65-ls6-4-bl-2#1",
+        "type-c-smd-hx-type-c-16pin#1",
+        "type-c-smd-hx-type-c-16pin#2",
+        "wifim-smd-61p-l16-6-w13-2-p0-80-esp32-c6-mini-1-n4#1"
+      ],
+      "touches": [
+        "pcbholder#1",
+        "topcover#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "pcbholder#1",
+      "members": [
+        "pcbholder#1"
+      ],
+      "touches": [
+        "motor-cover#1",
+        "ossm-pcb",
+        "shcs-m3x40#1",
+        "shcs-m3x40#2",
+        "topcover#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "shcs-m3x12#5",
+      "members": [
+        "shcs-m3x12#5"
+      ],
+      "touches": [
+        "topcover#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "ledcover#1",
+      "members": [
+        "ledcover#1"
+      ],
+      "touches": [
+        "topcover#1"
+      ],
+      "free": [[-1.0, 0.0, 0.0]]
+    },
+    {
+      "id": "topcover#1",
+      "members": [
+        "topcover#1"
+      ],
+      "touches": [
+        "ledcover#1",
+        "motor-cover#1",
+        "ossm-pcb",
+        "pcbholder#1",
+        "shcs-m3x12#5"
+      ],
+      "free": []
+    },
+    {
+      "id": "shcs-m3x40#2",
+      "members": [
+        "shcs-m3x40#2"
+      ],
+      "touches": [
+        "pcbholder#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "shcs-m3x40#1",
+      "members": [
+        "shcs-m3x40#1"
+      ],
+      "touches": [
+        "pcbholder#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "motor-cover#1",
+      "members": [
+        "motor-cover#1"
+      ],
+      "touches": [
+        "57aim-clamp#1",
+        "pcbholder#1",
+        "topcover#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "handle#1",
+      "members": [
+        "handle#1"
+      ],
+      "touches": [
+        "dogbone-left#1",
+        "dogbone-right#1",
+        "upper#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "dogbone-left#1",
+      "members": [
+        "dogbone-left#1"
+      ],
+      "touches": [
+        "handle#1",
+        "lower#1"
+      ],
+      "free": [[1.0, 0.0, 0.0]]
+    },
+    {
+      "id": "dogbone-right#1",
+      "members": [
+        "dogbone-right#1"
+      ],
+      "touches": [
+        "handle#1",
+        "lower#1"
+      ],
+      "free": [[-1.0, 0.0, 0.0]]
+    },
+    {
+      "id": "upper#1",
+      "members": [
+        "upper#1"
+      ],
+      "touches": [
+        "57aim-clamp#1",
+        "handle#1",
+        "lower#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "lower#1",
+      "members": [
+        "lower#1"
+      ],
+      "touches": [
+        "25mm-lower#1",
+        "3030-100mm#1",
+        "57aim-clamp#1",
+        "dogbone-left#1",
+        "dogbone-right#1",
+        "shcs-m5x20#2",
+        "shcs-m5x20#3",
+        "upper#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "25mm-lower#1",
+      "members": [
+        "25mm-lower#1"
+      ],
+      "touches": [
+        "lower#1"
+      ],
+      "free": [[1.0, 0.0, 0.0]]
+    },
+    {
+      "id": "dowels-25mm#1",
+      "members": [
+        "dowels-25mm#1"
+      ],
+      "touches": [],
+      "free": []
+    },
+    {
+      "id": "dowels-16mm#1",
+      "members": [
+        "dowels-16mm#1"
+      ],
+      "touches": [],
+      "free": [[1.0, 0.0, 0.0]]
+    },
+    {
+      "id": "shcs-m5x20#3",
+      "members": [
+        "shcs-m5x20#3"
+      ],
+      "touches": [
+        "lower#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "3030-100mm#1",
+      "members": [
+        "3030-100mm#1"
+      ],
+      "touches": [
+        "lower#1"
+      ],
+      "free": [[0.0, 0.0, -1.0], [-0.665, 0.0, -0.747], [0.747, 0.0, -0.665]]
+    },
+    {
+      "id": "shcs-m5x20#2",
+      "members": [
+        "shcs-m5x20#2"
+      ],
+      "touches": [
+        "lower#1"
+      ],
+      "free": [[0.0, 0.0, 1.0]]
+    },
+    {
+      "id": "tightener#1",
+      "members": [
+        "tightener#1"
+      ],
+      "touches": [
+        "nut#1",
+        "thread#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "nut#1",
+      "members": [
+        "nut#1"
+      ],
+      "touches": [
+        "thread#1",
+        "tightener#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "thread#1",
+      "members": [
+        "thread#1"
+      ],
+      "touches": [
+        "mgn12h-400mm-rail",
+        "nut#1",
+        "tightener#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "tightener#2",
+      "members": [
+        "tightener#2"
+      ],
+      "touches": [
+        "nut#2",
+        "rear-mount-mgn12h-thread#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "nut#2",
+      "members": [
+        "nut#2"
+      ],
+      "touches": [
+        "cover#1",
+        "rear-mount-mgn12h-thread#1",
+        "tightener#2"
+      ],
+      "free": []
+    },
+    {
+      "id": "rear-mount-mgn12h-thread#1",
+      "members": [
+        "rear-mount-mgn12h-thread#1"
+      ],
+      "touches": [
+        "cover#1",
+        "mgn12h-400mm-rail",
+        "nut#2",
+        "tightener#2"
+      ],
+      "free": []
+    },
+    {
+      "id": "cover#1",
+      "members": [
+        "cover#1"
+      ],
+      "touches": [
+        "nut#2",
+        "rear-mount-mgn12h-thread#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "mgn12h-400mm-rail",
+      "members": [
+        "mgn12h-400mm-rail-part-1#1",
+        "mgn12h-400mm-rail-part-2#1"
+      ],
+      "touches": [
+        "main-mount-motor-side#1",
+        "main-mount-top#1",
+        "rear-mount-mgn12h-thread#1",
+        "thread#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "shcs-m5x30#2",
+      "members": [
+        "shcs-m5x30#2"
+      ],
+      "touches": [
+        "main-mount-motor-side#1"
+      ],
+      "free": [[-1.0, 0.0, 0.0]]
+    },
+    {
+      "id": "shcs-m5x30#3",
+      "members": [
+        "shcs-m5x30#3"
+      ],
+      "touches": [
+        "main-mount-motor-side#1"
+      ],
+      "free": [[-1.0, 0.0, 0.0]]
+    },
+    {
+      "id": "shcs-m5x30#1",
+      "members": [
+        "shcs-m5x30#1"
+      ],
+      "touches": [
+        "main-mount-motor-side#1"
+      ],
+      "free": [[-1.0, 0.0, 0.0]]
+    },
+    {
+      "id": "shcs-m5x30#4",
+      "members": [
+        "shcs-m5x30#4"
+      ],
+      "touches": [
+        "main-mount-motor-side#1"
+      ],
+      "free": [[-1.0, 0.0, 0.0]]
+    },
+    {
+      "id": "main-mount-motor-side#1",
+      "members": [
+        "main-mount-motor-side#1"
+      ],
+      "touches": [
+        "57aim-clamp#1",
+        "57aim30",
+        "bearing-625-2rs#5",
+        "bearing-625-2rs#6",
+        "main-mount-top#1",
+        "mgn12h-400mm-rail",
+        "precisiondowel#1",
+        "shcs-m3x12#3",
+        "shcs-m3x12#4",
+        "shcs-m5x30#1",
+        "shcs-m5x30#2",
+        "shcs-m5x30#3",
+        "shcs-m5x30#4"
+      ],
+      "free": []
+    },
+    {
+      "id": "bearing-625-2rs#5",
+      "members": [
+        "bearing-625-2rs#5"
+      ],
+      "touches": [
+        "bearing-625-2rs#3",
+        "main-mount-motor-side#1",
+        "precisiondowel#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "bearing-625-2rs#6",
+      "members": [
+        "bearing-625-2rs#6"
+      ],
+      "touches": [
+        "bearing-625-2rs#4",
+        "main-mount-motor-side#1",
+        "precisiondowel#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "bearing-625-2rs#3",
+      "members": [
+        "bearing-625-2rs#3"
+      ],
+      "touches": [
+        "bearing-625-2rs#1",
+        "bearing-625-2rs#5",
+        "precisiondowel#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "bearing-625-2rs#4",
+      "members": [
+        "bearing-625-2rs#4"
+      ],
+      "touches": [
+        "bearing-625-2rs#2",
+        "bearing-625-2rs#6",
+        "precisiondowel#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "bearing-625-2rs#1",
+      "members": [
+        "bearing-625-2rs#1"
+      ],
+      "touches": [
+        "bearing-625-2rs#3",
+        "main-mount-top#1",
+        "precisiondowel#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "bearing-625-2rs#2",
+      "members": [
+        "bearing-625-2rs#2"
+      ],
+      "touches": [
+        "bearing-625-2rs#4",
+        "main-mount-top#1",
+        "precisiondowel#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "precisiondowel#1",
+      "members": [
+        "precisiondowel#1"
+      ],
+      "touches": [
+        "bearing-625-2rs#1",
+        "bearing-625-2rs#2",
+        "bearing-625-2rs#3",
+        "bearing-625-2rs#4",
+        "bearing-625-2rs#5",
+        "bearing-625-2rs#6",
+        "main-mount-motor-side#1",
+        "main-mount-top#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "shcs-m5x30#5",
+      "members": [
+        "shcs-m5x30#5"
+      ],
+      "touches": [
+        "main-mount-top#1"
+      ],
+      "free": [[-1.0, 0.0, 0.0]]
+    },
+    {
+      "id": "shcs-m5x30#6",
+      "members": [
+        "shcs-m5x30#6"
+      ],
+      "touches": [
+        "main-mount-top#1"
+      ],
+      "free": [[-1.0, 0.0, 0.0]]
+    },
+    {
+      "id": "shcs-m5x20#1",
+      "members": [
+        "shcs-m5x20#1"
+      ],
+      "touches": [
+        "main-mount-top#1"
+      ],
+      "free": [[-1.0, 0.0, 0.0]]
+    },
+    {
+      "id": "main-mount-top#1",
+      "members": [
+        "main-mount-top#1"
+      ],
+      "touches": [
+        "bearing-625-2rs#1",
+        "bearing-625-2rs#2",
+        "main-mount-motor-side#1",
+        "mgn12h-400mm-rail",
+        "precisiondowel#1",
+        "shcs-m3x12#1",
+        "shcs-m3x12#2",
+        "shcs-m5x20#1",
+        "shcs-m5x30#5",
+        "shcs-m5x30#6"
+      ],
+      "free": []
+    },
+    {
+      "id": "shcs-m3x12#1",
+      "members": [
+        "shcs-m3x12#1"
+      ],
+      "touches": [
+        "main-mount-top#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "shcs-m3x12#2",
+      "members": [
+        "shcs-m3x12#2"
+      ],
+      "touches": [
+        "main-mount-top#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "shcs-m3x12#3",
+      "members": [
+        "shcs-m3x12#3"
+      ],
+      "touches": [
+        "main-mount-motor-side#1"
+      ],
+      "free": []
+    },
+    {
+      "id": "shcs-m3x12#4",
+      "members": [
+        "shcs-m3x12#4"
+      ],
+      "touches": [
+        "main-mount-motor-side#1"
+      ],
+      "free": []
+    }
+  ],
+  "print_files": [
+    {
+      "path": "Hardware-Design/Alternative Pitclamp Mini Mount/STEP/Dogbone.step",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Alternative%20Pitclamp%20Mini%20Mount/STEP/Dogbone.step",
+      "format": "step",
+      "fingerprint": {
+        "volume": 1935.48,
+        "area": 1425.94,
+        "moments": [21843.7, 319724.0, 331636.0]
+      },
+      "match": {
+        "part": "dogbone-right",
+        "quality": "variant",
+        "distance": 0.2765,
+        "also": [
+          "dogbone-left"
+        ]
+      }
+    },
+    {
+      "path": "Hardware-Design/Alternative Pitclamp Mini Mount/STEP/Handle.step",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Alternative%20Pitclamp%20Mini%20Mount/STEP/Handle.step",
+      "format": "step",
+      "fingerprint": {
+        "volume": 11386.5,
+        "area": 4626.54,
+        "moments": [442954.0, 5156170.0, 5216600.0]
+      },
+      "match": {
+        "part": "handle",
+        "quality": "exact",
+        "distance": 0.0012
+      }
+    },
+    {
+      "path": "Hardware-Design/Alternative Pitclamp Mini Mount/STEP/Lower.step",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Alternative%20Pitclamp%20Mini%20Mount/STEP/Lower.step",
+      "format": "step",
+      "fingerprint": {
+        "volume": 66956.7,
+        "area": 17063.3,
+        "moments": [30718700.0, 64234300.0, 86707400.0]
+      },
+      "match": {
+        "part": "lower",
+        "quality": "exact",
+        "distance": 0.0
+      }
+    },
+    {
+      "path": "Hardware-Design/Alternative Pitclamp Mini Mount/STEP/Upper.step",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Alternative%20Pitclamp%20Mini%20Mount/STEP/Upper.step",
+      "format": "step",
+      "fingerprint": {
+        "volume": 34581.8,
+        "area": 11089.0,
+        "moments": [9182820.0, 43422600.0, 50122000.0]
+      },
+      "match": {
+        "part": "upper",
+        "quality": "exact",
+        "distance": 0.0005
+      }
+    },
+    {
+      "path": "Hardware-Design/Alternative Pitclamp Mini Mount/STL/Dogbone (x2).stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Alternative%20Pitclamp%20Mini%20Mount/STL/Dogbone%20%28x2%29.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 1935.37,
+        "area": 1425.74,
+        "moments": [21834.9, 319614.0, 331520.0]
+      },
+      "match": {
+        "part": "dogbone-right",
+        "quality": "variant",
+        "distance": 0.2768,
+        "also": [
+          "dogbone-left"
+        ]
+      },
+      "quantity": 2
+    },
+    {
+      "path": "Hardware-Design/Alternative Pitclamp Mini Mount/STL/Handle.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Alternative%20Pitclamp%20Mini%20Mount/STL/Handle.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 11385.3,
+        "area": 4626.02,
+        "moments": [442774.0, 5154880.0, 5215450.0]
+      },
+      "match": {
+        "part": "handle",
+        "quality": "exact",
+        "distance": 0.001
+      }
+    },
+    {
+      "path": "Hardware-Design/Alternative Pitclamp Mini Mount/STL/Lower.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Alternative%20Pitclamp%20Mini%20Mount/STL/Lower.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 66949.5,
+        "area": 17059.7,
+        "moments": [30714900.0, 64215700.0, 86684600.0]
+      },
+      "match": {
+        "part": "lower",
+        "quality": "exact",
+        "distance": 0.0003
+      }
+    },
+    {
+      "path": "Hardware-Design/Alternative Pitclamp Mini Mount/STL/Upper.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Alternative%20Pitclamp%20Mini%20Mount/STL/Upper.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 34648.1,
+        "area": 11092.2,
+        "moments": [9189290.0, 43445700.0, 50149500.0]
+      },
+      "match": {
+        "part": "upper",
+        "quality": "exact",
+        "distance": 0.0017
+      }
+    },
+    {
+      "path": "Hardware-Design/Light Version/MGN12H Belt Clamp and Toy Mount/STEP/Belt Clamp.step",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Light%20Version/MGN12H%20Belt%20Clamp%20and%20Toy%20Mount/STEP/Belt%20Clamp.step",
+      "format": "step",
+      "fingerprint": {
+        "volume": 2728.06,
+        "area": 2230.18,
+        "moments": [230689.0, 291084.0, 465481.0]
+      },
+      "match": {
+        "part": "tightener",
+        "quality": "exact",
+        "distance": 0.0
+      }
+    },
+    {
+      "path": "Hardware-Design/Light Version/MGN12H Belt Clamp and Toy Mount/STEP/Belt Tension Cover.step",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Light%20Version/MGN12H%20Belt%20Clamp%20and%20Toy%20Mount/STEP/Belt%20Tension%20Cover.step",
+      "format": "step",
+      "fingerprint": {
+        "volume": 9344.83,
+        "area": 5186.98,
+        "moments": [1174310.0, 1174320.0, 1523890.0]
+      },
+      "match": {
+        "part": "cover",
+        "quality": "exact",
+        "distance": 0.0
+      }
+    },
+    {
+      "path": "Hardware-Design/Light Version/MGN12H Belt Clamp and Toy Mount/STEP/Belt Tensioner.step",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Light%20Version/MGN12H%20Belt%20Clamp%20and%20Toy%20Mount/STEP/Belt%20Tensioner.step",
+      "format": "step",
+      "fingerprint": {
+        "volume": 12020.2,
+        "area": 5625.24,
+        "moments": [1161040.0, 1645840.0, 1853040.0]
+      },
+      "match": {
+        "part": "rear-mount-mgn12h-thread",
+        "quality": "exact",
+        "distance": 0.004
+      }
+    },
+    {
+      "path": "Hardware-Design/Light Version/MGN12H Belt Clamp and Toy Mount/STEP/Nut.step",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Light%20Version/MGN12H%20Belt%20Clamp%20and%20Toy%20Mount/STEP/Nut.step",
+      "format": "step",
+      "fingerprint": {
+        "volume": 7799.61,
+        "area": 4976.71,
+        "moments": [1302280.0, 1302560.0, 2485140.0]
+      },
+      "match": {
+        "part": "nut",
+        "quality": "exact",
+        "distance": 0.0
+      }
+    },
+    {
+      "path": "Hardware-Design/Light Version/MGN12H Belt Clamp and Toy Mount/STEP/Toy Mount Thread.step",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Light%20Version/MGN12H%20Belt%20Clamp%20and%20Toy%20Mount/STEP/Toy%20Mount%20Thread.step",
+      "format": "step",
+      "fingerprint": {
+        "volume": 16529.9,
+        "area": 8754.82,
+        "moments": [1514780.0, 4963310.0, 5193410.0]
+      },
+      "match": {
+        "part": "thread",
+        "quality": "exact",
+        "distance": 0.0055
+      }
+    },
+    {
+      "path": "Hardware-Design/Light Version/MGN12H Belt Clamp and Toy Mount/STL/Belt Clamp (x2).stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Light%20Version/MGN12H%20Belt%20Clamp%20and%20Toy%20Mount/STL/Belt%20Clamp%20%28x2%29.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 2724.79,
+        "area": 2229.16,
+        "moments": [230379.0, 290396.0, 464528.0]
+      },
+      "match": {
+        "part": "tightener",
+        "quality": "exact",
+        "distance": 0.0024
+      },
+      "quantity": 2
+    },
+    {
+      "path": "Hardware-Design/Light Version/MGN12H Belt Clamp and Toy Mount/STL/Belt Tension Cover.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Light%20Version/MGN12H%20Belt%20Clamp%20and%20Toy%20Mount/STL/Belt%20Tension%20Cover.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 9343.28,
+        "area": 5186.7,
+        "moments": [1174030.0, 1174080.0, 1523540.0]
+      },
+      "match": {
+        "part": "cover",
+        "quality": "exact",
+        "distance": 0.0002
+      }
+    },
+    {
+      "path": "Hardware-Design/Light Version/MGN12H Belt Clamp and Toy Mount/STL/Belt Tensioner.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Light%20Version/MGN12H%20Belt%20Clamp%20and%20Toy%20Mount/STL/Belt%20Tensioner.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 12011.4,
+        "area": 5624.27,
+        "moments": [1159850.0, 1644520.0, 1851500.0]
+      },
+      "match": {
+        "part": "rear-mount-mgn12h-thread",
+        "quality": "exact",
+        "distance": 0.0048
+      }
+    },
+    {
+      "path": "Hardware-Design/Light Version/MGN12H Belt Clamp and Toy Mount/STL/Nut (x2).stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Light%20Version/MGN12H%20Belt%20Clamp%20and%20Toy%20Mount/STL/Nut%20%28x2%29.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 7801.04,
+        "area": 4975.94,
+        "moments": [1302190.0, 1302470.0, 2484960.0]
+      },
+      "match": {
+        "part": "nut",
+        "quality": "exact",
+        "distance": 0.0002
+      },
+      "quantity": 2
+    },
+    {
+      "path": "Hardware-Design/Light Version/MGN12H Belt Clamp and Toy Mount/STL/Toy Mount Thread.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Light%20Version/MGN12H%20Belt%20Clamp%20and%20Toy%20Mount/STL/Toy%20Mount%20Thread.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 16515.8,
+        "area": 8752.76,
+        "moments": [1512830.0, 4958390.0, 5188060.0]
+      },
+      "match": {
+        "part": "thread",
+        "quality": "exact",
+        "distance": 0.0065
+      }
+    },
+    {
+      "path": "Hardware-Design/Light Version/MGN12H Main Mechanics/STEP/Belt Mechanics - Front.step",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Light%20Version/MGN12H%20Main%20Mechanics/STEP/Belt%20Mechanics%20-%20Front.step",
+      "format": "step",
+      "fingerprint": {
+        "volume": 73129.9,
+        "area": 30737.1,
+        "moments": [39556600.0, 57132700.0, 92620000.0]
+      },
+      "match": {
+        "part": "main-mount-top",
+        "quality": "exact",
+        "distance": 0.0161
+      }
+    },
+    {
+      "path": "Hardware-Design/Light Version/MGN12H Main Mechanics/STEP/Belt Mechanics - Rear.step",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Light%20Version/MGN12H%20Main%20Mechanics/STEP/Belt%20Mechanics%20-%20Rear.step",
+      "format": "step",
+      "fingerprint": {
+        "volume": 53952.9,
+        "area": 22010.8,
+        "moments": [30287600.0, 48429000.0, 76739600.0]
+      },
+      "match": {
+        "part": "main-mount-motor-side",
+        "quality": "exact",
+        "distance": 0.0006
+      }
+    },
+    {
+      "path": "Hardware-Design/Light Version/MGN12H Main Mechanics/STL/Belt Mechanics - Front - Multicolor.3mf",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Light%20Version/MGN12H%20Main%20Mechanics/STL/Belt%20Mechanics%20-%20Front%20-%20Multicolor.3mf",
+      "format": "3mf",
+      "fingerprint": {
+        "volume": 73165.3,
+        "area": 30731.8,
+        "moments": [39554200.0, 57144600.0, 92628500.0]
+      },
+      "match": {
+        "part": "main-mount-top",
+        "quality": "exact",
+        "distance": 0.0163
+      }
+    },
+    {
+      "path": "Hardware-Design/Light Version/MGN12H Main Mechanics/STL/Belt Mechanics - Front - Single - Nobranding.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Light%20Version/MGN12H%20Main%20Mechanics/STL/Belt%20Mechanics%20-%20Front%20-%20Single%20-%20Nobranding.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 73165.1,
+        "area": 28233.9,
+        "moments": [39554900.0, 57143900.0, 92628600.0]
+      },
+      "match": {
+        "part": "main-mount-top",
+        "quality": "variant",
+        "distance": 0.0163
+      }
+    },
+    {
+      "path": "Hardware-Design/Light Version/MGN12H Main Mechanics/STL/Belt Mechanics - Rear.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Light%20Version/MGN12H%20Main%20Mechanics/STL/Belt%20Mechanics%20-%20Rear.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 53956.6,
+        "area": 22008.1,
+        "moments": [30284200.0, 48423400.0, 76730700.0]
+      },
+      "match": {
+        "part": "main-mount-motor-side",
+        "quality": "exact",
+        "distance": 0.0007
+      }
+    },
+    {
+      "path": "Hardware-Design/Motor and PCB Housing/STEP/Motor Mount - Main Motor Clamp.step",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Motor%20and%20PCB%20Housing/STEP/Motor%20Mount%20-%20Main%20Motor%20Clamp.step",
+      "format": "step",
+      "fingerprint": {
+        "volume": 71270.3,
+        "area": 33793.0,
+        "moments": [63563500.0, 65259300.0, 95357400.0]
+      },
+      "match": {
+        "part": "57aim-clamp",
+        "quality": "variant",
+        "distance": 0.063
+      }
+    },
+    {
+      "path": "Hardware-Design/Motor and PCB Housing/STEP/Motor Mount - Spacer Ring.step",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Motor%20and%20PCB%20Housing/STEP/Motor%20Mount%20-%20Spacer%20Ring.step",
+      "format": "step",
+      "fingerprint": {
+        "volume": 23996.3,
+        "area": 16462.1,
+        "moments": [17658000.0, 22066000.0, 37708600.0]
+      },
+      "match": {
+        "part": "motor-cover",
+        "quality": "variant",
+        "distance": 0.114
+      }
+    },
+    {
+      "path": "Hardware-Design/Motor and PCB Housing/STL/Motor Mount - Main Clamp.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Motor%20and%20PCB%20Housing/STL/Motor%20Mount%20-%20Main%20Clamp.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 71114.4,
+        "area": 33771.4,
+        "moments": [63522600.0, 65152800.0, 95218700.0]
+      },
+      "match": {
+        "part": "57aim-clamp",
+        "quality": "variant",
+        "distance": 0.0624
+      }
+    },
+    {
+      "path": "Hardware-Design/Motor and PCB Housing/STL/Motor Mount - PCB Holder.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Motor%20and%20PCB%20Housing/STL/Motor%20Mount%20-%20PCB%20Holder.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 16924.7,
+        "area": 12498.6,
+        "moments": [5530340.0, 8474610.0, 13928900.0]
+      },
+      "match": {
+        "part": "pcbholder",
+        "quality": "variant",
+        "distance": 0.0267
+      }
+    },
+    {
+      "path": "Hardware-Design/Motor and PCB Housing/STL/Motor Mount - Spacer Ring.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Motor%20and%20PCB%20Housing/STL/Motor%20Mount%20-%20Spacer%20Ring.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 24007.6,
+        "area": 16455.4,
+        "moments": [17672400.0, 22070100.0, 37725500.0]
+      },
+      "match": {
+        "part": "motor-cover",
+        "quality": "variant",
+        "distance": 0.1138
+      }
+    },
+    {
+      "path": "Hardware-Design/Motor and PCB Housing/STL/Motor Mount - Top Cover - Multicolor.3mf",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Motor%20and%20PCB%20Housing/STL/Motor%20Mount%20-%20Top%20Cover%20-%20Multicolor.3mf",
+      "format": "3mf",
+      "fingerprint": {
+        "volume": 31316.1,
+        "area": 21720.7,
+        "moments": [20366600.0, 20856900.0, 37702500.0]
+      },
+      "match": {
+        "part": "topcover",
+        "quality": "variant",
+        "distance": 0.039
+      }
+    },
+    {
+      "path": "Hardware-Design/Motor and PCB Housing/STL/Motor Mount - Top Cover - Single Color - No Branding - No LED.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Motor%20and%20PCB%20Housing/STL/Motor%20Mount%20-%20Top%20Cover%20-%20Single%20Color%20-%20No%20Branding%20-%20No%20LED.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 31760.4,
+        "area": 20842.3,
+        "moments": [20443900.0, 20981400.0, 37823900.0]
+      },
+      "match": {
+        "part": "topcover",
+        "quality": "variant",
+        "distance": 0.0447
+      }
+    },
+    {
+      "path": "Hardware-Design/Motor and PCB Housing/STL/Motor Mount - Top Cover - Single Color - No Branding.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Motor%20and%20PCB%20Housing/STL/Motor%20Mount%20-%20Top%20Cover%20-%20Single%20Color%20-%20No%20Branding.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 31319.1,
+        "area": 20607.1,
+        "moments": [20368100.0, 20856100.0, 37703100.0]
+      },
+      "match": {
+        "part": "topcover",
+        "quality": "variant",
+        "distance": 0.039
+      }
+    },
+    {
+      "path": "Hardware-Design/Motor and PCB Housing/STL/Motor Mount - Transparant LED Cover.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Hardware-Design/Motor%20and%20PCB%20Housing/STL/Motor%20Mount%20-%20Transparant%20LED%20Cover.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 1142.62,
+        "area": 958.157,
+        "moments": [21926.0, 36237.4, 54492.7]
+      },
+      "match": {
+        "part": "ledcover",
+        "quality": "exact",
+        "distance": 0.0003
+      }
+    },
+    {
+      "path": "Print-Files/Alternative Pitclamp/Complete Sliced Alternative Pitclamp.3mf",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Alternative%20Pitclamp/Complete%20Sliced%20Alternative%20Pitclamp.3mf",
+      "format": "3mf",
+      "fingerprint": {
+        "volume": 116854.0,
+        "area": 35629.4,
+        "moments": [177557000.0, 427196000.0, 593048000.0]
+      },
+      "match": null
+    },
+    {
+      "path": "Print-Files/Light MGN12/Decorative Parts/Belt Tension Cover.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Light%20MGN12/Decorative%20Parts/Belt%20Tension%20Cover.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 9343.28,
+        "area": 5186.7,
+        "moments": [1174030.0, 1174080.0, 1523540.0]
+      },
+      "match": {
+        "part": "cover",
+        "quality": "exact",
+        "distance": 0.0002
+      },
+      "category": "decorative"
+    },
+    {
+      "path": "Print-Files/Light MGN12/Decorative Parts/Motor Mount - PCB Holder.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Light%20MGN12/Decorative%20Parts/Motor%20Mount%20-%20PCB%20Holder.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 17024.7,
+        "area": 12581.1,
+        "moments": [5584570.0, 8509050.0, 14015000.0]
+      },
+      "match": {
+        "part": "pcbholder",
+        "quality": "variant",
+        "distance": 0.0361
+      },
+      "category": "decorative"
+    },
+    {
+      "path": "Print-Files/Light MGN12/Decorative Parts/Motor Mount - Spacer Ring.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Light%20MGN12/Decorative%20Parts/Motor%20Mount%20-%20Spacer%20Ring.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 24007.6,
+        "area": 16455.4,
+        "moments": [17672400.0, 22070100.0, 37725500.0]
+      },
+      "match": {
+        "part": "motor-cover",
+        "quality": "variant",
+        "distance": 0.1138
+      },
+      "category": "decorative"
+    },
+    {
+      "path": "Print-Files/Light MGN12/Decorative Parts/Motor Mount - Top Cover - Multicolor.3mf",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Light%20MGN12/Decorative%20Parts/Motor%20Mount%20-%20Top%20Cover%20-%20Multicolor.3mf",
+      "format": "3mf",
+      "fingerprint": {
+        "volume": 31316.1,
+        "area": 21720.7,
+        "moments": [20366600.0, 20856900.0, 37702500.0]
+      },
+      "match": {
+        "part": "topcover",
+        "quality": "variant",
+        "distance": 0.039
+      },
+      "category": "decorative"
+    },
+    {
+      "path": "Print-Files/Light MGN12/Decorative Parts/Motor Mount - Top Cover - Single Color - No Branding - No LED.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Light%20MGN12/Decorative%20Parts/Motor%20Mount%20-%20Top%20Cover%20-%20Single%20Color%20-%20No%20Branding%20-%20No%20LED.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 31760.4,
+        "area": 20842.3,
+        "moments": [20443900.0, 20981400.0, 37823900.0]
+      },
+      "match": {
+        "part": "topcover",
+        "quality": "variant",
+        "distance": 0.0447
+      },
+      "category": "decorative"
+    },
+    {
+      "path": "Print-Files/Light MGN12/Decorative Parts/Motor Mount - Top Cover - Single Color - No Branding.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Light%20MGN12/Decorative%20Parts/Motor%20Mount%20-%20Top%20Cover%20-%20Single%20Color%20-%20No%20Branding.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 31319.1,
+        "area": 20607.1,
+        "moments": [20368100.0, 20856100.0, 37703100.0]
+      },
+      "match": {
+        "part": "topcover",
+        "quality": "variant",
+        "distance": 0.039
+      },
+      "category": "decorative"
+    },
+    {
+      "path": "Print-Files/Light MGN12/Decorative Parts/Motor Mount - Transparant LED Cover.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Light%20MGN12/Decorative%20Parts/Motor%20Mount%20-%20Transparant%20LED%20Cover.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 1142.62,
+        "area": 958.157,
+        "moments": [21926.0, 36237.4, 54492.7]
+      },
+      "match": {
+        "part": "ledcover",
+        "quality": "exact",
+        "distance": 0.0003
+      },
+      "category": "decorative"
+    },
+    {
+      "path": "Print-Files/Light MGN12/Strength Parts/Belt Clamp (x2).stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Light%20MGN12/Strength%20Parts/Belt%20Clamp%20%28x2%29.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 2724.79,
+        "area": 2229.16,
+        "moments": [230379.0, 290396.0, 464528.0]
+      },
+      "match": {
+        "part": "tightener",
+        "quality": "exact",
+        "distance": 0.0024
+      },
+      "quantity": 2,
+      "category": "strength"
+    },
+    {
+      "path": "Print-Files/Light MGN12/Strength Parts/Belt Mechanics - Front - Multicolor.3mf",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Light%20MGN12/Strength%20Parts/Belt%20Mechanics%20-%20Front%20-%20Multicolor.3mf",
+      "format": "3mf",
+      "fingerprint": {
+        "volume": 73165.3,
+        "area": 30731.8,
+        "moments": [39554200.0, 57144600.0, 92628500.0]
+      },
+      "match": {
+        "part": "main-mount-top",
+        "quality": "exact",
+        "distance": 0.0163
+      },
+      "category": "strength"
+    },
+    {
+      "path": "Print-Files/Light MGN12/Strength Parts/Belt Mechanics - Front - Single - Nobranding.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Light%20MGN12/Strength%20Parts/Belt%20Mechanics%20-%20Front%20-%20Single%20-%20Nobranding.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 73165.1,
+        "area": 28233.9,
+        "moments": [39554900.0, 57143900.0, 92628600.0]
+      },
+      "match": {
+        "part": "main-mount-top",
+        "quality": "variant",
+        "distance": 0.0163
+      },
+      "category": "strength"
+    },
+    {
+      "path": "Print-Files/Light MGN12/Strength Parts/Belt Mechanics - Rear.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Light%20MGN12/Strength%20Parts/Belt%20Mechanics%20-%20Rear.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 53956.6,
+        "area": 22008.1,
+        "moments": [30284200.0, 48423400.0, 76730700.0]
+      },
+      "match": {
+        "part": "main-mount-motor-side",
+        "quality": "exact",
+        "distance": 0.0007
+      },
+      "category": "strength"
+    },
+    {
+      "path": "Print-Files/Light MGN12/Strength Parts/Belt Tensioner.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Light%20MGN12/Strength%20Parts/Belt%20Tensioner.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 12011.4,
+        "area": 5624.27,
+        "moments": [1159850.0, 1644520.0, 1851500.0]
+      },
+      "match": {
+        "part": "rear-mount-mgn12h-thread",
+        "quality": "exact",
+        "distance": 0.0048
+      },
+      "category": "strength"
+    },
+    {
+      "path": "Print-Files/Light MGN12/Strength Parts/Motor Mount - Main Clamp.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Light%20MGN12/Strength%20Parts/Motor%20Mount%20-%20Main%20Clamp.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 71114.4,
+        "area": 33771.4,
+        "moments": [63522600.0, 65152800.0, 95218700.0]
+      },
+      "match": {
+        "part": "57aim-clamp",
+        "quality": "variant",
+        "distance": 0.0624
+      },
+      "category": "strength"
+    },
+    {
+      "path": "Print-Files/Light MGN12/Strength Parts/Nut (x2).stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Light%20MGN12/Strength%20Parts/Nut%20%28x2%29.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 7801.04,
+        "area": 4975.94,
+        "moments": [1302190.0, 1302470.0, 2484960.0]
+      },
+      "match": {
+        "part": "nut",
+        "quality": "exact",
+        "distance": 0.0002
+      },
+      "quantity": 2,
+      "category": "strength"
+    },
+    {
+      "path": "Print-Files/Light MGN12/Strength Parts/Toy Mount Thread.stl",
+      "url": "https://github.com/jollydodo/OSSM-ALT-Edition/blob/3d58b9e3bdfebabb69f2b715e4aa67881035d217/Print-Files/Light%20MGN12/Strength%20Parts/Toy%20Mount%20Thread.stl",
+      "format": "stl",
+      "fingerprint": {
+        "volume": 16515.8,
+        "area": 8752.76,
+        "moments": [1512830.0, 4958390.0, 5188060.0]
+      },
+      "match": {
+        "part": "thread",
+        "quality": "exact",
+        "distance": 0.0065
+      },
+      "category": "strength"
+    }
+  ]
+}

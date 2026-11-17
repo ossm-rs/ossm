@@ -1,0 +1,170 @@
+.root {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  padding: 12px;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.overlayMobile {
+  composes: overlay;
+  gap: 8px;
+}
+
+.timeline {
+  pointer-events: auto;
+  backdrop-filter: blur(12px);
+  background-color: var(--color-panel-translucent);
+}
+
+.sections {
+  display: flex;
+  gap: 4px;
+}
+
+.section {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* The section's line runs through the middle of its dots. */
+.ticks {
+  position: relative;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  height: 8px;
+}
+
+.ticks::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
+  background-color: var(--gray-6);
+}
+
+/* Progress: fills left to right with the timeline (--fill is 0..1 of this section). */
+.ticks::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: calc(var(--fill, 0) * 100%);
+  height: 2px;
+  transform: translateY(-50%);
+  background-color: var(--accent-9);
+}
+
+.tick {
+  all: unset;
+  position: relative;
+  z-index: 1; /* above the line, which ::after paints after the dots */
+  cursor: pointer;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  /* Hollow until done, so it reads against the line through it. */
+  background-color: var(--color-panel-solid);
+  box-shadow: inset 0 0 0 2px var(--gray-7);
+}
+
+.tick:focus-visible {
+  outline: 2px solid var(--accent-8);
+}
+
+.tickDone {
+  background-color: var(--accent-9);
+  box-shadow: none;
+}
+
+.tickCurrent {
+  background-color: var(--accent-9);
+  box-shadow: 0 0 0 3px var(--accent-5);
+}
+
+.sectionLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel {
+  align-self: start;
+  pointer-events: auto;
+  backdrop-filter: blur(12px);
+  background-color: var(--color-panel-translucent);
+  width: 360px;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: auto;
+}
+
+.overlayMobile .panel {
+  align-self: end;
+  width: 100%;
+  max-height: 55%;
+}
+
+.markdown {
+  font-size: var(--font-size-2);
+  color: var(--gray-11);
+  line-height: 1.5;
+}
+
+.markdown p {
+  margin: 0 0 8px;
+}
+
+.markdown p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.markdown li {
+  margin: 2px 0;
+}
+
+.markdown a {
+  color: var(--accent-11);
+  text-decoration: underline;
+}
+
+.markdown strong {
+  color: var(--gray-12);
+}
+
+/* Under the view cube (top-right of the canvas): the camera's direction, in
+   the same form as a guide step's `view`. */
+.debug {
+  position: absolute;
+  top: 176px;
+  right: 12px;
+  width: 168px;
+  align-items: center;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+
+.selectable {
+  font-variant-numeric: tabular-nums;
+  user-select: all;
+}

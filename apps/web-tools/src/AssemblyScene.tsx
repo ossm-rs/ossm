@@ -13,27 +13,20 @@ import {
   Environment,
   OrbitControls,
   OrthographicCamera,
-  useGLTF,
 } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import {
   ACESFilmicToneMapping,
   Box3,
-  Color,
   Matrix4,
-  Mesh,
-  MeshStandardMaterial,
   Object3D,
   Quaternion,
   Vector3,
 } from "three";
 import { useAppearance } from "./hooks/useAppearance";
+import { useOssmModel } from "./model/useOssmModel";
 import { PART_CATALOG } from "./parts";
 import type { CatalogPart } from "./parts";
-
-const MODEL_URL = "/models/ossm-alt.glb";
-
-useGLTF.preload(MODEL_URL, true);
 
 type CatalogState = {
   part: CatalogPart;
@@ -57,21 +50,6 @@ function easeOutCubicScalar(t: number) {
   return 1 - Math.pow(1 - t, 3);
 }
 
-function createMaterialForType(
-  type: CatalogPart["materialType"],
-): MeshStandardMaterial | null {
-  switch (type) {
-    case "printed":
-      return new MeshStandardMaterial({
-        color: new Color(0x6a1b9a),
-        roughness: 0.85,
-        metalness: 0,
-      });
-    default:
-      return null;
-  }
-}
-
 interface ViewportInsets {
   top: number;
   left: number;
@@ -90,8 +68,7 @@ function Model({
   onPartSelect?: (partId: string | null) => void;
   explodeAmount?: number;
 }) {
-  const { scene: original } = useGLTF(MODEL_URL, true);
-  const scene = useMemo(() => original.clone(true), [original]);
+  const scene = useOssmModel();
 
   const catalogStatesRef = useRef<CatalogState[]>([]);
   const parentInvQuatsRef = useRef<Map<Object3D, Quaternion | null>>(new Map());
@@ -106,11 +83,11 @@ function Model({
     for (const catalogPart of PART_CATALOG) {
       const nodes: Object3D[] = [];
       const originals: Vector3[] = [];
-      for (const meshName of catalogPart.meshes) {
-        const node = scene.getObjectByName(meshName);
+      for (const instance of catalogPart.instances) {
+        const node = scene.getObjectByName(instance);
         if (!node) {
           console.warn(
-            `[catalog] mesh not found: ${meshName} (part ${catalogPart.id})`,
+            `[catalog] node not found: ${instance} (part ${catalogPart.id})`,
           );
           continue;
         }
@@ -119,16 +96,6 @@ function Model({
         catalogNodeMap.set(node, catalogPart.id);
       }
       if (nodes.length === 0) continue;
-      const overrideMat = createMaterialForType(catalogPart.materialType);
-      if (overrideMat) {
-        for (const node of nodes) {
-          node.traverse((child) => {
-            const mesh = child as Mesh;
-            if (!mesh.isMesh) return;
-            mesh.material = overrideMat;
-          });
-        }
-      }
       catalogStates.push({
         part: catalogPart,
         nodes,

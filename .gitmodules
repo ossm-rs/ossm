@@ -13,3 +13,6 @@
 [submodule "reference/radr-wireless-remote"]
 	path = reference/radr-wireless-remote
 	url = https://github.com/researchanddesire/radr-wireless-remote
+[submodule "reference/OSSM-ALT-Edition"]
+	path = reference/OSSM-ALT-Edition
+	url = https://github.com/jollydodo/OSSM-ALT-Edition
