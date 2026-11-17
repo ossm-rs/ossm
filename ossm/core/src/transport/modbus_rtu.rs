@@ -62,20 +62,22 @@ where
         Self { uart, delay }
     }
 
-    /// Read exactly `buf.len()` bytes, with a deadline.
+    /// Fill `buf[*filled..end]`, with a deadline. `filled` advances as
+    /// bytes arrive so callers can report partial frames on failure.
     async fn read_exact(
         &mut self,
         buf: &mut [u8],
+        filled: &mut usize,
+        end: usize,
         deadline: Instant,
     ) -> Result<(), TransportError<<UART as ErrorType>::Error>> {
-        let mut remaining = buf;
-        while !remaining.is_empty() {
+        while *filled < end {
             if Instant::now() > deadline {
                 return Err(TransportError::Timeout);
             }
-            match self.uart.read_nb(remaining) {
+            match self.uart.read_nb(&mut buf[*filled..end]) {
                 Ok(0) => self.delay.delay_us(POLL_DELAY_US).await,
-                Ok(n) => remaining = &mut remaining[n..],
+                Ok(n) => *filled += n,
                 Err(e) => return Err(TransportError::Uart(e)),
             }
         }
@@ -95,9 +97,10 @@ where
     async fn read_response(
         &mut self,
         buf: &mut [u8],
+        filled: &mut usize,
         deadline: Instant,
     ) -> Result<usize, TransportError<<UART as ErrorType>::Error>> {
-        self.read_exact(&mut buf[0..MIN_FRAME_BYTES], deadline)
+        self.read_exact(buf, filled, MIN_FRAME_BYTES, deadline)
             .await?;
         let len =
             rmodbus::guess_response_frame_len(&buf[0..MIN_FRAME_BYTES], rmodbus::ModbusProto::Rtu)
@@ -107,15 +110,17 @@ where
             return Err(TransportError::Corrupt("guessed frame length exceeds buffer"));
         }
         if len > MIN_FRAME_BYTES {
-            self.read_exact(&mut buf[MIN_FRAME_BYTES..len], deadline)
-                .await?;
+            self.read_exact(buf, filled, len, deadline).await?;
         }
         Ok(len)
     }
 
     /// Send a request and read the raw response. Single attempt, no retry.
+    /// Retryable failures are logged with the bytes on the wire.
     async fn exchange(
         &mut self,
+        op: &str,
+        attempt: usize,
         request: &[u8],
         response_buf: &mut [u8],
     ) -> Result<usize, TransportError<<UART as ErrorType>::Error>> {
@@ -123,10 +128,37 @@ where
         self.uart.write_all(request).map_err(TransportError::Uart)?;
         self.uart.flush().map_err(TransportError::Uart)?;
 
-        let deadline =
-            Instant::now() + embassy_time::Duration::from_millis(RESPONSE_TIMEOUT_MS);
-        self.read_response(response_buf, deadline).await
+        let sent_at = Instant::now();
+        let deadline = sent_at + embassy_time::Duration::from_millis(RESPONSE_TIMEOUT_MS);
+        let mut filled = 0;
+        let result = self.read_response(response_buf, &mut filled, deadline).await;
+        if let Err(e @ (TransportError::Timeout | TransportError::Corrupt(_))) = &result {
+            warn_failure(op, attempt, e, request, &response_buf[..filled], sent_at);
+        }
+        result
     }
+}
+
+/// Log a failed attempt with what we sent, what (if anything) came back,
+/// and how long we waited.
+fn warn_failure<E: core::fmt::Debug>(
+    op: &str,
+    attempt: usize,
+    error: &E,
+    request: &[u8],
+    received: &[u8],
+    sent_at: Instant,
+) {
+    log::warn!(
+        "Modbus {} {:?} after {}us, retry {}/{} tx={:02X?} rx={:02X?}",
+        op,
+        error,
+        sent_at.elapsed().as_micros(),
+        attempt + 1,
+        MAX_RETRIES,
+        request,
+        received,
+    );
 }
 
 impl<UART, DELAY> ModbusTransport for Rs485ModbusTransport<UART, DELAY>
@@ -151,23 +183,22 @@ where
             .map_err(|_| TransportError::Protocol("failed to generate write request"))?;
         let mut response = [0u8; 32];
         for attempt in 0..MAX_RETRIES {
-            match self.exchange(&request, &mut response).await {
+            match self.exchange("write", attempt, &request, &mut response).await {
                 Ok(len) => match modbus_req.parse_ok(&response[..len]) {
                     Ok(()) => {
                         self.delay.delay_us(INTER_COMMAND_DELAY_US).await;
                         return Ok(());
                     }
-                    Err(_) => log::warn!(
-                        "Modbus write corrupt response, retry {}/{}",
+                    Err(e) => log::warn!(
+                        "Modbus write rejected response ({:?}), retry {}/{} tx={:02X?} rx={:02X?}",
+                        e,
                         attempt + 1,
-                        MAX_RETRIES
+                        MAX_RETRIES,
+                        request.as_slice(),
+                        &response[..len],
                     ),
                 },
-                Err(TransportError::Timeout | TransportError::Corrupt(_)) => log::warn!(
-                    "Modbus write timeout/corrupt, retry {}/{}",
-                    attempt + 1,
-                    MAX_RETRIES
-                ),
+                Err(TransportError::Timeout | TransportError::Corrupt(_)) => {}
                 Err(e) => return Err(e),
             }
         }
@@ -188,7 +219,7 @@ where
             .map_err(|_| TransportError::Protocol("failed to generate read request"))?;
         let mut response = [0u8; 32];
         for attempt in 0..MAX_RETRIES {
-            match self.exchange(&request, &mut response).await {
+            match self.exchange("read", attempt, &request, &mut response).await {
                 Ok(len) => {
                     let mut result: Vec<u16, MAX_REGS_PER_READ> = Vec::new();
                     match modbus_req.parse_u16(&response[..len], &mut result) {
@@ -196,18 +227,17 @@ where
                             self.delay.delay_us(INTER_COMMAND_DELAY_US).await;
                             return Ok(result);
                         }
-                        Err(_) => log::warn!(
-                            "Modbus read corrupt response, retry {}/{}",
+                        Err(e) => log::warn!(
+                            "Modbus read rejected response ({:?}), retry {}/{} tx={:02X?} rx={:02X?}",
+                            e,
                             attempt + 1,
-                            MAX_RETRIES
+                            MAX_RETRIES,
+                            request.as_slice(),
+                            &response[..len],
                         ),
                     }
                 }
-                Err(TransportError::Timeout | TransportError::Corrupt(_)) => log::warn!(
-                    "Modbus read timeout/corrupt, retry {}/{}",
-                    attempt + 1,
-                    MAX_RETRIES
-                ),
+                Err(TransportError::Timeout | TransportError::Corrupt(_)) => {}
                 Err(e) => return Err(e),
             }
         }
@@ -234,16 +264,20 @@ where
             self.uart.write_all(&frame).map_err(TransportError::Uart)?;
             self.uart.flush().map_err(TransportError::Uart)?;
 
-            let deadline =
-                Instant::now() + embassy_time::Duration::from_millis(RESPONSE_TIMEOUT_MS);
+            let sent_at = Instant::now();
+            let deadline = sent_at + embassy_time::Duration::from_millis(RESPONSE_TIMEOUT_MS);
             let expected_len = response.len();
-            match self.read_exact(&mut response[..expected_len], deadline).await {
+            let mut filled = 0;
+            match self
+                .read_exact(response, &mut filled, expected_len, deadline)
+                .await
+            {
                 Ok(()) => {
                     self.delay.delay_us(INTER_COMMAND_DELAY_US).await;
                     return Ok(expected_len);
                 }
-                Err(TransportError::Timeout | TransportError::Corrupt(_)) => {
-                    log::warn!("Modbus raw timeout/corrupt, retry {}/{}", attempt + 1, MAX_RETRIES);
+                Err(e @ (TransportError::Timeout | TransportError::Corrupt(_))) => {
+                    warn_failure("raw", attempt, &e, &frame, &response[..filled], sent_at);
                 }
                 Err(e) => return Err(e),
             }
