@@ -148,6 +148,8 @@ where
             .map_err(BoardError::CurrentSensor)?;
         info!("Current sensor offset: {:.2}%", offset);
 
+        //zero at start for rehoming behaviors
+        self.motor.reset_position(0);
         // Crawl backward (toward home) until stall
         self.crawl_until_stall(Direction::Forward, offset).await?;
 
