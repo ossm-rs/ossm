@@ -114,12 +114,15 @@ The project is split into several layers, each with a clear responsibility. Here
 ```
 ┌──────────────────────────────────────────┐
 │                Firmware                  │
-│    (Assembles everything for a target)   │
+│   (A platform for each target + modes)   │
+├──────────────────────────────────────────┤
+│                  Ossm                    │
+│    (Runtime: boot order and modes)       │
 ├───────────────────┬──────────────────────┤
 │     Patterns      │     Controller       │
 │     (Feature)     │      (Feature)       │
 ├───────────────────┴──────────────────────┤
-│                  Ossm                    │
+│             Motion channels              │
 │            (Public Control)              │
 ├──────────────────────────────────────────┤
 │            Motion Controller             │
@@ -131,13 +134,27 @@ The project is split into several layers, each with a clear responsibility. Here
 └────────────────────┴─────────────────────┘
 ```
 
-### Ossm (Public Control)
+### Ossm (Runtime)
 
-`Ossm` is the public-facing API that features and application code interact with. On its own it doesn't do anything - it simply exposes methods like `enable()`, `disable()`, `home()`, `pause()`, `resume()`, `begin_motion()`, `update_motion()`, and `await_motion()` that forward commands over a lock-free channel to the motion controller. It's up to features (like the pattern engine or a controller) to call these methods and drive the machine.
+`Ossm` is where firmware starts. A firmware registers the modes the machine can switch between, then hands `Ossm` a `Platform` for its target:
+
+```rust
+Ossm::new(Esp32s3::new(spawner, config))
+    .mode(OssmMode::Patterns, patterns)
+    .start_in(OssmMode::Patterns)
+    .run()
+    .await
+```
+
+`run()` owns the boot order: it sets up the hardware through the platform, starts the motion controller, starts the indicator and remotes, then runs the modes. Each mode is an async function whose arguments are the only capabilities it gets, such as permission to move the motor. An idle mode is always available.
+
+### Motion channels (Public Control)
+
+The motion channels are how features drive the machine. On their own they don't do anything - the `MotionSender` exposes methods like `enable()`, `disable()`, `home()`, `pause()`, `resume()`, `begin_motion()`, `update_motion()`, and `await_motion()` that forward commands over a lock-free channel to the motion controller. It's up to features (like the pattern engine or a controller) to call these methods and drive the machine.
 
 ### Motion Controller
 
-The motion controller is the real-time engine that runs on a high-priority interrupt executor. It receives commands from the `Ossm` channel, manages a state machine (Disabled → Enabled → Ready → Moving), and uses Ruckig for jerk-limited trajectory planning. Each update cycle it converts the planned trajectory into motor step commands. It also handles mechanical configuration (pulley teeth, belt pitch, travel limits) and motion limits (max velocity, acceleration, jerk).
+The motion controller is the real-time engine that runs on a high-priority interrupt executor. It receives commands from the motion channels, manages a state machine (Disabled → Enabled → Ready → Moving), and uses Ruckig for jerk-limited trajectory planning. Each update cycle it converts the planned trajectory into motor step commands. It also handles mechanical configuration (pulley teeth, belt pitch, travel limits) and motion limits (max velocity, acceleration, jerk).
 
 ### Boards
 
@@ -149,11 +166,11 @@ The `Motor` trait defines a hardware-agnostic interface that the motion controll
 
 ### Firmware
 
-A firmware crate is the final integration point that ties a specific board and motor together into a flashable binary. It initialises the board, creates the `Ossm` and `MotionController` pair, spawns the motion task on a real-time executor, runs the homing sequence, and then hands control to a pattern or application loop. Each supported hardware combination gets its own firmware crate.
+A firmware crate is the final integration point that ties a specific board and motor together into a flashable binary. It implements `Platform` for its target: setting up the board and motor, running the motion controller on a real-time executor, and starting the indicator and radios. Its binaries pick the modes and hand the platform to `Ossm`. Each supported chip gets its own firmware crate.
 
 ### Features
 
-Features are optional higher-level capabilities built on top of the core motion control. The pattern engine is the primary feature today - it defines a `Pattern` trait whose implementations describe repeating motion sequences (simple stroking, stop-and-go, teasing/pounding, etc.). Patterns read live user input (depth, stroke, velocity, sensation) and translate it into motion commands via the `Ossm` API. New patterns can be added by implementing the `Pattern` trait. Future features may include user remotes, mobile apps, or video game integrations - all built on top of the same public control layer.
+Features are optional higher-level capabilities built on top of the core motion control. The pattern engine is the primary feature today - it defines a `Pattern` trait whose implementations describe repeating motion sequences (simple stroking, stop-and-go, teasing/pounding, etc.). Patterns read live user input (depth, stroke, velocity, sensation) and translate it into motion commands via the motion channels. New patterns can be added by implementing the `Pattern` trait. Future features may include user remotes, mobile apps, or video game integrations - all built on top of the same public control layer.
 
 ## Contributing
 

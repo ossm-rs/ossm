@@ -1,11 +1,11 @@
-use crate::Ossm;
+use crate::MotionChannels;
 use crate::state::{MotionPhase, MotionState};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::pubsub::{self, Subscriber};
 
 /// Read-only observer of motion state.
 ///
-/// Produced by [`Ossm::split`](crate::Ossm::split) alongside
+/// Produced by [`MotionChannels::split`](crate::MotionChannels::split) alongside
 /// [`MotionSender`](crate::MotionSender) and
 /// [`MotionReceiver`](crate::MotionReceiver). Anyone with a borrow of
 /// the observer can read the current motion state and subscribe to
@@ -14,11 +14,11 @@ use embassy_sync::pubsub::{self, Subscriber};
 ///
 /// Not [`Clone`] and not publicly constructible.
 pub struct MotionObserver {
-    channels: &'static Ossm,
+    channels: &'static MotionChannels,
 }
 
 impl MotionObserver {
-    pub(crate) fn new(channels: &'static Ossm) -> Self {
+    pub(crate) fn new(channels: &'static MotionChannels) -> Self {
         Self { channels }
     }
 

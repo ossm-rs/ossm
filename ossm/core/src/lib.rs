@@ -36,13 +36,13 @@ pub use transport::{
     TransportError, UartReconfigure,
 };
 
-/// Root container for an OSSM instance.
+/// The channels between the motion controller and its handles.
 ///
 /// Carries the motion-channel state that the three capability handles
-/// project from. `Ossm` is instantiated once in static storage and
-/// immediately consumed by [`split`](Self::split). After split returns,
-/// nothing in the program holds an `&Ossm`: the three named
-/// capabilities below cover every role.
+/// project from. `MotionChannels` is instantiated once in static storage
+/// and immediately consumed by [`split`](Self::split). After split
+/// returns, nothing in the program holds an `&MotionChannels`: the three
+/// named capabilities below cover every role.
 ///
 /// # Motor lifecycle
 ///
@@ -60,7 +60,7 @@ pub use transport::{
 /// only prevents future commands; it does not interrupt automatic,
 /// self-completing commands like [`home`](MotionSender::home) that the
 /// controller is already executing.
-pub struct Ossm {
+pub struct MotionChannels {
     pub(crate) move_cmd: MoveChannel,
     pub(crate) state_cmd: StateChannel,
     pub(crate) state_resp: StateResponseSignal,
@@ -68,7 +68,7 @@ pub struct Ossm {
     pub(crate) motion_state: MotionStateChannels,
 }
 
-impl Ossm {
+impl MotionChannels {
     pub const fn new() -> Self {
         Self {
             move_cmd: MoveChannel::new(),
@@ -83,8 +83,8 @@ impl Ossm {
     ///
     /// Consumes a unique `&'static mut Self`, so it can be called at
     /// most once: nothing in the program can produce a second
-    /// `&'static mut Ossm`. The expected boot shape is
-    /// `StaticCell::init(Ossm::new()).split()`.
+    /// `&'static mut MotionChannels`. The expected boot shape is
+    /// `StaticCell::init(MotionChannels::new()).split()`.
     ///
     /// - [`MotionReceiver`] is the receiver-side capability. The
     ///   standard firmware path immediately consumes it via

@@ -7,7 +7,7 @@ pub use ossm_esp::board::sim::Board;
 #[cfg(feature = "motor-sim")]
 pub fn build(
     motor: crate::motor::Motor,
-    mechanical: &'static ossm::MechanicalConfig,
+    mechanical: &'static ossm::motion::MechanicalConfig,
 ) -> Board {
     ossm_esp::board::sim::build(motor, (), mechanical)
 }

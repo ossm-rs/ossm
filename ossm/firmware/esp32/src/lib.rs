@@ -24,7 +24,7 @@ pub use motor::Config as MotorConfig;
 use embassy_executor::Spawner;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
-use embassy_time::{Delay, Duration, Ticker};
+use embassy_time::{Duration, Ticker};
 use esp_hal::{
     Blocking,
     interrupt::{Priority, software::SoftwareInterruptControl},
@@ -35,8 +35,9 @@ use esp_hal::{
 };
 use esp_rtos::embassy::InterruptExecutor;
 use log::info;
-use ossm::{MechanicalConfig, MotionController, MotionLimits, Ossm};
-use pattern_engine::{AnyPattern, PatternEngine, PatternSender};
+use ossm::motion::{MechanicalConfig, MotionController, MotionLimits, MotionObserver};
+use ossm::platform::{Fault, Hardware, Platform};
+use pattern_engine::{PatternObserver, PatternSender};
 use static_cell::StaticCell;
 
 extern crate alloc;
@@ -50,9 +51,6 @@ macro_rules! mk_static {
 }
 
 const UPDATE_INTERVAL_SECS: f64 = 0.01;
-
-static OSSM_CELL: StaticCell<Ossm> = StaticCell::new();
-static PATTERNS_CELL: StaticCell<PatternEngine> = StaticCell::new();
 
 static EXECUTOR_CORE_1: StaticCell<InterruptExecutor<2>> = StaticCell::new();
 // ESP32 DRAM is tighter than ESP32-S3
@@ -82,73 +80,106 @@ async fn motion_task(mut controller: MotionController<'static, board::Board>) {
     }
 }
 
-pub async fn run<const RMT_CHANNEL: u8>(spawner: Spawner, config: Config<RMT_CHANNEL>)
+/// OSSM on an ESP32: motion on core 1, the indicator and BLE on core 0.
+pub struct Esp32<const RMT_CHANNEL: u8> {
+    spawner: Spawner,
+    config: Option<Config<RMT_CHANNEL>>,
+    indicator: Option<indicator::Output>,
+    core_1: Option<(SW_INTERRUPT<'static>, CPU_CTRL<'static>)>,
+    bt: Option<BT<'static>>,
+}
+
+impl<const RMT_CHANNEL: u8> Esp32<RMT_CHANNEL> {
+    pub fn new(spawner: Spawner, config: Config<RMT_CHANNEL>) -> Self {
+        Self {
+            spawner,
+            config: Some(config),
+            indicator: None,
+            core_1: None,
+            bt: None,
+        }
+    }
+}
+
+impl<const RMT_CHANNEL: u8> Platform for Esp32<RMT_CHANNEL>
 where
     ChannelCreator<'static, Blocking, RMT_CHANNEL>: TxChannelCreator<'static, Blocking>,
 {
-    ossm::logging::init(log::LevelFilter::Info, |line| {
-        esp_println::println!("{}", line);
-    });
+    type Board = board::Board;
 
-    ossm::build_info!();
+    async fn init(&mut self) -> Result<Hardware<board::Board>, Fault> {
+        let config = self.config.take().expect("init runs once");
 
-    // About 50% of the 32kB heap is used
-    esp_alloc::heap_allocator!(size: 32 * 1024);
+        ossm::platform::logging::init(log::LevelFilter::Info, |line| {
+            esp_println::println!("{}", line);
+        });
 
-    let timg0 = TimerGroup::new(config.timg0);
-    esp_rtos::start(timg0.timer0);
+        ossm::platform::build_info!();
 
-    let indicator = indicator::build::<0, 1>(config.indicator);
-    let motor = motor::build(config.motor);
+        // About 50% of the 32kB heap is used
+        esp_alloc::heap_allocator!(size: 32 * 1024);
 
-    static MECHANICAL: MechanicalConfig = MechanicalConfig {
-        pulley_teeth: 20,
-        belt_pitch_mm: 2.0,
-        reverse_direction: false,
-    };
-    let limits = MotionLimits::default();
+        let timg0 = TimerGroup::new(config.timg0);
+        esp_rtos::start(timg0.timer0);
 
-    let (receiver, motion_observer, motion) = OSSM_CELL.init(Ossm::new()).split();
+        self.indicator = indicator::build::<0, 1>(config.indicator);
+        self.core_1 = Some((config.sw_int, config.cpu_ctrl));
+        self.bt = Some(config.bt);
 
-    let board = board::build(motor, config.board, &MECHANICAL);
-    let controller = receiver.into_controller(board, limits.clone(), UPDATE_INTERVAL_SECS);
+        let motor = motor::build(config.motor);
 
-    let sw_int = SoftwareInterruptControl::new(config.sw_int);
-    let app_core_stack = APP_CORE_STACK.init(Stack::new());
+        static MECHANICAL: MechanicalConfig = MechanicalConfig {
+            pulley_teeth: 20,
+            belt_pitch_mm: 2.0,
+            reverse_direction: false,
+        };
 
-    let second_core = move || {
-        let executor = InterruptExecutor::new(sw_int.software_interrupt2);
-        let executor = EXECUTOR_CORE_1.init(executor);
-        let spawner = executor.start(Priority::Priority2);
+        Ok(Hardware {
+            board: board::build(motor, config.board, &MECHANICAL),
+            limits: MotionLimits::default(),
+            update_interval_secs: UPDATE_INTERVAL_SECS,
+        })
+    }
 
-        spawner.spawn(motion_task(controller)).unwrap();
+    async fn start_motion(&mut self, controller: MotionController<'static, board::Board>) {
+        let (sw_int, cpu_ctrl) = self.core_1.take().expect("start_motion runs once");
+        let sw_int = SoftwareInterruptControl::new(sw_int);
+        let app_core_stack = APP_CORE_STACK.init(Stack::new());
 
-        MOTION_READY.signal(true);
+        let second_core = move || {
+            let executor = InterruptExecutor::new(sw_int.software_interrupt2);
+            let executor = EXECUTOR_CORE_1.init(executor);
+            let spawner = executor.start(Priority::Priority2);
 
-        loop {}
-    };
+            spawner.spawn(motion_task(controller)).unwrap();
 
-    esp_rtos::start_second_core(
-        config.cpu_ctrl,
-        sw_int.software_interrupt0,
-        sw_int.software_interrupt1,
-        app_core_stack,
-        second_core,
-    );
+            MOTION_READY.signal(true);
 
-    MOTION_READY.wait().await;
+            loop {}
+        };
 
-    info!(
-        "Motion task started on core 1 at {}ms interval",
-        UPDATE_INTERVAL_SECS * 1000.0
-    );
+        esp_rtos::start_second_core(
+            cpu_ctrl,
+            sw_int.software_interrupt0,
+            sw_int.software_interrupt1,
+            app_core_stack,
+            second_core,
+        );
 
-    let (runner, pattern_observer, patterns) = PATTERNS_CELL.init(PatternEngine::new()).split();
-    let patterns: &'static PatternSender = mk_static!(PatternSender, patterns);
+        MOTION_READY.wait().await;
 
-    indicator::start(&spawner, indicator, motion_observer, pattern_observer);
+        info!(
+            "Motion task started on core 1 at {}ms interval",
+            UPDATE_INTERVAL_SECS * 1000.0
+        );
+    }
 
-    radio::start(&spawner, config.bt, patterns);
+    fn start_indicator(&mut self, motion: MotionObserver, patterns: PatternObserver) {
+        indicator::start(&self.spawner, self.indicator.take(), motion, patterns);
+    }
 
-    runner.run(&motion, AnyPattern::all_builtin(), Delay).await
+    fn start_remotes(&mut self, patterns: &'static PatternSender, _limits: &MotionLimits) {
+        let bt = self.bt.take().expect("start_remotes runs once");
+        radio::start(&self.spawner, bt, patterns);
+    }
 }

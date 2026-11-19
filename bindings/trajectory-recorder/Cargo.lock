@@ -388,7 +388,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
-name = "ossm"
+name = "ossm-core"
 version = "0.1.0"
 dependencies = [
  "crc",
@@ -438,7 +438,7 @@ dependencies = [
  "embassy-time",
  "embedded-hal-async",
  "log",
- "ossm",
+ "ossm-core",
 ]
 
 [[package]]
@@ -584,7 +584,7 @@ dependencies = [
  "critical-section",
  "embassy-time",
  "embedded-hal-async",
- "ossm",
+ "ossm-core",
  "pattern-engine",
  "static_cell",
  "wasm-bindgen",

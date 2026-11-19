@@ -1,7 +1,7 @@
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::pubsub::{self, Subscriber};
 
-use crate::Ossm;
+use crate::MotionChannels;
 use crate::command::{Cancelled, MotionCommand, StateCommand, StateResponse};
 use crate::state::{MotionPhase, MotionState};
 
@@ -13,10 +13,11 @@ use crate::state::{MotionPhase, MotionState};
 /// is harmless. Code that only needs to observe should still take
 /// `&MotionObserver` for the tighter contract.
 ///
-/// There is exactly one `MotionSender` per [`Ossm`](crate::Ossm),
-/// produced by [`Ossm::split`](crate::Ossm::split). The receiver half
-/// is [`MotionReceiver`](crate::MotionReceiver), typically consumed at
-/// boot into a [`MotionController`](crate::MotionController).
+/// There is exactly one `MotionSender` per
+/// [`MotionChannels`](crate::MotionChannels), produced by
+/// [`MotionChannels::split`](crate::MotionChannels::split). The receiver
+/// half is [`MotionReceiver`](crate::MotionReceiver), typically consumed
+/// at boot into a [`MotionController`](crate::MotionController).
 ///
 /// Not [`Clone`] and not publicly constructible. The intended pattern
 /// is that a single owner holds the sender at boot and lends out
@@ -25,7 +26,7 @@ use crate::state::{MotionPhase, MotionState};
 /// stash is impossible.
 ///
 /// Code that does not have a value of this type in scope structurally
-/// cannot move the motor, no matter what it does with `&Ossm`.
+/// cannot move the motor, no matter what it does with `&MotionChannels`.
 ///
 /// # Dropping the sender does not stop motion
 ///
@@ -37,11 +38,11 @@ use crate::state::{MotionPhase, MotionState};
 /// motion, call [`disable`](Self::disable) or [`pause`](Self::pause)
 /// before dropping.
 pub struct MotionSender {
-    channels: &'static Ossm,
+    channels: &'static MotionChannels,
 }
 
 impl MotionSender {
-    pub(crate) fn new(channels: &'static Ossm) -> Self {
+    pub(crate) fn new(channels: &'static MotionChannels) -> Self {
         Self { channels }
     }
 
