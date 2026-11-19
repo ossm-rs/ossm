@@ -6,7 +6,8 @@ use log::info;
 use ossm::{MotionSender, StateResponse};
 
 use crate::AnyPattern;
-use crate::engine::{EngineCommand, EngineState, PatternEngine};
+use crate::engine::{EnginePhase, PatternEngine};
+use crate::input::PatternEvent;
 use crate::pattern::{Pattern, PatternCtx};
 
 /// Internal runner state.
@@ -19,12 +20,12 @@ enum RunnerState {
 }
 
 impl RunnerState {
-    fn as_engine_state(self) -> EngineState {
+    fn as_engine_phase(self) -> EnginePhase {
         match self {
-            Self::Idle => EngineState::Idle,
-            Self::Homing(_) => EngineState::Homing,
-            Self::Ready => EngineState::Ready,
-            Self::Playing(idx) => EngineState::Playing(idx),
+            Self::Idle => EnginePhase::Idle,
+            Self::Homing(_) => EnginePhase::Homing,
+            Self::Ready => EnginePhase::Ready,
+            Self::Playing(idx) => EnginePhase::Playing(idx),
         }
     }
 }
@@ -51,7 +52,7 @@ impl PatternRunner {
         Self { engine }
     }
 
-    /// Run the engine forever, processing commands and driving patterns.
+    /// Run the engine forever, processing events and driving patterns.
     ///
     /// `motion` is borrowed for the lifetime of the run. `patterns` is
     /// moved in and lives on the runner's stack frame. `delay` must be
@@ -64,14 +65,14 @@ impl PatternRunner {
         delay: D,
     ) -> ! {
         let engine = self.engine;
-        let input = &engine.input;
+        let pattern_state = &engine.state;
         let mut state = RunnerState::Idle;
 
         loop {
             match state {
                 RunnerState::Idle | RunnerState::Ready => {
-                    let cmd = engine.commands.receive().await;
-                    handle_command::<N>(engine, motion, cmd, &mut state).await;
+                    let event = next_event(engine).await;
+                    handle_event::<N>(engine, motion, event, &mut state).await;
                 }
                 RunnerState::Homing(maybe_idx) => {
                     if motion.enable().await != StateResponse::Completed {
@@ -84,8 +85,7 @@ impl PatternRunner {
                     let mut home_fut = core::pin::pin!(home_fut);
 
                     loop {
-                        let result =
-                            select::select(home_fut.as_mut(), engine.commands.receive()).await;
+                        let result = select::select(home_fut.as_mut(), next_event(engine)).await;
 
                         match result {
                             Either::First(resp) => {
@@ -102,7 +102,7 @@ impl PatternRunner {
                                 }
                                 break;
                             }
-                            Either::Second(EngineCommand::Stop | EngineCommand::Pause) => {
+                            Either::Second(PatternEvent::Stop | PatternEvent::Pause) => {
                                 if motion.disable().await == StateResponse::Fault {
                                     log::error!("Board fault during disable");
                                 }
@@ -114,53 +114,53 @@ impl PatternRunner {
                     }
                 }
                 RunnerState::Playing(idx) => {
-                    let mut ctx = PatternCtx::new(motion, input, delay.clone());
+                    let mut ctx = PatternCtx::new(motion, pattern_state, delay.clone());
                     let pattern_fut = core::pin::pin!(patterns[idx].run(&mut ctx));
                     let mut pattern_fut = pattern_fut;
 
                     loop {
                         let result =
-                            select::select(pattern_fut.as_mut(), engine.commands.receive()).await;
+                            select::select(pattern_fut.as_mut(), next_event(engine)).await;
 
                         match result {
                             Either::First(_result) => {
                                 if matches!(state, RunnerState::Playing(_)) {
                                     state = RunnerState::Idle;
-                                    store_and_publish(engine, EngineState::Idle);
+                                    store_and_publish(engine, EnginePhase::Idle);
                                 }
                                 break;
                             }
-                            Either::Second(cmd) => match cmd {
-                                EngineCommand::Pause => {
+                            Either::Second(event) => match event {
+                                PatternEvent::Pause => {
                                     if motion.pause().await != StateResponse::Completed {
                                         log::error!("Pause failed, stopping engine");
                                         state = RunnerState::Idle;
-                                        store_and_publish(engine, EngineState::Idle);
+                                        store_and_publish(engine, EnginePhase::Idle);
                                         break;
                                     }
-                                    store_and_publish(engine, EngineState::Paused(idx));
+                                    store_and_publish(engine, EnginePhase::Paused(idx));
                                 }
-                                EngineCommand::Resume => {
+                                PatternEvent::Resume => {
                                     if motion.resume().await != StateResponse::Completed {
                                         log::error!("Resume failed, stopping engine");
                                         state = RunnerState::Idle;
-                                        store_and_publish(engine, EngineState::Idle);
+                                        store_and_publish(engine, EnginePhase::Idle);
                                         break;
                                     }
-                                    store_and_publish(engine, EngineState::Playing(idx));
+                                    store_and_publish(engine, EnginePhase::Playing(idx));
                                 }
-                                EngineCommand::Play(i) if i == idx => {}
-                                EngineCommand::Play(new_idx) if new_idx < N => {
+                                PatternEvent::Play(i) if i == idx => {}
+                                PatternEvent::Play(new_idx) if new_idx < N => {
                                     state = RunnerState::Playing(new_idx);
-                                    store_and_publish(engine, EngineState::Playing(new_idx));
+                                    store_and_publish(engine, EnginePhase::Playing(new_idx));
                                     break;
                                 }
-                                EngineCommand::Stop => {
+                                PatternEvent::Stop => {
                                     if motion.disable().await == StateResponse::Fault {
                                         log::error!("Board fault during disable");
                                     }
                                     state = RunnerState::Idle;
-                                    store_and_publish(engine, EngineState::Idle);
+                                    store_and_publish(engine, EnginePhase::Idle);
                                     break;
                                 }
                                 _ => {}
@@ -175,44 +175,58 @@ impl PatternRunner {
 
 fn set_state(engine: &PatternEngine, current: &mut RunnerState, new_state: RunnerState) {
     *current = new_state;
-    let engine_state = new_state.as_engine_state();
-    info!("Engine state: {:?}", engine_state);
-    store_and_publish(engine, engine_state);
+    let engine_phase = new_state.as_engine_phase();
+    info!("Engine phase: {:?}", engine_phase);
+    store_and_publish(engine, engine_phase);
 }
 
-fn store_and_publish(engine: &PatternEngine, state: EngineState) {
-    engine.state.store(state.encode(), Ordering::Relaxed);
+fn store_and_publish(engine: &PatternEngine, phase: EnginePhase) {
+    engine.phase.store(phase.encode(), Ordering::Relaxed);
     engine
-        .state_channel
+        .phase_channel
         .immediate_publisher()
-        .publish_immediate(state);
+        .publish_immediate(phase);
 }
 
-async fn handle_command<const N: usize>(
+/// Take the next event. A stop also brings speed back to 0, so the next
+/// play starts still.
+async fn next_event(engine: &PatternEngine) -> PatternEvent {
+    let event = engine.events.receive().await;
+    if event == PatternEvent::Stop {
+        engine.state.sender().send_modify(|state| {
+            if let Some(state) = state {
+                state.speed = 0.0;
+            }
+        });
+    }
+    event
+}
+
+async fn handle_event<const N: usize>(
     engine: &PatternEngine,
     motion: &MotionSender,
-    cmd: EngineCommand,
+    event: PatternEvent,
     state: &mut RunnerState,
 ) {
-    match cmd {
-        EngineCommand::Play(idx) if idx < N => match *state {
+    match event {
+        PatternEvent::Play(idx) if idx < N => match *state {
             RunnerState::Idle => set_state(engine, state, RunnerState::Homing(Some(idx))),
             RunnerState::Homing(_) => log::warn!("Ignoring Play command while homing"),
             _ => set_state(engine, state, RunnerState::Playing(idx)),
         },
-        EngineCommand::Play(_) => {}
-        EngineCommand::Stop => {
+        PatternEvent::Play(_) => {}
+        PatternEvent::Stop => {
             if motion.disable().await == StateResponse::Fault {
                 log::error!("Board fault during disable");
             }
             set_state(engine, state, RunnerState::Idle);
         }
-        EngineCommand::Home => {
+        PatternEvent::Home => {
             if let RunnerState::Idle = *state {
                 set_state(engine, state, RunnerState::Homing(None));
             }
         }
-        EngineCommand::Pause | EngineCommand::Resume => {
+        PatternEvent::Pause | PatternEvent::Resume => {
             // Only handled inside the Playing inner loop.
         }
     }
