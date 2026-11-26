@@ -36,7 +36,8 @@ use esp_hal::{
 use esp_rtos::embassy::InterruptExecutor;
 use log::info;
 use ossm::motion::{MechanicalConfig, MotionController, MotionLimits, MotionObserver};
-use ossm::platform::{Fault, Hardware, Platform};
+use ossm::platform::{Fault, Hardware, Platform, RemoteId, Remotes, Scope};
+use ossm::{OssmMode, PatternInput};
 use pattern_engine::{PatternObserver, PatternSender};
 use static_cell::StaticCell;
 
@@ -106,6 +107,7 @@ where
     ChannelCreator<'static, Blocking, RMT_CHANNEL>: TxChannelCreator<'static, Blocking>,
 {
     type Board = board::Board;
+    type Key = OssmMode;
 
     async fn init(&mut self) -> Result<Hardware<board::Board>, Fault> {
         let config = self.config.take().expect("init runs once");
@@ -178,8 +180,14 @@ where
         indicator::start(&self.spawner, self.indicator.take(), motion, patterns);
     }
 
-    fn start_remotes(&mut self, patterns: &'static PatternSender, _limits: &MotionLimits) {
+    fn start_remotes(
+        &mut self,
+        remotes: Remotes<OssmMode>,
+        _patterns: &'static PatternSender,
+        _limits: &MotionLimits,
+    ) {
         let bt = self.bt.take().expect("start_remotes runs once");
-        radio::start(&self.spawner, bt, patterns);
+        let radr = remotes.handle(RemoteId::Radr, Scope::new().sends::<PatternInput>().switches());
+        radio::start(&self.spawner, bt, radr);
     }
 }

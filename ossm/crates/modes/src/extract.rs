@@ -3,9 +3,10 @@ use core::ops::Deref;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::pubsub::{self, Subscriber};
 use ossm::{MotionPhase, MotionSender, MotionState};
-use pattern_engine::PatternRunner;
+use pattern_engine::{PatternEvent, PatternRunner, PatternSender, PatternState};
 
 use crate::ModeCtx;
+use crate::input::{InputKind, InputKinds, InputSlot, Received};
 use crate::sealed;
 
 /// A capability a mode can declare as an argument.
@@ -20,7 +21,48 @@ use crate::sealed;
 pub trait Extract: sealed::Sealed {
     type Out<'a>;
 
+    /// What a mode holding this extractor subscribes to. Most extractors
+    /// are plain capabilities and subscribe to nothing.
+    const SUBSCRIBES: Subscriptions = Subscriptions::NONE;
+
     fn extract(ctx: &ModeCtx) -> Self::Out<'_>;
+}
+
+/// Traffic from remotes that the supervisor routes to a mode while it
+/// runs, rather than turning it away or handling it itself.
+///
+/// A mode's subscriptions are those of its extractors, combined.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Subscriptions {
+    /// Input kinds remotes may send.
+    inputs: InputKinds,
+}
+
+impl Subscriptions {
+    pub(crate) const NONE: Self = Self {
+        inputs: InputKinds::NONE,
+    };
+
+    /// Input of these kinds from remotes.
+    pub(crate) const fn inputs(inputs: InputKinds) -> Self {
+        Self { inputs }
+    }
+
+    pub(crate) const fn accepts(self) -> InputKinds {
+        self.inputs
+    }
+
+    /// Both sets of subscriptions. Fails to build if both take the same
+    /// input kind, since each kind has one slot.
+    pub(crate) const fn union(self, other: Self) -> Self {
+        assert!(
+            !self.inputs.intersects(other.inputs),
+            "a mode can take at most one `Input` per input kind",
+        );
+        Self {
+            inputs: self.inputs.union(other.inputs),
+        }
+    }
 }
 
 /// Permission to move the motor.
@@ -81,13 +123,28 @@ impl Extract for MotionStatus<'static> {
 /// Permission to drive the pattern engine.
 ///
 /// Derefs to [`PatternRunner`]. Running it also needs a [`Motion`].
-pub struct Patterns<'a>(&'a PatternRunner);
+pub struct Patterns<'a> {
+    runner: &'a PatternRunner,
+    sender: &'a PatternSender,
+}
+
+impl Patterns<'_> {
+    /// Send a playback event to the running engine.
+    pub fn send(&self, event: PatternEvent) {
+        self.sender.send(event);
+    }
+
+    /// Replace the engine's state.
+    pub fn set(&self, state: PatternState) {
+        self.sender.set(state);
+    }
+}
 
 impl Deref for Patterns<'_> {
     type Target = PatternRunner;
 
     fn deref(&self) -> &PatternRunner {
-        self.0
+        self.runner
     }
 }
 
@@ -97,6 +154,53 @@ impl Extract for Patterns<'static> {
     type Out<'a> = Patterns<'a>;
 
     fn extract(ctx: &ModeCtx) -> Patterns<'_> {
-        Patterns(&ctx.patterns)
+        Patterns {
+            runner: &ctx.patterns,
+            sender: ctx.pattern_sender,
+        }
+    }
+}
+
+/// Input of kind `K` sent by remotes while the mode runs.
+///
+/// Holding one is what lets remotes reach the mode at all: input of a
+/// kind no extractor declares is rejected. Updates are merged into the
+/// kind's state, latest-wins. Events are queued; a mode must keep calling
+/// [`next`](Self::next), or remotes sending events will wait.
+///
+/// Each kind has its own slot, so a mode can take one `Input` per kind
+/// and `select` over them. Taking the same kind twice fails to build.
+pub struct Input<'a, K: InputKind> {
+    slot: &'a InputSlot<K>,
+}
+
+impl<K: InputKind> Input<'_, K> {
+    /// The current state, with every update received so far.
+    pub fn state(&self) -> K::State {
+        self.slot.state()
+    }
+
+    /// Update the state as a remote would, e.g. to bring speed back to 0.
+    pub fn update(&self, update: K::Update) {
+        self.slot.update(update);
+    }
+
+    /// Wait for the state to change or an event to arrive.
+    pub async fn next(&self) -> Received<K> {
+        self.slot.next().await
+    }
+}
+
+impl<K: InputKind> sealed::Sealed for Input<'static, K> {}
+
+impl<K: InputKind> Extract for Input<'static, K> {
+    type Out<'a> = Input<'a, K>;
+
+    const SUBSCRIBES: Subscriptions = Subscriptions::inputs(K::KIND);
+
+    fn extract(ctx: &ModeCtx) -> Input<'_, K> {
+        Input {
+            slot: K::slot(ctx.inputs),
+        }
     }
 }

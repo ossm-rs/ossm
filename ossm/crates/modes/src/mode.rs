@@ -1,13 +1,17 @@
 use core::future::Future;
 
 use crate::sealed;
-use crate::{Extract, ModeCtx};
+use crate::{Extract, ModeCtx, Subscriptions};
 
 /// An async fn the arguments of which are all [`Extract`] types.
 ///
 /// Sealed: implemented automatically for such functions, and nothing
 /// else can be a mode.
 pub trait Mode<Args>: sealed::Sealed<fn() -> Args> {
+    /// What this mode subscribes to while it runs: its extractors'
+    /// [`Extract::SUBSCRIBES`], combined.
+    const SUBSCRIBES: Subscriptions;
+
     fn run<'a>(&'a self, ctx: &'a ModeCtx) -> impl Future<Output = ()> + 'a;
 }
 
@@ -21,6 +25,8 @@ macro_rules! impl_mode {
         where
             F: AsyncFn($($arg),*) + for<'a> AsyncFn($($arg::Out<'a>),*),
         {
+            const SUBSCRIBES: Subscriptions = Subscriptions::NONE$(.union($arg::SUBSCRIBES))*;
+
             #[allow(unused_variables)]
             fn run<'a>(&'a self, ctx: &'a ModeCtx) -> impl Future<Output = ()> + 'a {
                 self($($arg::extract(ctx)),*)

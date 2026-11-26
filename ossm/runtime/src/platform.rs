@@ -1,7 +1,10 @@
 //! What a platform implements to run OSSM on its target.
 
+use core::fmt::Debug;
+
 use ossm_core::{Board, MotionController, MotionLimits, MotionObserver};
 
+pub use modes::{RemoteHandle, RemoteId, Remotes, Scope};
 pub use ossm_core::fault::Fault;
 pub use ossm_core::{build_info, logging};
 pub use pattern_engine::{PatternObserver, PatternSender};
@@ -21,6 +24,10 @@ pub struct Hardware<B> {
 pub trait Platform {
     type Board: Board;
 
+    /// The keys modes are registered under. The platform's remotes switch
+    /// modes by key, so the platform names them.
+    type Key: Copy + PartialEq + Debug + 'static;
+
     /// Set up the hardware, before anything else runs.
     async fn init(&mut self) -> Result<Hardware<Self::Board>, Fault>;
 
@@ -33,7 +40,13 @@ pub trait Platform {
     /// [`init`](Self::init) fails, so the fault can be shown.
     fn start_indicator(&mut self, motion: MotionObserver, patterns: PatternObserver);
 
-    /// Start the remotes. Until remotes go through the modes, they drive
-    /// the pattern engine directly.
-    fn start_remotes(&mut self, patterns: &'static PatternSender, limits: &MotionLimits);
+    /// Start the remotes, giving each a handle from `remotes` scoped to
+    /// what it may do. Remotes that don't go through the modes yet drive
+    /// the pattern engine directly with `patterns`.
+    fn start_remotes(
+        &mut self,
+        remotes: Remotes<Self::Key>,
+        patterns: &'static PatternSender,
+        limits: &MotionLimits,
+    );
 }
