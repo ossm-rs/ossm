@@ -2,7 +2,7 @@
 
 use crate::{ColorIndicator, RGB8};
 use ossm::MotionPhase;
-use pattern_engine::EngineState;
+use pattern_engine::EnginePhase;
 use smart_leds::brightness;
 
 pub const POLL_INTERVAL_MS: u64 = 50;
@@ -43,15 +43,15 @@ pub fn color(status: Status) -> RGB8 {
 
 /// Resolve independently sampled observers in priority order. Engine playing
 /// covers pattern delays and zero-speed holds even when motion is stationary.
-pub fn select(engine: EngineState, motion: MotionPhase) -> Status {
+pub fn select(engine: EnginePhase, motion: MotionPhase) -> Status {
     match (engine, motion) {
-        (EngineState::Homing, _) => Status::Homing,
+        (EnginePhase::Homing, _) => Status::Homing,
         (_, MotionPhase::Disabled | MotionPhase::Enabled) => Status::Idle,
         (_, MotionPhase::Stopping) => Status::Stopping,
-        (_, MotionPhase::Moving) | (EngineState::Playing(_), _) => Status::Playing,
-        (EngineState::Paused(_), _) | (_, MotionPhase::Paused) => Status::Paused,
-        (EngineState::Ready, _) => Status::Ready,
-        (EngineState::Idle, MotionPhase::Ready) => Status::Idle,
+        (_, MotionPhase::Moving) | (EnginePhase::Playing(_), _) => Status::Playing,
+        (EnginePhase::Paused(_), _) | (_, MotionPhase::Paused) => Status::Paused,
+        (EnginePhase::Ready, _) => Status::Ready,
+        (EnginePhase::Idle, MotionPhase::Ready) => Status::Idle,
     }
 }
 

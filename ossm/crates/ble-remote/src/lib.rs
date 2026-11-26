@@ -17,7 +17,10 @@ use embassy_time::{Duration, Ticker, Timer};
 use esp_radio::ble::controller::BleConnector;
 use heapless::String;
 use log::{debug, error, info, warn};
-use pattern_engine::{EngineState, PatternInput, PatternSender, commands};
+use pattern_engine::{
+    EnginePhase, PatternEvent, PatternSender, PatternState, PatternUpdate, pattern_description,
+    pattern_list,
+};
 use static_cell::StaticCell;
 use trouble_host::prelude::*;
 
@@ -63,7 +66,7 @@ struct OssmService {
 fn get_all_patterns_json() -> String<MAX_PATTERN_LENGTH> {
     let mut output: String<MAX_PATTERN_LENGTH> = String::new();
     output.write_char('[').ok();
-    for (i, meta) in commands::pattern_list().iter().enumerate() {
+    for (i, meta) in pattern_list().iter().enumerate() {
         let rollback = output.len();
         let sep = if i > 0 { "," } else { "" };
         if write!(output, r#"{sep}{{"name":"{}","idx":{i}}}"#, meta.name).is_err()
@@ -81,7 +84,7 @@ fn get_all_patterns_json() -> String<MAX_PATTERN_LENGTH> {
 fn get_pattern_description(index: usize) -> String<MAX_PATTERN_LENGTH> {
     let mut output = String::new();
 
-    let description = commands::pattern_description(index).unwrap_or("Invalid pattern index");
+    let description = pattern_description(index).unwrap_or("Invalid pattern index");
 
     if output.push_str(description).is_err() {
         output
@@ -199,7 +202,7 @@ pub async fn ble_events_task(
                     },
                 }
 
-                patterns.stop();
+                patterns.send(PatternEvent::Stop);
                 info!("BLE session ended, stopping engine");
             }
             Err(err) => {
@@ -234,8 +237,8 @@ async fn gatt_events_task<P: PacketPool>(
                 match &event {
                     GattEvent::Read(event) => {
                         if event.handle() == server.ossm_service.current_state.handle {
-                            let engine_state = patterns.state();
-                            let input = patterns.input();
+                            let engine_state = patterns.phase();
+                            let input = patterns.state();
                             let state_json = state_to_json(engine_state, &input);
                             debug!("Read State: {}", state_json);
                             server.set(&server.ossm_service.current_state, &state_json)?;
@@ -340,14 +343,14 @@ async fn state_notifications<P: PacketPool>(
         .subscribe()
         .expect("No state subscriber slots available");
     let mut heartbeat = Ticker::every(Duration::from_secs(1));
-    let mut old_state: (EngineState, PatternInput) = (EngineState::Idle, PatternInput::DEFAULT);
+    let mut old_state: (EnginePhase, PatternState) = (EnginePhase::Idle, PatternState::DEFAULT);
     loop {
         let engine_state = match select(sub.next_message_pure(), heartbeat.next()).await {
             Either::First(state) => state,
-            Either::Second(_) => patterns.state(),
+            Either::Second(_) => patterns.phase(),
         };
 
-        let input = patterns.input();
+        let input = patterns.state();
         if old_state != (engine_state, input) {
             let state_json = state_to_json(engine_state, &input);
             debug!("Notify State: {}", state_json);
@@ -361,9 +364,9 @@ async fn state_notifications<P: PacketPool>(
     }
 }
 
-fn state_to_json(state: EngineState, input: &PatternInput) -> String<MAX_STATE_LENGTH> {
+fn state_to_json(state: EnginePhase, input: &PatternState) -> String<MAX_STATE_LENGTH> {
     let pattern_name = match state {
-        EngineState::Playing(idx) | EngineState::Paused(idx) => commands::pattern_list()
+        EnginePhase::Playing(idx) | EnginePhase::Paused(idx) => pattern_list()
             .get(idx)
             .map(|m| m.name)
             .unwrap_or(""),
@@ -371,17 +374,17 @@ fn state_to_json(state: EngineState, input: &PatternInput) -> String<MAX_STATE_L
     };
     let mut out: String<MAX_STATE_LENGTH> = String::new();
     let state_str = match state {
-        EngineState::Idle => "idle",
-        EngineState::Homing => "homing",
-        EngineState::Ready => "ready",
-        EngineState::Playing(_) => "playing",
-        EngineState::Paused(_) => "paused",
+        EnginePhase::Idle => "idle",
+        EnginePhase::Homing => "homing",
+        EnginePhase::Ready => "ready",
+        EnginePhase::Playing(_) => "playing",
+        EnginePhase::Paused(_) => "paused",
     };
     let idx = match state {
-        EngineState::Playing(i) | EngineState::Paused(i) => i,
+        EnginePhase::Playing(i) | EnginePhase::Paused(i) => i,
         _ => 0,
     };
-    let speed = (input.velocity * 100.0) as u32;
+    let speed = (input.speed * 100.0) as u32;
     let stroke = (input.stroke * 100.0) as u32;
     let depth = (input.depth * 100.0) as u32;
     // Map internal -1.0..1.0 back to BLE protocol 0–100.
@@ -412,12 +415,14 @@ fn process_command(
                         if let Ok(value) = value.parse::<u32>() {
                             let normalized = value as f64 / 100.0;
                             match action {
-                                "speed" => patterns.set_speed(normalized),
-                                "stroke" => patterns.set_stroke(normalized),
-                                "depth" => patterns.set_depth(normalized),
+                                "speed" => patterns.update(PatternUpdate::Speed(normalized)),
+                                "stroke" => patterns.update(PatternUpdate::Stroke(normalized)),
+                                "depth" => patterns.update(PatternUpdate::Depth(normalized)),
                                 // BLE sends 0–100; internal range is -1.0..1.0.
-                                "sensation" => patterns.set_sensation(normalized * 2.0 - 1.0),
-                                "pattern" => patterns.play(value as usize),
+                                "sensation" => patterns.update(PatternUpdate::Sensation(
+                                    normalized * 2.0 - 1.0,
+                                )),
+                                "pattern" => patterns.send(PatternEvent::Play(value as usize)),
                                 _ => {
                                     error!("Invalid set command {}", action);
                                     fail = true;
@@ -433,8 +438,8 @@ fn process_command(
                     }
                 }
                 "go" => match action {
-                    "simplePenetration" | "strokeEngine" => patterns.play(0),
-                    "menu" => patterns.stop(),
+                    "simplePenetration" | "strokeEngine" => patterns.send(PatternEvent::Play(0)),
+                    "menu" => patterns.send(PatternEvent::Stop),
                     _ => {
                         error!("Unknown go action: {}", action);
                         fail = true;

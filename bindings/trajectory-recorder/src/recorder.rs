@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 
 use ossm::planner::Planner;
 use ossm::{MotionCommand, MotionReceiver, MotionSender, StateCommand, StateResponse};
-use pattern_engine::{Pattern, PatternCtx, PatternInput, SharedPatternInput};
+use pattern_engine::{Pattern, PatternCtx, PatternState, SharedPatternState};
 
 /// Shared state between `RecordingDelay` and the recorder loop.
 /// The delay writes the requested duration; the loop reads and clears it.
@@ -81,14 +81,14 @@ pub struct Sample {
 /// the pattern's async future and feeding motion commands to a planner.
 pub struct PatternRecorder<'r, 'm> {
     receiver: &'r MotionReceiver,
-    input: &'static SharedPatternInput,
+    input: &'static SharedPatternState,
     motion: &'m MotionSender,
 }
 
 impl<'r, 'm> PatternRecorder<'r, 'm> {
     pub fn new(
         receiver: &'r MotionReceiver,
-        input: &'static SharedPatternInput,
+        input: &'static SharedPatternState,
         motion: &'m MotionSender,
     ) -> Self {
         Self {
@@ -109,7 +109,7 @@ impl<'r, 'm> PatternRecorder<'r, 'm> {
         &self,
         pattern: &mut impl Pattern,
         planner: &mut P,
-        pattern_input: PatternInput,
+        pattern_input: PatternState,
         start_position: f64,
         timestep_ms: f64,
         max_samples: usize,
