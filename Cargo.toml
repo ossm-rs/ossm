@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["ossm/core", "ossm/drivers/*", "ossm/boards/*", "ossm/crates/*", "tools/*"]
+members = ["ossm/core", "ossm/runtime", "ossm/drivers/*", "ossm/boards/*", "ossm/crates/*", "tools/*"]
 
 [profile.dev]
 opt-level = "s"

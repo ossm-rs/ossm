@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-ossm = { path = "../../core" }
+ossm = { package = "ossm-core", path = "../../core" }
 m57aim = { path = "../../drivers/m57aim", package = "m57aim-motor" }

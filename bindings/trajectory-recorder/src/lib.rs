@@ -4,13 +4,13 @@ use alloc::string::String;
 mod recorder;
 
 use ossm::planner::RuckigPlanner;
-use ossm::{MotionLimits, MotionReceiver, MotionSender, Ossm};
+use ossm::{MotionLimits, MotionReceiver, MotionSender, MotionChannels};
 use pattern_engine::{AnyPattern, PatternInput, SharedPatternInput};
 use recorder::PatternRecorder;
 use static_cell::StaticCell;
 use wasm_bindgen::prelude::*;
 
-static RECORDER_OSSM_CELL: StaticCell<Ossm> = StaticCell::new();
+static RECORDER_OSSM_CELL: StaticCell<MotionChannels> = StaticCell::new();
 static RECORDER_INPUT: SharedPatternInput = SharedPatternInput::new();
 
 const LIMITS: MotionLimits = MotionLimits::DEFAULT;
@@ -29,7 +29,7 @@ pub struct TrajectoryRecorder {
 impl TrajectoryRecorder {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        let (receiver, _observer, motion) = RECORDER_OSSM_CELL.init(Ossm::new()).split();
+        let (receiver, _observer, motion) = RECORDER_OSSM_CELL.init(MotionChannels::new()).split();
         Self { receiver, motion }
     }
 

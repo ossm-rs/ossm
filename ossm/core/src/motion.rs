@@ -3,7 +3,7 @@ use rsruckig::prelude::*;
 
 use crate::command::{Cancelled, MotionCommand, StateCommand, StateResponse};
 use crate::state::MotionPhase;
-use crate::{Board, MotionLimits, Ossm};
+use crate::{Board, MotionLimits, MotionChannels};
 
 // Floor applied to velocity requests to prevent degenerate Ruckig inputs.
 const MIN_VELOCITY: f64 = 0.001;
@@ -58,7 +58,7 @@ struct MotionTarget {
 /// configuring it for maximum tracking speed.
 pub struct MotionController<'a, B: Board> {
     board: B,
-    channels: &'a Ossm,
+    channels: &'a MotionChannels,
     state: MotionState,
     limits: MotionLimits,
     /// The last-instructed motion target. `Some` when a move has been commanded,
@@ -78,7 +78,7 @@ impl<'a, B: Board> MotionController<'a, B> {
         board: B,
         limits: MotionLimits,
         update_interval_secs: f64,
-        channels: &'a Ossm,
+        channels: &'a MotionChannels,
     ) -> Self {
         let mut input = InputParameter::new(None);
         input.current_position[0] = limits.min_position_mm;

@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-ossm = { path = "../../core" }
+ossm = { package = "ossm-core", path = "../../core" }
 sim-motor = { path = "../../drivers/sim-motor" }
