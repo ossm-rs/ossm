@@ -1398,6 +1398,7 @@ dependencies = [
  "embassy-time",
  "esp-radio",
  "log",
+ "modes",
  "pattern-engine",
  "portable-atomic",
  "zerocopy",

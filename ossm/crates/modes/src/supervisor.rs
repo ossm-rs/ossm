@@ -180,7 +180,7 @@ where
     ///
     /// Call once: the supervisor they share lives for the rest of the
     /// program.
-    pub fn split(self, patterns: &'static PatternSender) -> (ModeRunner<K, L>, Remotes<K>) {
+    pub fn split(self, patterns: PatternSender) -> (ModeRunner<K, L>, Remotes<K>) {
         let mut registered = heapless::Vec::new();
         self.list.keys(&mut |key| {
             if registered.push(key).is_err() {
@@ -218,9 +218,11 @@ pub(crate) struct Supervisor<K> {
     /// entered, so `current` is not mistaken for where the machine stays.
     pub(crate) leaving: AtomicBool,
     pub(crate) inputs: Inputs,
-    /// Shared with remotes that still drive the engine directly, until
-    /// every remote goes through a [`RemoteHandle`](crate::RemoteHandle).
-    pub(crate) patterns: &'static PatternSender,
+    /// Owned here so nothing outside the supervisor can command the
+    /// engine: modes borrow it through [`Patterns`](crate::Patterns), and
+    /// remotes only read engine status through a
+    /// [`RemoteHandle`](crate::RemoteHandle).
+    pub(crate) patterns: PatternSender,
     registered: heapless::Vec<K, MAX_MODES>,
 }
 
@@ -260,7 +262,7 @@ where
     /// the supervisor makes the motor safe and waits for the next request.
     pub async fn run(self, motion: MotionSender, patterns: PatternRunner) -> ! {
         let sup = self.sup;
-        let ctx = ModeCtx::new(motion, patterns, sup.patterns, &sup.inputs);
+        let ctx = ModeCtx::new(motion, patterns, &sup.patterns, &sup.inputs);
         let mut mode = sup.current();
 
         loop {

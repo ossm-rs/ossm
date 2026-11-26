@@ -1,10 +1,11 @@
 use alloc::boxed::Box;
 use core::fmt::Debug;
-use core::sync::atomic::{AtomicU8, Ordering};
+use core::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::pubsub::{self, Subscriber};
-use embassy_time::{Duration, Instant, Timer};
+use embassy_sync::signal::Signal;
+use embassy_time::{Duration, Instant, Timer, with_timeout};
 use pattern_engine::{EnginePhase, PatternEvent, PatternState, PatternUpdate};
 
 use crate::extract::Subscriptions;
@@ -16,6 +17,9 @@ use crate::ModeKey;
 /// giving up. Leaving a mode can include a full deceleration.
 const SWITCH_TIMEOUT: Duration = Duration::from_secs(10);
 const SWITCH_POLL: Duration = Duration::from_millis(10);
+/// How long a mode has to acknowledge a [`RemoteLost`](crate::RemoteLost)
+/// event before the supervisor falls back to [`Idle`](ModeKey::Idle).
+const LOST_ACK_WINDOW: Duration = Duration::from_millis(100);
 
 /// Which remote a request came from, named by what the remote is rather
 /// than how it connects.
@@ -123,6 +127,9 @@ pub enum Rejected {
 pub struct Inputs {
     pub(crate) slots: Slots,
     accepts: AtomicU8,
+    handles_lost: AtomicBool,
+    pub(crate) lost: Signal<CriticalSectionRawMutex, RemoteId>,
+    pub(crate) lost_ack: Signal<CriticalSectionRawMutex, ()>,
 }
 
 impl Inputs {
@@ -130,17 +137,24 @@ impl Inputs {
         Self {
             slots: Slots::new(),
             accepts: AtomicU8::new(InputKinds::NONE.0),
+            handles_lost: AtomicBool::new(false),
+            lost: Signal::new(),
+            lost_ack: Signal::new(),
         }
     }
 
     pub(crate) fn open(&self, subscriptions: Subscriptions) {
         self.slots.open();
+        self.lost.reset();
         self.accepts
             .store(subscriptions.accepts().0, Ordering::Relaxed);
+        self.handles_lost
+            .store(subscriptions.handles_lost(), Ordering::Relaxed);
     }
 
     pub(crate) fn close(&self) {
         self.accepts.store(InputKinds::NONE.0, Ordering::Relaxed);
+        self.handles_lost.store(false, Ordering::Relaxed);
     }
 
     fn accepts(&self) -> InputKinds {
@@ -244,36 +258,39 @@ where
         if !self.scope.switches {
             return Err(Rejected::NotAllowed);
         }
-        let sup = self.sup;
-        let mode = mode.into();
-        if !sup.is_registered(mode) {
-            return Err(Rejected::NotAccepted);
+        self.sup.switch_to(mode.into()).await
+    }
+
+    /// Report that this remote has lost its link, e.g. its heartbeat timed
+    /// out.
+    ///
+    /// Ignored unless the active mode accepts input this remote may send.
+    /// A mode holding [`RemoteLost`](crate::RemoteLost) decides what to
+    /// do, but must acknowledge within 100ms; otherwise, or if the mode
+    /// doesn't hold one, the supervisor switches to [`Idle`](ModeKey::Idle).
+    pub async fn lost(&self) {
+        let inputs = &self.sup.inputs;
+        if !inputs.accepts().intersects(self.scope.sends) {
+            return;
         }
-
-        // Always signal, even if `mode` looks current: the supervisor may
-        // already be leaving it for an earlier request.
-        let ticket = sup.request_seq.fetch_add(1, Ordering::Relaxed) + 1;
-        sup.request.signal(mode);
-
-        let deadline = Instant::now() + SWITCH_TIMEOUT;
-        loop {
-            Timer::after(SWITCH_POLL).await;
-            let current = sup.current();
-            let settled = !sup.leaving.load(Ordering::Relaxed) && !sup.request.signaled();
-            if current == mode && settled {
-                return Ok(());
+        if inputs.handles_lost.load(Ordering::Relaxed) {
+            inputs.lost_ack.reset();
+            inputs.lost.signal(self.id);
+            if with_timeout(LOST_ACK_WINDOW, inputs.lost_ack.wait()).await.is_ok() {
+                return;
             }
-            if sup.request_seq.load(Ordering::Relaxed) != ticket {
-                return Err(Rejected::Superseded);
-            }
-            if Instant::now() >= deadline {
-                return Err(Rejected::TimedOut);
-            }
+            log::warn!("Mode did not handle loss of {:?} in time", self.id);
+        }
+        log::warn!("Lost {:?}; switching to Idle", self.id);
+        // The supervisor's fallback, so it doesn't depend on this remote
+        // being allowed to switch.
+        if let Err(rejected) = self.sup.switch_to(ModeKey::Idle).await {
+            log::error!("Could not switch to Idle: {:?}", rejected);
         }
     }
 
     pub fn status(&self) -> Status<K> {
-        let patterns = self.sup.patterns;
+        let patterns = &self.sup.patterns;
         Status {
             mode: self.sup.current(),
             engine: patterns.phase(),
@@ -290,5 +307,39 @@ where
     ) -> Result<Subscriber<'static, CriticalSectionRawMutex, EnginePhase, 1, 8, 0>, pubsub::Error>
     {
         self.sup.patterns.subscribe()
+    }
+}
+
+impl<K> Supervisor<K>
+where
+    K: Copy + PartialEq + Debug + 'static,
+{
+    /// Switch to `mode` and wait until it is running. Modes the firmware
+    /// did not register are rejected.
+    pub(crate) async fn switch_to(&self, mode: ModeKey<K>) -> Result<(), Rejected> {
+        if !self.is_registered(mode) {
+            return Err(Rejected::NotAccepted);
+        }
+
+        // Always signal, even if `mode` looks current: the supervisor may
+        // already be leaving it for an earlier request.
+        let ticket = self.request_seq.fetch_add(1, Ordering::Relaxed) + 1;
+        self.request.signal(mode);
+
+        let deadline = Instant::now() + SWITCH_TIMEOUT;
+        loop {
+            Timer::after(SWITCH_POLL).await;
+            let current = self.current();
+            let settled = !self.leaving.load(Ordering::Relaxed) && !self.request.signaled();
+            if current == mode && settled {
+                return Ok(());
+            }
+            if self.request_seq.load(Ordering::Relaxed) != ticket {
+                return Err(Rejected::Superseded);
+            }
+            if Instant::now() >= deadline {
+                return Err(Rejected::TimedOut);
+            }
+        }
     }
 }

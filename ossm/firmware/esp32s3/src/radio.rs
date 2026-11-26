@@ -9,7 +9,6 @@ use ossm::motion::MotionLimits;
 use ossm::OssmMode;
 use ossm::platform::RemoteHandle;
 use ossm_m5_remote::RemoteConfig;
-use pattern_engine::PatternSender;
 
 use crate::mk_static;
 
@@ -17,8 +16,8 @@ pub fn start(
     spawner: &Spawner,
     wifi: WIFI<'static>,
     bt: BT<'static>,
-    remote: &'static RemoteHandle<OssmMode>,
-    patterns: &'static PatternSender,
+    radr: &'static RemoteHandle<OssmMode>,
+    m5: &'static RemoteHandle<OssmMode>,
     limits: &MotionLimits,
 ) {
     let radio = &*mk_static!(
@@ -51,9 +50,9 @@ pub fn start(
         max_travel_mm: limits.max_position_mm - limits.min_position_mm,
     };
 
-    ossm_m5_remote::start(spawner, manager, sender, receiver, patterns, remote_config);
+    ossm_m5_remote::start(spawner, manager, sender, receiver, m5, remote_config);
 
     let connector =
         BleConnector::new(radio, bt, Default::default()).expect("Could not create BleConnector");
-    ble_remote::start(spawner, connector, remote);
+    ble_remote::start(spawner, connector, radr);
 }

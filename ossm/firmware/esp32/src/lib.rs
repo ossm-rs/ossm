@@ -38,7 +38,7 @@ use log::info;
 use ossm::motion::{MechanicalConfig, MotionController, MotionLimits, MotionObserver};
 use ossm::platform::{Fault, Hardware, Platform, RemoteId, Remotes, Scope};
 use ossm::{OssmMode, PatternInput};
-use pattern_engine::{PatternObserver, PatternSender};
+use pattern_engine::PatternObserver;
 use static_cell::StaticCell;
 
 extern crate alloc;
@@ -180,12 +180,7 @@ where
         indicator::start(&self.spawner, self.indicator.take(), motion, patterns);
     }
 
-    fn start_remotes(
-        &mut self,
-        remotes: Remotes<OssmMode>,
-        _patterns: &'static PatternSender,
-        _limits: &MotionLimits,
-    ) {
+    fn start_remotes(&mut self, remotes: Remotes<OssmMode>, _limits: &MotionLimits) {
         let bt = self.bt.take().expect("start_remotes runs once");
         let radr = remotes.handle(RemoteId::Radr, Scope::new().sends::<PatternInput>().switches());
         radio::start(&self.spawner, bt, radr);

@@ -16,11 +16,12 @@
 use modes::{Entry, ModeList, Modes};
 use ossm_core::MotionChannels;
 use ossm_core::fault;
-use pattern_engine::{PatternEngine, PatternSender};
+use pattern_engine::PatternEngine;
 use static_cell::StaticCell;
 
 pub use modes::{
-    Input, Mode, ModeKey, Motion, MotionStatus, OssmMode, PatternInput, Patterns, Received, patterns,
+    Input, LostEvent, Mode, ModeKey, Motion, MotionStatus, OssmMode, PatternInput, Patterns,
+    Received, RemoteLost, patterns,
 };
 
 pub mod platform;
@@ -40,7 +41,6 @@ use platform::Platform;
 
 static CHANNELS: StaticCell<MotionChannels> = StaticCell::new();
 static ENGINE: StaticCell<PatternEngine> = StaticCell::new();
-static PATTERN_SENDER: StaticCell<PatternSender> = StaticCell::new();
 
 /// OSSM firmware on platform `P`, with the modes registered so far.
 pub struct Ossm<P: Platform, L> {
@@ -109,9 +109,8 @@ where
         self.platform.start_motion(controller).await;
 
         self.platform.start_indicator(motion_observer, pattern_observer);
-        let patterns = PATTERN_SENDER.init(patterns);
         let (modes, remotes) = self.modes.split(patterns);
-        self.platform.start_remotes(remotes, patterns, &hardware.limits);
+        self.platform.start_remotes(remotes, &hardware.limits);
 
         modes.run(motion, pattern_runner).await
     }

@@ -7,7 +7,7 @@ use ossm_core::{Board, MotionController, MotionLimits, MotionObserver};
 pub use modes::{RemoteHandle, RemoteId, Remotes, Scope};
 pub use ossm_core::fault::Fault;
 pub use ossm_core::{build_info, logging};
-pub use pattern_engine::{PatternObserver, PatternSender};
+pub use pattern_engine::PatternObserver;
 
 /// The hardware a platform set up.
 pub struct Hardware<B> {
@@ -41,12 +41,6 @@ pub trait Platform {
     fn start_indicator(&mut self, motion: MotionObserver, patterns: PatternObserver);
 
     /// Start the remotes, giving each a handle from `remotes` scoped to
-    /// what it may do. Remotes that don't go through the modes yet drive
-    /// the pattern engine directly with `patterns`.
-    fn start_remotes(
-        &mut self,
-        remotes: Remotes<Self::Key>,
-        patterns: &'static PatternSender,
-        limits: &MotionLimits,
-    );
+    /// what it may do.
+    fn start_remotes(&mut self, remotes: Remotes<Self::Key>, limits: &MotionLimits);
 }

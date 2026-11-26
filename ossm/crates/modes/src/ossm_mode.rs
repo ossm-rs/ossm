@@ -1,8 +1,8 @@
-use embassy_futures::select::select;
+use embassy_futures::select::select3;
 use embassy_time::Delay;
 use pattern_engine::{AnyPattern, PatternEvent, PatternUpdate};
 
-use crate::{Input, Motion, PatternInput, Patterns, Received};
+use crate::{Input, Motion, PatternInput, Patterns, Received, RemoteLost};
 
 /// Keys for the modes OSSM firmware registers, besides the built-in
 /// [`Idle`](crate::ModeKey::Idle).
@@ -17,6 +17,7 @@ pub async fn patterns(
     motion: Motion<'_>,
     patterns: Patterns<'_>,
     input: Input<'_, PatternInput>,
+    lost: RemoteLost<'_>,
 ) {
     let forward = async {
         loop {
@@ -34,9 +35,19 @@ pub async fn patterns(
             }
         }
     };
-    select(
+    // Losing a remote pauses, so the user can pick up where they left off
+    // once it reconnects.
+    let on_lost = async {
+        loop {
+            let event = lost.next().await;
+            patterns.send(PatternEvent::Pause);
+            event.handled();
+        }
+    };
+    select3(
         patterns.run(&motion, AnyPattern::all_builtin(), Delay),
         forward,
+        on_lost,
     )
     .await;
 }

@@ -35,7 +35,7 @@ use log::info;
 use ossm::motion::{MechanicalConfig, MotionController, MotionLimits, MotionObserver};
 use ossm::platform::{Fault, Hardware, Platform, RemoteId, Remotes, Scope};
 use ossm::{OssmMode, PatternInput};
-use pattern_engine::{PatternObserver, PatternSender};
+use pattern_engine::PatternObserver;
 use static_cell::StaticCell;
 
 extern crate alloc;
@@ -173,14 +173,10 @@ impl Platform for Esp32s3 {
         indicator::start(&self.spawner, self.indicator.take(), motion, patterns);
     }
 
-    fn start_remotes(
-        &mut self,
-        remotes: Remotes<OssmMode>,
-        patterns: &'static PatternSender,
-        limits: &MotionLimits,
-    ) {
+    fn start_remotes(&mut self, remotes: Remotes<OssmMode>, limits: &MotionLimits) {
         let (wifi, bt) = self.radio.take().expect("start_remotes runs once");
         let radr = remotes.handle(RemoteId::Radr, Scope::new().sends::<PatternInput>().switches());
-        radio::start(&self.spawner, wifi, bt, radr, patterns, limits);
+        let m5 = remotes.handle(RemoteId::M5, Scope::new().sends::<PatternInput>().switches());
+        radio::start(&self.spawner, wifi, bt, radr, m5, limits);
     }
 }
