@@ -1,0 +1,10 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "build ossm-alt", "type": "shell", "command": "just build ossm-alt", "group": "build", "problemMatcher": [] },
+    { "label": "build waveshare", "type": "shell", "command": "just build waveshare", "group": "build", "problemMatcher": [] },
+    { "label": "build seeed-xiao", "type": "shell", "command": "just build seeed-xiao", "group": "build", "problemMatcher": [] },
+    { "label": "build ossm-reference", "type": "shell", "command": "just build ossm-reference", "group": "build", "problemMatcher": [] },
+    { "label": "web-tools", "type": "shell", "command": "just web-tools", "problemMatcher": [] }
+  ]
+}

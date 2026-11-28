@@ -1,0 +1,7 @@
+[
+  { "label": "build ossm-alt", "command": "just build ossm-alt" },
+  { "label": "build waveshare", "command": "just build waveshare" },
+  { "label": "build seeed-xiao", "command": "just build seeed-xiao" },
+  { "label": "build ossm-reference", "command": "just build ossm-reference" },
+  { "label": "web-tools", "command": "just web-tools" }
+]
