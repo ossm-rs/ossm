@@ -76,7 +76,7 @@ impl Pattern for MyPattern {
     const NAME: &'static str = "My Pattern";
     const DESCRIPTION: &'static str = "Describe what it does";
 
-    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), ossm::Cancelled> {
+    async fn run(&mut self, ctx: &mut PatternCtx<'_, impl DelayNs>) -> Result<(), ossm::Cancelled> {
         loop {
             ctx.motion().position(1.0).send().await?;
             ctx.motion().position(0.0).send().await?;
@@ -105,7 +105,7 @@ define_patterns! {
 }
 ```
 
-Don't forget to add the `use` import alongside the other pattern imports at the top of `lib.rs`.
+Also add it to the `use crate::patterns::{...}` import in `lib.rs`.
 
 ### 4. Test it
 
@@ -121,7 +121,7 @@ Inside `run()`, you interact with the motor through `PatternCtx`. The API is spl
 
 ### Motion
 
-Motion commands use a builder pattern: start with `ctx.motion()`, set a `.position()`, optionally chain `.speed()` and/or `.torque()`, then `.send().await?` to execute.
+Motion commands use a builder pattern: start with `ctx.motion()`, set a `.position()`, optionally chain `.speed()`, `.jerk()` and/or `.torque()`, then `.send().await?` to execute.
 
 Every `.send().await?` is a cancellation point - when the engine needs to stop the pattern, the `?` propagates `Err(Cancelled)` and exits `run()` cleanly. Always use `?` after `.send().await`.
 
@@ -129,6 +129,7 @@ Every `.send().await?` is a cancellation point - when the engine needs to stop t
 | ----------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `.position(f)`    | **Required.** Target position as a fraction of stroke range (0.0 = shallowest, 1.0 = deepest). Clamped to 0.0–1.0.   |
 | `.speed(factor)`  | Velocity multiplier relative to the user's chosen speed. Default is `1.0`. `0.5` = half speed. Clamped to 0.0–1.0. |
+| `.jerk(factor)`   | Jerk factor from 0.0 (smooth) to 1.0 (choppy). Default is `0.5`. Clamped to 0.0–1.0.                              |
 | `.torque(factor)` | Torque limit as a factor from 0.0–1.0. Omitting uses the motor's default torque.                                     |
 | `.send().await?`  | Executes the command. Blocks until the motor reaches the target position.                                            |
 
