@@ -4,25 +4,9 @@ This guide walks you through setting up your environment, running the simulator,
 
 ## Setting Up Your Environment
 
-You have two options: a devcontainer or manual setup.
+The [dev container](https://github.com/ossm-rs/ossm#option-1-dev-container-recommended) described in the README has everything you need. If you use it, skip to [Running the Simulator](#running-the-simulator).
 
-### Option 1: Devcontainer (Recommended)
-
-The repo ships a devcontainer pre-configured with all the tools you need
-
-1. Install [Docker](https://www.docker.com/)
-2. Use an editor that supports dev containers or the cli
-   - [VS Code](https://code.visualstudio.com/) with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers).
-   - [Zed](https://zed.dev/docs/dev-containers) which natively supports dev containers.
-3. Open the repo and build and run the dev container
-   - In VS Code, either use the prompt that opens or the "Dev Containers: Reopen in Container" command. Then prompted to reopen in a container, choose **"Pattern Engine Dev"**.
-   - In Zed, either use the prompt, or run "Project: Open Remote" from the command palette and choose **"Pattern Engine Dev"**.
-
-That's it - skip to [Running the Simulator](#running-the-simulator).
-
-### Option 2: Manual Setup
-
-Install the following:
+To work on the host, install the following. Patterns don't need the ESP toolchain.
 
 | Tool                                                       | Purpose                               |
 | ---------------------------------------------------------- | ------------------------------------- |
@@ -43,13 +27,13 @@ pnpm install --dir apps/web-tools
 ## Running the Simulator
 
 ```sh
-just dev-patterns
+just web-tools
 ```
 
 This does two things in sequence:
 
-1. **`build-wasm`** - compiles the pattern engine (and its WASM firmware wrapper) into a WebAssembly module using `cargo build`, then generates JS bindings with `wasm-bindgen` and optimises the output with `wasm-opt`.
-2. **`dev`** - starts the Vite dev server in `apps/web-tools/` with `--host` so you can access it from other devices on your network.
+1. **`build-wasm`** - compiles the web simulator and trajectory recorder bindings (which include the pattern engine) to WebAssembly using `cargo build`, then generates JS bindings with `wasm-bindgen` and optimises the output with `wasm-opt`.
+2. **`pnpm dev`** - starts the Vite dev server in `apps/web-tools/` with `--host` so you can access it from other devices on your network.
 
 The simulator renders a 3D model of the OSSM and runs your patterns in the browser. Change a pattern and the wasm will recompile and the browser will reload.
 
@@ -76,7 +60,7 @@ impl Pattern for MyPattern {
     const NAME: &'static str = "My Pattern";
     const DESCRIPTION: &'static str = "Describe what it does";
 
-    async fn run(&mut self, ctx: &mut PatternCtx<impl DelayNs>) -> Result<(), ossm::Cancelled> {
+    async fn run(&mut self, ctx: &mut PatternCtx<'_, impl DelayNs>) -> Result<(), ossm::Cancelled> {
         loop {
             ctx.motion().position(1.0).send().await?;
             ctx.motion().position(0.0).send().await?;
@@ -105,12 +89,12 @@ define_patterns! {
 }
 ```
 
-Don't forget to add the `use` import alongside the other pattern imports at the top of `lib.rs`.
+Also add it to the `use crate::patterns::{...}` import in `lib.rs`.
 
 ### 4. Test it
 
 ```sh
-just dev-patterns
+just web-tools
 ```
 
 Open the simulator in your browser, select your pattern from the dropdown, and verify it behaves as expected.
@@ -121,7 +105,7 @@ Inside `run()`, you interact with the motor through `PatternCtx`. The API is spl
 
 ### Motion
 
-Motion commands use a builder pattern: start with `ctx.motion()`, set a `.position()`, optionally chain `.speed()` and/or `.torque()`, then `.send().await?` to execute.
+Motion commands use a builder pattern: start with `ctx.motion()`, set a `.position()`, optionally chain `.speed()`, `.jerk()` and/or `.torque()`, then `.send().await?` to execute.
 
 Every `.send().await?` is a cancellation point - when the engine needs to stop the pattern, the `?` propagates `Err(Cancelled)` and exits `run()` cleanly. Always use `?` after `.send().await`.
 
@@ -129,6 +113,7 @@ Every `.send().await?` is a cancellation point - when the engine needs to stop t
 | ----------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `.position(f)`    | **Required.** Target position as a fraction of stroke range (0.0 = shallowest, 1.0 = deepest). Clamped to 0.0–1.0.   |
 | `.speed(factor)`  | Velocity multiplier relative to the user's chosen speed. Default is `1.0`. `0.5` = half speed. Clamped to 0.0–1.0. |
+| `.jerk(factor)`   | Jerk factor from 0.0 (smooth) to 1.0 (choppy). Default is `0.5`. Clamped to 0.0–1.0.                              |
 | `.torque(factor)` | Torque limit as a factor from 0.0–1.0. Omitting uses the motor's default torque.                                     |
 | `.send().await?`  | Executes the command. Blocks until the motor reaches the target position.                                            |
 

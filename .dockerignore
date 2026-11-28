@@ -1,0 +1,5 @@
+# The dev container image only needs the ESP toolchain version from the repo.
+# Without this, the build context in .devcontainer/devcontainer.json ("..")
+# would send the entire project directory, including target/ and node_modules, to Docker.
+*
+!.esp-toolchain-version

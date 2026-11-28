@@ -19,7 +19,6 @@ on:
 env:
   CARGO_TERM_COLOR: always
   ESPFLASH_VERSION: "4.3.0"
-  ESP_TOOLCHAIN_VERSION: "1.94.0.2"
 
 jobs:
   build:
@@ -49,6 +48,12 @@ jobs:
       - uses: actions/checkout@v5
         with:
           ref: ${{ inputs.ref || '' }}
+
+      - name: Read ESP toolchain version
+        shell: bash
+        run: |
+          v="$(tr -d '\r\n' < .esp-toolchain-version)"
+          echo "ESP_TOOLCHAIN_VERSION=$v" >> "$GITHUB_ENV"
 
       - uses: esp-rs/xtensa-toolchain@v1.5
         with:

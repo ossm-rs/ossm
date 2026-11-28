@@ -176,77 +176,54 @@ Features are optional higher-level capabilities built on top of the core motion 
 
 ### Set up your environment
 
-#### On a host
+#### Option 1: Dev container (recommended)
 
-1. **Install Rust** via [rustup](https://rustup.rs/):
+1. Install [Docker](https://www.docker.com/).
+2. Open the repo in [VS Code](https://code.visualstudio.com/) with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers), or in [Zed](https://zed.dev/docs/dev-containers), and accept the prompt to reopen it in the container.
+3. Once the first build finishes, check the setup with `just doctor`.
 
-   ```sh
-   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-   ```
+The container can build firmware and run the web simulator, but it can't reach the board's USB port. To flash, install [espflash](https://github.com/esp-rs/espflash) on the host and flash the built image from there:
 
-2. **Install the ESP Rust toolchain** ([espup](https://github.com/esp-rs/espup)):
+```sh
+espflash flash --monitor ossm/firmware/esp32s3/target/xtensa-esp32s3-none-elf/release/ossm-alt
+```
 
-   ```sh
-   cargo install espup
-   espup install
-   ```
+#### Option 2: On the host
 
-   This adds the `xtensa` target and the `+esp` toolchain needed to compile for ESP32 and ESP32-S3.
-
-3. **Install [just](https://github.com/casey/just)** (a command runner used for build recipes):
+1. Install [Rust](https://rustup.rs/).
+2. Install the ESP toolchain at the version CI uses:
 
    ```sh
-   cargo install just
+   cargo install espup --locked
+   espup install --toolchain-version "$(cat .esp-toolchain-version)"
    ```
 
-   Optionally, enable shell completions for `just` so you can tab-complete recipe names:
+3. Install the build tools: `cargo install just espflash --locked`, plus [jq](https://jqlang.org/download/) from your package manager.
+4. Optional, for the web simulator: install the simulator tools listed in [So You Want to Add a Pattern](docs/so-you-want-to-add-a-pattern.md#setting-up-your-environment).
+5. Check the setup with `just doctor`.
 
-   ```sh
-   # zsh (add to ~/.zshrc)
-   eval "$(just --completions zsh)"
+If you use Nix, `nix develop` provides everything except the ESP toolchain. Inside it, run `espup install --export-file "$HOME/export-esp.sh"` once.
 
-   # bash (add to ~/.bashrc)
-   eval "$(just --completions bash)"
+#### Build and flash
 
-   # fish (add to ~/.config/fish/config.fish)
-   just --completions fish | source
-   ```
+```sh
+just                       # list all recipes
+just build ossm-alt        # build a firmware variant
+just flash ossm-alt        # build, flash and monitor (host only)
+just web-tools             # run the web simulator
+```
 
-4. **Install [espflash](https://github.com/esp-rs/espflash)** (for flashing firmware to the board):
-
-   ```sh
-   cargo install espflash
-   ```
-
-5. You should now be able to build and flash. The variant is the first argument; supported variants are `ossm-alt` (ESP32-S3, RS485), `waveshare` (ESP32-S3-RS485-CAN), `seeed-xiao` (XIAO ESP32-S3), and `ossm-reference` (ESP32, step/dir).
-
-   ```sh
-   just build ossm-alt        # build only
-   just flash ossm-alt        # build + flash + monitor
-   just flash seeed-xiao sim  # flash a build with the simulated motor
-   ```
+VS Code and Zed have tasks for the common recipes. Run **Tasks: Run Task** in VS Code or **task: spawn** in Zed.
 
 #### Configuring rust-analyzer
 
-This project targets multiple architectures (ESP32-S3, ESP32, WASM), each with its own Rust target triple and toolchain settings. Since rust-analyzer can only analyze one target at a time, it needs to be told which one to use - otherwise it defaults to your host platform and will report false errors for embedded or WASM code.
-
-The `just focus` command updates the VS Code and Zed rust-analyzer settings to select a firmware workspace and its features:
+rust-analyzer can only analyze one target at a time, so tell it which firmware to use, otherwise it reports false errors:
 
 ```sh
-just focus esp32s3
-just focus esp32
+just focus esp32s3   # or esp32
 ```
 
-The ESP32-S3 focus enables the RS485 motor and WS2812B status-indicator modules used by the
-default OSSM Alt build.
-
-After running this, you may need to restart rust-analyzer (or reload your editor) to pick up the new settings. You only need to re-run it when switching to a different target.
-
-The command regenerates editor settings from their templates. Put persistent customizations in the templates.
-
-#### In a dev container
-
-For pattern and web simulator work there's a dev container with everything the simulator needs. See [So You Want to Add a Pattern](docs/so-you-want-to-add-a-pattern.md). It doesn't include the ESP toolchain, so build and flash firmware on the host.
+Then restart rust-analyzer. This regenerates the editor settings from their templates, so put lasting changes in the templates. The dev container runs `just focus esp32s3` when it's first created.
 
 ## Shoulders of giants
 
