@@ -4,25 +4,9 @@ This guide walks you through setting up your environment, running the simulator,
 
 ## Setting Up Your Environment
 
-You have two options: a devcontainer or manual setup.
+The [dev container](https://github.com/ossm-rs/ossm#option-1-dev-container-recommended) described in the README has everything you need. If you use it, skip to [Running the Simulator](#running-the-simulator).
 
-### Option 1: Devcontainer (Recommended)
-
-The repo ships a devcontainer pre-configured with all the tools you need
-
-1. Install [Docker](https://www.docker.com/)
-2. Use an editor that supports dev containers or the cli
-   - [VS Code](https://code.visualstudio.com/) with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers).
-   - [Zed](https://zed.dev/docs/dev-containers) which natively supports dev containers.
-3. Open the repo and build and run the dev container
-   - In VS Code, either use the prompt that opens or the "Dev Containers: Reopen in Container" command. Then prompted to reopen in a container, choose **"Pattern Engine Dev"**.
-   - In Zed, either use the prompt, or run "Project: Open Remote" from the command palette and choose **"Pattern Engine Dev"**.
-
-That's it - skip to [Running the Simulator](#running-the-simulator).
-
-### Option 2: Manual Setup
-
-Install the following:
+To work on the host, install the following. Patterns don't need the ESP toolchain.
 
 | Tool                                                       | Purpose                               |
 | ---------------------------------------------------------- | ------------------------------------- |
@@ -43,13 +27,13 @@ pnpm install --dir apps/web-tools
 ## Running the Simulator
 
 ```sh
-just dev-patterns
+just web-tools
 ```
 
 This does two things in sequence:
 
-1. **`build-wasm`** - compiles the pattern engine (and its WASM firmware wrapper) into a WebAssembly module using `cargo build`, then generates JS bindings with `wasm-bindgen` and optimises the output with `wasm-opt`.
-2. **`dev`** - starts the Vite dev server in `apps/web-tools/` with `--host` so you can access it from other devices on your network.
+1. **`build-wasm`** - compiles the web simulator and trajectory recorder bindings (which include the pattern engine) to WebAssembly using `cargo build`, then generates JS bindings with `wasm-bindgen` and optimises the output with `wasm-opt`.
+2. **`pnpm dev`** - starts the Vite dev server in `apps/web-tools/` with `--host` so you can access it from other devices on your network.
 
 The simulator renders a 3D model of the OSSM and runs your patterns in the browser. Change a pattern and the wasm will recompile and the browser will reload.
 
@@ -110,7 +94,7 @@ Also add it to the `use crate::patterns::{...}` import in `lib.rs`.
 ### 4. Test it
 
 ```sh
-just dev-patterns
+just web-tools
 ```
 
 Open the simulator in your browser, select your pattern from the dropdown, and verify it behaves as expected.
